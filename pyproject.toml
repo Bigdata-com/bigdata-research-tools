@@ -1,0 +1,9 @@
+[tool.poetry]
+name = "bigdata-research-tools"
+version = "0.2"
+description = "Bigdata.com SDK Research Tools"
+authors = ["Shawn Azdam <sazdam@ravenpack.com>"]
+
+[tool.poetry.dependencies]
+python = "<4.0,>=3.9"
+bigdata-client = "^2.3.0"
