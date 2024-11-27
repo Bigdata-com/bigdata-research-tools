@@ -1,9 +1,10 @@
 """
-Module for executing concurrent and rate-limited searches using
+Module for executing concurrent and rate-limited searches via
 the Bigdata client.
 
-This module defines a `RateLimitedSearcher` class to manage multiple search
-requests efficiently while respecting query-per-minute (QPM) limits.
+This module defines a `RateLimitedSearchManager` class to manage multiple
+search requests efficiently while respecting request-per-minute (RPM) limits
+of the Bigdata API.
 
 Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
 Author: Shawn Azdam (sazdam@ravenpack.com)
@@ -20,35 +21,36 @@ from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
 
-REQUESTS_PER_MINUTE = 300
+REQUESTS_PER_MINUTE_LIMIT = 300
 MAX_WORKERS = 4
 
 
-class RateLimitedSearcher:
+class RateLimitedSearchManager:
     """
-    Rate-limited search executor for managing concurrent searches.
+    Rate-limited search executor for managing concurrent searches via
+    the Bigdata SDK.
 
     This class implements a token bucket algorithm for rate limiting and
-    provides thread-safe access to search functionality.
+    provides thread-safe access to the search functionality.
     """
 
     def __init__(self,
                  bigdata: Bigdata,
-                 qpm: int = REQUESTS_PER_MINUTE,
+                 rpm: int = REQUESTS_PER_MINUTE_LIMIT,
                  bucket_size: int = None):
         """
-        Initialize the rate-limited searcher.
+        Initialize the rate-limited search manager.
 
         :param bigdata:
-            The Bigdata client instance used for executing searches.
-        :param qpm:
-            Queries per minute limit (default: 300).
+            The Bigdata SDK client instance used for executing searches.
+        :param rpm:
+            Queries per minute limit. Defaults to 300.
         :param bucket_size:
-            Size of the token bucket. Defaults to the value of `qpm`.
+            Size of the token bucket. Defaults to the value of `rpm`.
         """
         self.bigdata = bigdata
-        self.qpm = qpm
-        self.bucket_size = bucket_size or qpm
+        self.rpm = rpm
+        self.bucket_size = bucket_size or rpm
         self.tokens = self.bucket_size
         self.last_refill = time.time()
         self._lock = threading.Lock()
@@ -56,12 +58,11 @@ class RateLimitedSearcher:
     def _refill_tokens(self):
         """
         Refill tokens based on elapsed time since the last refill.
-
-        Tokens are replenished at a rate proportional to the QPM limit.
+        Tokens are replenished at a rate proportional to the RPM limit.
         """
         now = time.time()
         elapsed = now - self.last_refill
-        new_tokens = int(elapsed * (self.qpm / 60.0))
+        new_tokens = int(elapsed * (self.rpm / 60.0))
 
         if new_tokens > 0:
             with self._lock:
@@ -92,7 +93,7 @@ class RateLimitedSearcher:
 
             time.sleep(0.1)  # Prevent tight looping
 
-    def execute_search(
+    def _search(
             self,
             query: QueryComponent,
             date_range: Optional[AbsoluteDateRange | RollingDateRange] = None,
@@ -105,26 +106,25 @@ class RateLimitedSearcher:
         Execute a single search with rate limiting.
 
         :param query:
-            The query to execute.
+            The search query to execute.
         :param date_range:
-            (Optional) A date range filter for the search results.
+            A date range filter for the search results.
         :param sortby:
-            (Optional) The sorting criterion for the search results.
+            The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
         :param scope:
-            (Optional) The scope of the documents to include.
+            The scope of the documents to include.
             Defaults to DocumentType.ALL.
         :param limit:
-            (Optional) The maximum number of documents to return.
+            The maximum number of documents to return.
             Defaults to 10.
         :param timeout:
-            (Optional) The maximum time (in seconds) to wait for a token.
+            The maximum time (in seconds) to wait for a token.
         :return:
             A list of search results, or None if a rate limit timeout occurred.
         """
         if not self._acquire_token(timeout):
-            logging.warning(
-                "Failed to acquire rate limit token within timeout")
+            logging.warning('Timed out attempting to acquire rate limit token')
             return None
 
         try:
@@ -136,10 +136,10 @@ class RateLimitedSearcher:
             ).run(limit=limit)
             return results
         except Exception as e:
-            logging.error(f"Search error: {e}")
+            logging.error(f'Search error: {e}')
             return None
 
-    def run_concurrent_searches(
+    def concurrent_search(
             self,
             queries: List[QueryComponent],
             date_range: Optional[AbsoluteDateRange | RollingDateRange] = None,
@@ -151,36 +151,37 @@ class RateLimitedSearcher:
     ) -> List[List[Document]]:
         """
         Execute multiple searches concurrently while respecting rate limits.
+        The order of results is preserved based on the input queries.
 
         :param queries:
             A list of search queries to execute.
         :param date_range:
-            (Optional) A date range filter for all searches.
+            A date range filter for all searches.
         :param sortby:
-            (Optional) The sorting criterion for the search results.
+            The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
         :param scope:
-            (Optional) The scope of the documents to include.
+            The scope of the documents to include.
             Defaults to DocumentType.ALL.
         :param limit:
-            (Optional) The maximum number of documents to return per query.
+            The maximum number of documents to return per query.
             Defaults to 10.
         :param max_workers:
-            (Optional) The maximum number of concurrent threads.
+            The maximum number of concurrent threads.
             Defaults to MAX_WORKERS.
         :param timeout:
-            (Optional) The maximum time (in seconds) to wait for a token
-            per query.
+            The maximum time (in seconds) to wait for a token
+            per request.
         :return:
             A list of lists, where each inner list contains results
-            for the corresponding query.
+            for the corresponding request.
         """
         results = [[] for _ in range(len(queries))]  # Preserve order
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
                 executor.submit(
-                    self.execute_search,
+                    self._search,
                     query=query,
                     date_range=date_range,
                     sortby=sortby,
@@ -197,7 +198,7 @@ class RateLimitedSearcher:
                     if search_results := future.result():
                         results[idx] = search_results
                 except Exception as e:
-                    logging.error(f"Error in search {idx}: {e}")
+                    logging.error(f'Error in search {idx}: {e}')
 
         return results
 
@@ -213,31 +214,30 @@ def run_search(
     """
     Convenience function to execute multiple searches concurrently
     with rate limiting.
-
-    This function creates an instance of `RateLimitedSearcher` and uses it
-    to run searches for all provided queries.
+    This function creates an instance of `RateLimitedSearchManager`
+    and utilizes it to run searches for all provided queries.
 
     :param bigdata:
         An instance of the Bigdata client used to execute the searches.
     :param queries:
         A list of QueryComponent objects, each representing a query to execute.
     :param date_range:
-        (Optional) A date range filter for the search results.
+        A date range filter for the search results.
     :param sortby:
-        (Optional) The sorting criterion for the search results.
+        The sorting criterion for the search results.
         Defaults to SortBy.RELEVANCE.
     :param scope:
-        (Optional) The scope of the documents to include.
+        The scope of the documents to include.
         Defaults to DocumentType.ALL.
     :param limit:
-        (Optional) The maximum number of documents to return per query.
+        The maximum number of documents to return per query.
         Defaults to 10.
     :return:
         A list of lists, where each inner list contains results
         for the corresponding query.
     """
-    searcher = RateLimitedSearcher(bigdata)
-    return searcher.run_concurrent_searches(
+    manager = RateLimitedSearchManager(bigdata)
+    return manager.concurrent_search(
         queries=queries,
         date_range=date_range,
         sortby=sortby,
