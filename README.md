@@ -1,6 +1,6 @@
 ## Bigdata Research Tools
 
-**Bigdata.com SDK Tools for Data Science and Solutions**.
+**Bigdata.com API High-Efficiency Tools at Scale**
 
 This repository provides efficient toolset to use the Bigdata.com SDK.
 
@@ -24,7 +24,5 @@ This repository provides efficient toolset to use the Bigdata.com SDK.
 
 ---
 
-## **License**
-
-This project is proprietary and belongs to **RavenPack | Bigdata.com**. All
-rights reserved © 2024.
+**RavenPack** | **Bigdata.com** \
+All rights reserved © 2025
