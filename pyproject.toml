@@ -1,9 +1,12 @@
-[tool.poetry]
+[project]
 name = "bigdata-research-tools"
-version = "0.3"
+version = "0.4"
 description = "Bigdata.com SDK Research Tools"
-authors = ["Shawn Azdam <sazdam@ravenpack.com>"]
-
-[tool.poetry.dependencies]
-python = "<4.0,>=3.9"
-bigdata-client = "^2.5.0"
+readme = "README.md"
+authors = [
+    { name = "Shawn Azdam", email = "sazdam@ravenpack.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "bigdata-client>=2.5.0",
+]
