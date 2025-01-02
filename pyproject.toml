@@ -10,3 +10,7 @@ requires-python = ">=3.9"
 dependencies = [
     "bigdata-client>=2.5.0",
 ]
+
+[project.urls]
+homepage = "https://bigdata.com/api"
+repository = "https://github.com/RavenPack/bigdata-research-tools"
