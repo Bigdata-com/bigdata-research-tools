@@ -1,6 +1,6 @@
 [project]
 name = "bigdata-research-tools"
-version = "0.5.3"
+version = "0.5.4"
 description = "Bigdata.com API High-Efficiency Tools at Scale"
 readme = "README.md"
 authors = [

@@ -1,5 +1,8 @@
 ## Bigdata Research Tools
 
+[![Python version support](https://img.shields.io/badge/Python-3.9%20|%203.10%20|%203.11%20|%203.12%20|%203.13-blue?logo=python)](https://pypi.org/project/bigdata-research-tools)
+[![PyPI version](https://badge.fury.io/py/bigdata-research-tools.svg)](https://badge.fury.io/py/bigdata-research-tools)
+
 **Bigdata.com API High-Efficiency Tools at Scale**
 
 This repository provides efficient toolset to use the Bigdata.com SDK.
