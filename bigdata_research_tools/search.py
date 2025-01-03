@@ -10,7 +10,7 @@ import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
@@ -93,7 +93,7 @@ class RateLimitedSearchManager:
     def _search(
             self,
             query: QueryComponent,
-            date_range: Optional[AbsoluteDateRange | RollingDateRange] = None,
+            date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
             sortby: SortBy = SortBy.RELEVANCE,
             scope: DocumentType = DocumentType.ALL,
             limit: int = 10,
@@ -139,7 +139,7 @@ class RateLimitedSearchManager:
     def concurrent_search(
             self,
             queries: List[QueryComponent],
-            date_range: Optional[AbsoluteDateRange | RollingDateRange] = None,
+            date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
             sortby: SortBy = SortBy.RELEVANCE,
             scope: DocumentType = DocumentType.ALL,
             limit: int = 10,
@@ -203,7 +203,7 @@ class RateLimitedSearchManager:
 def run_search(
         bigdata: Bigdata,
         queries: List[QueryComponent],
-        date_range: Optional[AbsoluteDateRange | RollingDateRange] = None,
+        date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
