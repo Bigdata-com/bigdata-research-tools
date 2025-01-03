@@ -5,9 +5,6 @@ the Bigdata client.
 This module defines a `RateLimitedSearchManager` class to manage multiple
 search requests efficiently while respecting request-per-minute (RPM) limits
 of the Bigdata API.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-Author: Shawn Azdam (sazdam@ravenpack.com)
 """
 import logging
 import threading
