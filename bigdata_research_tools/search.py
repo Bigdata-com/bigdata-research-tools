@@ -17,6 +17,7 @@ from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
 from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
+import itertools
 
 REQUESTS_PER_MINUTE_LIMIT = 300
 MAX_WORKERS = 4
@@ -139,7 +140,7 @@ class RateLimitedSearchManager:
     def concurrent_search(
             self,
             queries: List[QueryComponent],
-            date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
+            date_range: Union[AbsoluteDateRange, RollingDateRange, List[AbsoluteDateRange]] = None,
             sortby: SortBy = SortBy.RELEVANCE,
             scope: DocumentType = DocumentType.ALL,
             limit: int = 10,
@@ -173,8 +174,12 @@ class RateLimitedSearchManager:
             A list of lists, where each inner list contains results
             for the corresponding request.
         """
-        results = [[] for _ in range(len(queries))]  # Preserve order
-
+        if not isinstance(date_range, list):
+            date_range = [date_range]
+        
+        tasks = list(itertools.product(queries, date_range))
+        results = [[] for _ in range(len(tasks))] # Preserve order
+        
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
                 executor.submit(
@@ -186,7 +191,7 @@ class RateLimitedSearchManager:
                     limit=limit,
                     timeout=timeout
                 ): idx
-                for idx, query in enumerate(queries)
+                for idx, (query, date_range) in enumerate(tasks)
             }
 
             for future in as_completed(futures):
@@ -203,7 +208,7 @@ class RateLimitedSearchManager:
 def run_search(
         bigdata: Bigdata,
         queries: List[QueryComponent],
-        date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
+        date_range: Union[AbsoluteDateRange, RollingDateRange, List[AbsoluteDateRange]] = None,
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
