@@ -1,4 +1,11 @@
-## Bigdata Research Tools
+<p align="center">
+  <picture>
+    <source srcset="res/bigdata-by-ravenpack-logo-dark.png" media="(prefers-color-scheme: dark)">
+    <img src="res/bigdata-by-ravenpack-logo.png" alt="Bigdata Logo" width="300">
+  </picture>
+</p>
+
+# Bigdata Research Tools
 
 [![Python version support](https://img.shields.io/badge/Python-3.9%20|%203.10%20|%203.11%20|%203.12%20|%203.13-blue?logo=python)](https://pypi.org/project/bigdata-research-tools)
 [![PyPI version](https://badge.fury.io/py/bigdata-research-tools.svg)](https://badge.fury.io/py/bigdata-research-tools)
