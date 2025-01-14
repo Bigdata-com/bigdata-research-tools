@@ -6,6 +6,7 @@ This module defines a `RateLimitedSearchManager` class to manage multiple
 search requests efficiently while respecting request-per-minute (RPM) limits
 of the Bigdata API.
 """
+import itertools
 import logging
 import threading
 import time
@@ -17,7 +18,9 @@ from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
 from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
-import itertools
+
+DATE_RANGE_TYPES = Union[AbsoluteDateRange, RollingDateRange,
+List[Union[AbsoluteDateRange, RollingDateRange]]]
 
 REQUESTS_PER_MINUTE_LIMIT = 300
 MAX_WORKERS = 4
@@ -140,7 +143,7 @@ class RateLimitedSearchManager:
     def concurrent_search(
             self,
             queries: List[QueryComponent],
-            date_range: Union[AbsoluteDateRange, RollingDateRange, List[AbsoluteDateRange]] = None,
+            date_range: DATE_RANGE_TYPES = None,
             sortby: SortBy = SortBy.RELEVANCE,
             scope: DocumentType = DocumentType.ALL,
             limit: int = 10,
@@ -176,10 +179,10 @@ class RateLimitedSearchManager:
         """
         if not isinstance(date_range, list):
             date_range = [date_range]
-        
+
         tasks = list(itertools.product(queries, date_range))
-        results = [[] for _ in range(len(tasks))] # Preserve order
-        
+        results = [[] for _ in range(len(tasks))]  # Preserve order
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
                 executor.submit(
@@ -208,7 +211,7 @@ class RateLimitedSearchManager:
 def run_search(
         bigdata: Bigdata,
         queries: List[QueryComponent],
-        date_range: Union[AbsoluteDateRange, RollingDateRange, List[AbsoluteDateRange]] = None,
+        date_range: DATE_RANGE_TYPES = None,
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
