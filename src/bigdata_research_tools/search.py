@@ -29,7 +29,7 @@ SEARCH_QUERY_RESULTS_TYPE = Dict[
     List[Document]
 ]
 
-REQUESTS_PER_MINUTE_LIMIT = 300
+REQUESTS_PER_MINUTE_LIMIT = 400
 MAX_WORKERS = 4
 
 
@@ -204,6 +204,8 @@ class RateLimitedSearchManager:
             for future in as_completed(futures):
                 query, date_range = futures[future]
                 try:
+                    # Store the search results in the dictionary,
+                    # Even if the search result is empty.
                     results[(query, date_range)] = future.result()
                 except Exception as e:
                     logging.error(f'Error in search {query, date_range}: {e}')
