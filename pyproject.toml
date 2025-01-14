@@ -3,9 +3,7 @@ name = "bigdata-research-tools"
 version = "0.7.3"
 description = "Bigdata.com API High-Efficiency Tools at Scale"
 readme = "README.md"
-authors = [
-    { name = "Shawn Azdam", email = "sazdam@ravenpack.com" }
-]
+authors = [{ name = "Bigdata Solutions Engineering Team", email = "support@ravenpack.com" }]
 requires-python = ">=3.9"
 dependencies = [
     "bigdata-client>=2.5.0",
