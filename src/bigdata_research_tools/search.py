@@ -11,7 +11,7 @@ import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional, Union
+from typing import Tuple, List, Dict, Optional, Union
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
@@ -19,8 +19,15 @@ from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
 
-DATE_RANGE_TYPES = Union[AbsoluteDateRange, RollingDateRange,
-List[Union[AbsoluteDateRange, RollingDateRange]]]
+DATE_RANGE_TYPE = Union[
+    AbsoluteDateRange,
+    RollingDateRange,
+    List[Union[AbsoluteDateRange, RollingDateRange]]
+]
+SEARCH_QUERY_RESULTS_TYPE = Dict[
+    Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]],
+    List[Document]
+]
 
 REQUESTS_PER_MINUTE_LIMIT = 300
 MAX_WORKERS = 4
@@ -143,21 +150,21 @@ class RateLimitedSearchManager:
     def concurrent_search(
             self,
             queries: List[QueryComponent],
-            date_range: DATE_RANGE_TYPES = None,
+            date_ranges: DATE_RANGE_TYPE = None,
             sortby: SortBy = SortBy.RELEVANCE,
             scope: DocumentType = DocumentType.ALL,
             limit: int = 10,
             max_workers: int = MAX_WORKERS,
             timeout: float = None
-    ) -> List[List[Document]]:
+    ) -> SEARCH_QUERY_RESULTS_TYPE:
         """
         Execute multiple searches concurrently while respecting rate limits.
         The order of results is preserved based on the input queries.
 
         :param queries:
-            A list of search queries to execute.
-        :param date_range:
-            A date range filter for all searches.
+            A list of QueryComponent objects.
+        :param date_ranges:
+            Date range filter for all searches.
         :param sortby:
             The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
@@ -174,36 +181,32 @@ class RateLimitedSearchManager:
             The maximum time (in seconds) to wait for a token
             per request.
         :return:
-            A list of lists, where each inner list contains results
-            for the corresponding request.
+            A mapping of the tuple of search query and date range
+            to the list of the corresponding search results.
         """
-        if not isinstance(date_range, list):
-            date_range = [date_range]
+        if not isinstance(date_ranges, list):
+            date_ranges = [date_ranges]
 
-        tasks = list(itertools.product(queries, date_range))
-        results = [[] for _ in range(len(tasks))]  # Preserve order
-
+        results = {}
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
-                executor.submit(
-                    self._search,
-                    query=query,
-                    date_range=date_range,
-                    sortby=sortby,
-                    scope=scope,
-                    limit=limit,
-                    timeout=timeout
-                ): idx
-                for idx, (query, date_range) in enumerate(tasks)
+                executor.submit(self._search,
+                                query=query,
+                                date_range=date_range,
+                                sortby=sortby,
+                                scope=scope,
+                                limit=limit,
+                                timeout=timeout): (query, date_range)
+                for query, date_range in
+                itertools.product(queries, date_ranges)
             }
 
             for future in as_completed(futures):
-                idx = futures[future]
+                query, date_range = futures[future]
                 try:
-                    if search_results := future.result():
-                        results[idx] = search_results
+                    results[(query, date_range)] = future.result()
                 except Exception as e:
-                    logging.error(f'Error in search {idx}: {e}')
+                    logging.error(f'Error in search {query, date_range}: {e}')
 
         return results
 
@@ -211,11 +214,11 @@ class RateLimitedSearchManager:
 def run_search(
         bigdata: Bigdata,
         queries: List[QueryComponent],
-        date_range: DATE_RANGE_TYPES = None,
+        date_ranges: DATE_RANGE_TYPE = None,
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
-) -> List[List[Document]]:
+) -> SEARCH_QUERY_RESULTS_TYPE:
     """
     Convenience function to execute multiple searches concurrently
     with rate limiting.
@@ -225,9 +228,9 @@ def run_search(
     :param bigdata:
         An instance of the Bigdata client used to execute the searches.
     :param queries:
-        A list of QueryComponent objects, each representing a query to execute.
-    :param date_range:
-        A date range filter for the search results.
+        A list of QueryComponent objects.
+    :param date_ranges:
+        Date range filter for the search results.
     :param sortby:
         The sorting criterion for the search results.
         Defaults to SortBy.RELEVANCE.
@@ -238,13 +241,13 @@ def run_search(
         The maximum number of documents to return per query.
         Defaults to 10.
     :return:
-        A list of lists, where each inner list contains results
-        for the corresponding query.
+        A mapping of the tuple of search query and date range
+        to the list of the corresponding search results.
     """
     manager = RateLimitedSearchManager(bigdata)
     return manager.concurrent_search(
         queries=queries,
-        date_range=date_range,
+        date_ranges=date_ranges,
         sortby=sortby,
         scope=scope,
         limit=limit,
