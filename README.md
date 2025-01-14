@@ -16,6 +16,16 @@ This repository provides efficient toolset to use the Bigdata.com SDK.
 
 ---
 
+## Installation
+
+Install the package from PyPI using `pip`:
+
+```bash
+pip install bigdata-research-tools
+```
+
+---
+
 ## Key Features
 
 - **Rate Limiting**: Enforces a configurable query-per-minute (RPM) limit using
@@ -36,3 +46,4 @@ This repository provides efficient toolset to use the Bigdata.com SDK.
 
 **RavenPack** | **Bigdata.com** \
 All rights reserved © 2025
+
