@@ -184,9 +184,6 @@ class RateLimitedSearchManager:
             A mapping of the tuple of search query and date range
             to the list of the corresponding search results.
         """
-        if not isinstance(date_ranges, list):
-            date_ranges = [date_ranges]
-
         results = {}
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
@@ -211,6 +208,17 @@ class RateLimitedSearchManager:
                     logging.error(f'Error in search {query, date_range}: {e}')
 
         return results
+
+
+def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
+    if not isinstance(date_ranges, list):
+        date_ranges = [date_ranges]
+
+    # Convert mutable AbsoluteDateRange into hashable objects
+    for i, dr in enumerate(date_ranges):
+        if isinstance(dr, AbsoluteDateRange):
+            date_ranges[i] = (dr.start_dt, dr.end_dt)
+    return date_ranges
 
 
 def run_search(
@@ -247,6 +255,7 @@ def run_search(
         to the list of the corresponding search results.
     """
     manager = RateLimitedSearchManager(bigdata)
+    date_ranges = normalize_date_range(date_ranges)
     return manager.concurrent_search(
         queries=queries,
         date_ranges=date_ranges,
