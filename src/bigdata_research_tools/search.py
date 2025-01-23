@@ -135,6 +135,9 @@ class RateLimitedSearchManager:
             logging.warning('Timed out attempting to acquire rate limit token')
             return None
 
+        if isinstance(date_range, tuple):
+            date_range = AbsoluteDateRange(*date_range)
+
         try:
             results = self.bigdata.search.new(
                 query=query,
