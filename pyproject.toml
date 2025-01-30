@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [{ name = "Bigdata Solutions Engineering Team", email = "support@ravenpack.com" }]
 requires-python = ">=3.9"
 dependencies = [
-    "bigdata-client>=2.5.0",
+    "bigdata-client>=2.5.0,<3.0.0"
 ]
 
 [project.urls]
