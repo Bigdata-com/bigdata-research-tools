@@ -26,6 +26,24 @@ pip install bigdata-research-tools
 
 ---
 
+## Usage
+
+The following example demonstrates the convenient way to run multiple searches
+in a concurrent and rate-limited manner:
+
+```python 
+from bigdata_research_tools import run_search
+from bigdata_client import Bigdata
+
+bigdata = Bigdata()
+
+results = run_search(bigdata=bigdata,
+                     queries=YOUR_LIST_OF_QUERIES,
+                     limit=1000)
+```
+
+---
+
 ## Key Features
 
 - **Rate Limiting**: Enforces a configurable query-per-minute (RPM) limit using
