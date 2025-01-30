@@ -12,3 +12,6 @@ dependencies = [
 [project.urls]
 homepage = "https://bigdata.com/api"
 repository = "https://github.com/RavenPack/bigdata-research-tools"
+
+[project.optional-dependencies]
+advanced = ["pandas>=2.2.0,<3.0.0"]
