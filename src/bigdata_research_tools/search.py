@@ -187,7 +187,7 @@ class RateLimitedSearchManager:
             A mapping of the tuple of search query and date range
             to the list of the corresponding search results.
         """
-        results = {}
+        query_results = {}
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
                 executor.submit(self._search,
@@ -206,11 +206,11 @@ class RateLimitedSearchManager:
                 try:
                     # Store the search results in the dictionary,
                     # Even if the search result is empty.
-                    results[(query, date_range)] = future.result()
+                    query_results[(query, date_range)] = future.result()
                 except Exception as e:
                     logging.error(f'Error in search {query, date_range}: {e}')
 
-        return results
+        return query_results
 
 
 def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
@@ -231,7 +231,8 @@ def run_search(
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
-) -> SEARCH_QUERY_RESULTS_TYPE:
+        only_results: bool = True,
+) -> Union[SEARCH_QUERY_RESULTS_TYPE, List[List[Document]]]:
     """
     Convenience function to execute multiple searches concurrently
     with rate limiting.
@@ -253,16 +254,21 @@ def run_search(
     :param limit:
         The maximum number of documents to return per query.
         Defaults to 10.
+    :param only_results:
+        If True, return only the search results.
+        If False, return the queries along with the results.
+        Defaults to True.
     :return:
         A mapping of the tuple of search query and date range
         to the list of the corresponding search results.
     """
     manager = RateLimitedSearchManager(bigdata)
     date_ranges = normalize_date_range(date_ranges)
-    return manager.concurrent_search(
-        queries=queries,
-        date_ranges=date_ranges,
-        sortby=sortby,
-        scope=scope,
-        limit=limit,
-    )
+    query_results = manager.concurrent_search(queries=queries,
+                                              date_ranges=date_ranges,
+                                              sortby=sortby,
+                                              scope=scope,
+                                              limit=limit)
+    if only_results:
+        return list(query_results.values())
+    return query_results
