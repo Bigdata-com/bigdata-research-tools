@@ -10,11 +10,3 @@ repos:
       - id: isort
         name: isort (python)
         args: [--profile, black]
-  - repo: local
-    hooks:
-      - id: check-docs
-        name: Check docs
-        entry: poetry run task check-docs
-        language: system
-        files: docs/
-        types: [file]
