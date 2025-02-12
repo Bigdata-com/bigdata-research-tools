@@ -1,0 +1,20 @@
+# See https://pre-commit.com for more information
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+        args: [--profile, black]
+  - repo: local
+    hooks:
+      - id: check-docs
+        name: Check docs
+        entry: poetry run task check-docs
+        language: system
+        files: docs/
+        types: [file]

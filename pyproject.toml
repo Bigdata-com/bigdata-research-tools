@@ -15,3 +15,10 @@ repository = "https://github.com/RavenPack/bigdata-research-tools"
 
 [project.optional-dependencies]
 advanced = ["pandas>=2.2.0,<3.0.0"]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "isort>=6.0.0",
+    "pre-commit>=4.1.0",
+]
