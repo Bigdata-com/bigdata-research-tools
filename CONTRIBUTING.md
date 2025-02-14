@@ -242,5 +242,5 @@ uv sync --extra docs
 ```
 Generate the documentation:
 ```sh
-uv run make clean html
+uv run make create-docs
 ```
