@@ -233,3 +233,14 @@ uv run task coverage
 ## Releasing
 
 Not available yet.
+
+## Generating documentation
+
+Install the dependencies:
+```sh
+uv sync --extra docs
+```
+Generate the documentation:
+```sh
+uv run make clean html
+```
