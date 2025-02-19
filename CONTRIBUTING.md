@@ -4,7 +4,8 @@ First off, thanks for taking the time to contribute! ❤️
 
 ### Your First Code Contribution
 
-First of all, before you start implementing anything that will be time consuming,
+First of all, before you start implementing anything that will be time
+consuming,
 **make sure that what you are going to implement is agreed with the maintainers
 of the project**, to avoid wasting your time. Open a new issue if
 necessary to discuss it before you implement your solution. Of course, for most
@@ -39,18 +40,19 @@ documented, please consider documenting it regardless, it will be really
 helpful. For more info, check the section on {ref}`"Improving The
 Documentation"<improving the documentation>`
 
-Finally, **open a _Pull Request_** for review, where we will discuss the changes.
+Finally, **open a _Pull Request_** for review, where we will discuss the
+changes.
 Make sure that all the tests pass to make sure you didn't break anything else.
 And expect some comments on the code and requests for changes.
 
 If everything goes fine, your pull request will be merged 🚀
-
 
 (styleguides)=
 ## Style Guides
 
 (commit messages)=
 ### Commit Messages
+
 To ensure that our commit messages are both concise and informative, all
 committers are asked to follow the git commit message format outlined below.
 For reference, Linus Torvalds provides a description of a good commit message
@@ -149,7 +151,6 @@ def func(arg1, arg2):
     """
 ```
 
-
 See [more examples of google
 docstrings](https://www.sphinx-doc.org/en/master/usage/extensions/example_google.html)
 
@@ -159,13 +160,13 @@ correct and reliable:
 
 ```python
 def func(t):
-  """
-  >>> func("This is a good example")
-  18
-  >>> func("This example is incorrect and will cause the pipeline to fail")
-  0
-  """
-  return len(t)
+    """
+    >>> func("This is a good example")
+    18
+    >>> func("This example is incorrect and will cause the pipeline to fail")
+    0
+    """
+    return len(t)
 ```
 
 Sometimes you may want to have examples in your docstrings, but you may not
@@ -175,21 +176,20 @@ calling an API). In those cases you should disable each line with `doctest:
 
 ```python
 def func(p):
-  """
-  >>> result = func(p) # doctest: +SKIP
-  >>> result.id        # doctest: +SKIP
-  123
-  """
-  requests.post("/my/api", {"payload": p})
+    """
+    >>> result = func(p) # doctest: +SKIP
+    >>> result.id        # doctest: +SKIP
+    123
+    """
+    requests.post("/my/api", {"payload": p})
 ```
-
 
 (tests style)=
 ### Tests Style
 
 Tests are contained in the `tests/` folder, which mirrors the same tree
-structure as the sources directory in `src/`. This makes tests very easy to find. 
-
+structure as the sources directory in `src/`. This makes tests very easy to
+find.
 
 (setting up the development environment)=
 ## Setting up the Development Environment
@@ -197,7 +197,8 @@ structure as the sources directory in `src/`. This makes tests very easy to find
 (installing dependencies)=
 ### Installing dependencies
 
-Clone the repository. Then make sure uv is installed and install the requirements.
+Clone the repository. Then make sure uv is installed and install the
+requirements.
 
 ```sh
 pipx install uv
@@ -205,13 +206,11 @@ pipx install uv
 uv sync
 ```
 
-
 Then, install the pre-commit hooks:
 
 ```sh
 uv run pre-commit install
 ```
-
 
 (running the tests)=
 ### Running the tests
@@ -232,15 +231,48 @@ uv run task coverage
 (releasing)=
 ## Releasing
 
-Not available yet.
+To create and publish a new release:
+
+1. **Bump the version**:  
+   Update the version in `pyproject.toml` and commit those changes, for
+   example:
+   ```sh
+   git commit -m "Bump version to X.X.X"
+   ```
+
+2. **Tag the release**:  
+   Create a Git tag for this version:
+   ```sh
+   git tag vX.X.X
+   ```
+
+3. **Build the release**:  
+   Use `uv build` to build the distribution artifacts:
+   ```sh
+   uv build
+   ```
+
+4. **Publish**:  
+   Finally, publish the release to PyPI by running:
+   ```sh
+   uv publish
+   ```
+   Note: make sure you have your PyPI token set as an environment variable
+   named `UV_PUBLISH_TOKEN` before running this command:
+   ```sh
+   export UV_PUBLISH_TOKEN=YOUR_PYPI_TOKEN
+   ```
 
 ## Generating documentation
 
 Install the dependencies:
+
 ```sh
 uv sync --extra docs
 ```
+
 Generate the documentation:
+
 ```sh
 uv run make create-docs
 ```
