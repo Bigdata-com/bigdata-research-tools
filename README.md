@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source srcset="res/bigdata-by-ravenpack-logo-dark.png" media="(prefers-color-scheme: dark)">
-    <img src="res/bigdata-by-ravenpack-logo.png" alt="Bigdata Logo" width="300">
+    <source srcset="https://sdk.bigdata.com/en/latest/_static/bigdata_dark.svg" media="(prefers-color-scheme: dark)">
+    <img src="https://sdk.bigdata.com/en/latest/_static/bigdata_light.svg" alt="Bigdata Logo" width="250">
   </picture>
 </p>
 
