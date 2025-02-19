@@ -108,6 +108,18 @@ query_results = run_search(bigdata=bigdata,
 
 ---
 
+## License
+
+This software is licensed for use solely under the terms agreed upon in the
+applicable Master Agreement and Order Schedule between the parties.
+For trials, the applicable legal documents are the Mutual Non-Disclosure
+Agreement, or if applicable the Trial Agreement.
+No other rights or licenses are granted by implication, estoppel, or otherwise.
+For further details, please refer to your specific Master Agreement and Order
+Schedule or contact us at legal@ravenpack.com.
+
+---
+
 **RavenPack** | **Bigdata.com** \
 All rights reserved © 2025
 
