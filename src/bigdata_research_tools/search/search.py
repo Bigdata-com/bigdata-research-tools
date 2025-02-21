@@ -6,34 +6,37 @@ This module defines a `RateLimitedSearchManager` class to manage multiple
 search requests efficiently while respecting request-per-minute (RPM) limits
 of the Bigdata API.
 """
+
 import itertools
 import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Tuple, List, Dict, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
 from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
+from tqdm import tqdm
+
+from bigdata_research_tools.client import init_bigdata_client
 
 DATE_RANGE_TYPE = Union[
     AbsoluteDateRange,
     RollingDateRange,
-    List[Union[AbsoluteDateRange, RollingDateRange]]
+    List[Union[AbsoluteDateRange, RollingDateRange]],
 ]
-SEARCH_QUERY_RESULTS_TYPE = Dict[
-    Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]],
-    List[Document]
+SearchQueryResult = Dict[
+    Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]
 ]
 
 REQUESTS_PER_MINUTE_LIMIT = 300
 MAX_WORKERS = 4
 
 
-class RateLimitedSearchManager:
+class SearchManager:
     """
     Rate-limited search executor for managing concurrent searches via
     the Bigdata SDK.
@@ -42,21 +45,24 @@ class RateLimitedSearchManager:
     provides thread-safe access to the search functionality.
     """
 
-    def __init__(self,
-                 bigdata: Bigdata,
-                 rpm: int = REQUESTS_PER_MINUTE_LIMIT,
-                 bucket_size: int = None):
+    def __init__(
+        self,
+        rpm: int = REQUESTS_PER_MINUTE_LIMIT,
+        bucket_size: int = None,
+        bigdata: Bigdata = None,
+    ):
         """
         Initialize the rate-limited search manager.
 
-        :param bigdata:
-            The Bigdata SDK client instance used for executing searches.
         :param rpm:
             Queries per minute limit. Defaults to 300.
         :param bucket_size:
             Size of the token bucket. Defaults to the value of `rpm`.
+        :param bigdata:
+            The Bigdata SDK client instance used for executing searches.
+            Defaults to None (uses the library default client).
         """
-        self.bigdata = bigdata
+        self.bigdata = bigdata or init_bigdata_client()
         self.rpm = rpm
         self.bucket_size = bucket_size or rpm
         self.tokens = self.bucket_size
@@ -102,13 +108,14 @@ class RateLimitedSearchManager:
             time.sleep(0.1)  # Prevent tight looping
 
     def _search(
-            self,
-            query: QueryComponent,
-            date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
-            sortby: SortBy = SortBy.RELEVANCE,
-            scope: DocumentType = DocumentType.ALL,
-            limit: int = 10,
-            timeout: float = None
+        self,
+        query: QueryComponent,
+        date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
+        sortby: SortBy = SortBy.RELEVANCE,
+        scope: DocumentType = DocumentType.ALL,
+        limit: int = 10,
+        timeout: float = None,
+        rerank_threshold: float = None,
     ) -> Optional[List[Document]]:
         """
         Execute a single search with rate limiting.
@@ -128,11 +135,13 @@ class RateLimitedSearchManager:
             Defaults to 10.
         :param timeout:
             The maximum time (in seconds) to wait for a token.
+        :param rerank_threshold:
+            Enable the cross-encoder by setting value between [0,1]
         :return:
             A list of search results, or None if a rate limit timeout occurred.
         """
         if not self._acquire_token(timeout):
-            logging.warning('Timed out attempting to acquire rate limit token')
+            logging.warning("Timed out attempting to acquire rate limit token")
             return None
 
         if isinstance(date_range, tuple):
@@ -140,26 +149,25 @@ class RateLimitedSearchManager:
 
         try:
             results = self.bigdata.search.new(
-                query=query,
-                date_range=date_range,
-                sortby=sortby,
-                scope=scope
+                query=query, date_range=date_range, sortby=sortby, scope=scope,
+                rerank_threshold=rerank_threshold
             ).run(limit=limit)
             return results
         except Exception as e:
-            logging.error(f'Search error: {e}')
+            logging.error(f"Search error: {e}")
             return None
 
     def concurrent_search(
-            self,
-            queries: List[QueryComponent],
-            date_ranges: DATE_RANGE_TYPE = None,
-            sortby: SortBy = SortBy.RELEVANCE,
-            scope: DocumentType = DocumentType.ALL,
-            limit: int = 10,
-            max_workers: int = MAX_WORKERS,
-            timeout: float = None
-    ) -> SEARCH_QUERY_RESULTS_TYPE:
+        self,
+        queries: List[QueryComponent],
+        date_ranges: DATE_RANGE_TYPE = None,
+        sortby: SortBy = SortBy.RELEVANCE,
+        scope: DocumentType = DocumentType.ALL,
+        limit: int = 10,
+        max_workers: int = MAX_WORKERS,
+        timeout: float = None,
+        rerank_threshold: float = None, 
+    ) -> SearchQueryResult:
         """
         Execute multiple searches concurrently while respecting rate limits.
         The order of results is preserved based on the input queries.
@@ -183,34 +191,40 @@ class RateLimitedSearchManager:
         :param timeout:
             The maximum time (in seconds) to wait for a token
             per request.
+        :param rerank_threshold:
+            Enable the cross-encoder by setting value between [0,1]
         :return:
             A mapping of the tuple of search query and date range
             to the list of the corresponding search results.
         """
-        query_results = {}
+        results = {}
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
-                executor.submit(self._search,
-                                query=query,
-                                date_range=date_range,
-                                sortby=sortby,
-                                scope=scope,
-                                limit=limit,
-                                timeout=timeout): (query, date_range)
-                for query, date_range in
-                itertools.product(queries, date_ranges)
+                executor.submit(
+                    self._search,
+                    query=query,
+                    date_range=date_range,
+                    sortby=sortby,
+                    scope=scope,
+                    limit=limit,
+                    timeout=timeout,
+                    rerank_threshold=rerank_threshold,
+                ): (query, date_range)
+                for query, date_range in itertools.product(queries, date_ranges)
             }
 
-            for future in as_completed(futures):
+            for future in tqdm(
+                as_completed(futures), total=len(futures), desc="Querying Bigdata..."
+            ):
                 query, date_range = futures[future]
                 try:
                     # Store the search results in the dictionary,
                     # Even if the search result is empty.
-                    query_results[(query, date_range)] = future.result()
+                    results[(query, date_range)] = future.result()
                 except Exception as e:
-                    logging.error(f'Error in search {query, date_range}: {e}')
+                    logging.error(f"Error in search {query, date_range}: {e}")
 
-        return query_results
+        return results
 
 
 def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
@@ -225,22 +239,20 @@ def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
 
 
 def run_search(
-        bigdata: Bigdata,
-        queries: List[QueryComponent],
-        date_ranges: DATE_RANGE_TYPE = None,
-        sortby: SortBy = SortBy.RELEVANCE,
-        scope: DocumentType = DocumentType.ALL,
-        limit: int = 10,
-        only_results: bool = True,
-) -> Union[SEARCH_QUERY_RESULTS_TYPE, List[List[Document]]]:
+    queries: List[QueryComponent],
+    date_ranges: DATE_RANGE_TYPE = None,
+    sortby: SortBy = SortBy.RELEVANCE,
+    scope: DocumentType = DocumentType.ALL,
+    limit: int = 10,
+    only_results: bool = True,
+    rerank_threshold: float = None,
+    **kwargs,
+) -> Union[SearchQueryResult, list[list[Document]]]:
     """
-    Convenience function to execute multiple searches concurrently
-    with rate limiting.
-    This function creates an instance of `RateLimitedSearchManager`
+    Execute multiple searches concurrently, with rate limiting.
+    This function creates an instance of `SearchManager`
     and utilizes it to run searches for all provided queries.
 
-    :param bigdata:
-        An instance of the Bigdata client used to execute the searches.
     :param queries:
         A list of QueryComponent objects.
     :param date_ranges:
@@ -258,17 +270,25 @@ def run_search(
         If True, return only the search results.
         If False, return the queries along with the results.
         Defaults to True.
+    :param rerank_threshold:
+        Enable the cross-encoder by setting value between [0,1]
+    :param kwargs:
+        Additional keyword arguments to pass to initialize the `SearchManager`
+        that will be used.
     :return:
         A mapping of the tuple of search query and date range
         to the list of the corresponding search results.
     """
-    manager = RateLimitedSearchManager(bigdata)
+    manager = SearchManager(**kwargs)
     date_ranges = normalize_date_range(date_ranges)
-    query_results = manager.concurrent_search(queries=queries,
-                                              date_ranges=date_ranges,
-                                              sortby=sortby,
-                                              scope=scope,
-                                              limit=limit)
+    query_results = manager.concurrent_search(
+        queries=queries,
+        date_ranges=date_ranges,
+        sortby=sortby,
+        scope=scope,
+        limit=limit,
+        rerank_threshold=rerank_threshold,
+    )
     if only_results:
         return list(query_results.values())
     return query_results

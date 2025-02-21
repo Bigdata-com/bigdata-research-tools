@@ -11,5 +11,6 @@ __pycache__/
 *.pyd
 *.pdb
 *.egg-info/
+*.env
 dist/
 build/
