@@ -28,7 +28,7 @@ DATE_RANGE_TYPE = Union[
     RollingDateRange,
     List[Union[AbsoluteDateRange, RollingDateRange]],
 ]
-SearchQueryResult = Dict[
+SEARCH_QUERY_RESULTS_TYPE  = Dict[
     Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]
 ]
 
@@ -167,7 +167,7 @@ class SearchManager:
         max_workers: int = MAX_WORKERS,
         timeout: float = None,
         rerank_threshold: float = None, 
-    ) -> SearchQueryResult:
+    ) -> SEARCH_QUERY_RESULTS_TYPE :
         """
         Execute multiple searches concurrently while respecting rate limits.
         The order of results is preserved based on the input queries.
@@ -247,7 +247,7 @@ def run_search(
     only_results: bool = True,
     rerank_threshold: float = None,
     **kwargs,
-) -> Union[SearchQueryResult, list[list[Document]]]:
+) -> Union[SEARCH_QUERY_RESULTS_TYPE, list[list[Document]]]:
     """
     Execute multiple searches concurrently, with rate limiting.
     This function creates an instance of `SearchManager`

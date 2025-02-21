@@ -1,7 +1,7 @@
 from bigdata_research_tools.search.search import (
     SearchManager,
-    SearchQueryResult,
+    SEARCH_QUERY_RESULTS_TYPE,
     run_search,
 )
 
-__all__ = ["SearchManager", "SearchQueryResult", "run_search"]
+__all__ = ["SearchManager", "SEARCH_QUERY_RESULTS_TYPE", "run_search"]

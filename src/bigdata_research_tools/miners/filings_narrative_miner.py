@@ -71,7 +71,7 @@ class FilingsNarrativeMiner:
         export_to_path: Optional[str] = None,
     ) -> Dict:
         """
-        Mine narratives based on
+        Mine narratives by searching against filings
 
         Args:
             document_limit: Maximum number of documents to analyze
