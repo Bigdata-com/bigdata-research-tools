@@ -2,4 +2,4 @@
 Bigdata.com Research Tools
 """
 
-from .search import run_search
+__version__ = "0.10.0"

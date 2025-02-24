@@ -2,14 +2,22 @@
 Copyright (C) 2025 RavenPack | Bigdata.com. All rights reserved.
 Author: Alessandro Bouchs (abouchs@ravenpack.com), Jelena Starovic (jstarovic@ravenpack.com)
 """
+
 from typing import List, Optional, Tuple
 
 import pandas as pd
 from bigdata_client.daterange import AbsoluteDateRange
 from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType
-from bigdata_client.query import Keyword, Entity, Any, Similarity, FiscalYear, \
-    ReportingEntity
+from bigdata_client.query import (
+    Any,
+    Entity,
+    FiscalYear,
+    Keyword,
+    Source, 
+    ReportingEntity,
+    Similarity,
+)
 
 
 def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
@@ -17,14 +25,14 @@ def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
     Processes a list of sentences to create a list of Similarity query objects, ensuring no duplicates.
 
     Args:
-        sentences (List[str] or str): 
-            A list of sentences or a single sentence string. If a single string is provided, 
+        sentences (List[str] or str):
+            A list of sentences or a single sentence string. If a single string is provided,
             it is converted into a list containing that string.
 
     Returns:
-        List[Similarity]: 
+        List[Similarity]:
             A list of Similarity query objects, one for each unique sentence in the input.
-    
+
     Operation:
         1. Converts a single string input to a list.
         2. Deduplicates the list of sentences.
@@ -39,37 +47,40 @@ def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
 
 
 def build_batched_query(
-        sentences: Optional[List[str]],
-        keywords: Optional[List[str]],
-        entity_keys: List[str],
-        control_entities: Optional[List[str]],
-        batch_size: int = 10,
-        fiscal_year: int = None,
-        scope: DocumentType = DocumentType.ALL,
+    sentences: List[str], #TODO add sources here 
+    keywords: Optional[List[str]],
+    control_entities: Optional[List[str]],
+    sources: Optional[List[str]],
+    entity_keys: Optional[List[str]] = None,
+    batch_size: int = 10,
+    fiscal_year: int = None,
+    scope: DocumentType = DocumentType.ALL,
 ) -> List[QueryComponent]:
     """
-    Builds a list of batched query objects based on the provided parameters. This function 
-    supports multiple query types (Similarity, Keyword, Entity or ReportingEntity) and batches entity keys 
+    Builds a list of batched query objects based on the provided parameters. This function
+    supports multiple query types (Similarity, Keyword, Entity or ReportingEntity) and batches entity keys
     for processing.
 
     Args:
-        sentences (Optional[List[str]]): 
+        sentences (Optional[List[str]]):
             A list of sentences for creating similarity queries. If None, no similarity queries are created.
-        keywords (Optional[List[str]]): 
+        keywords (Optional[List[str]]):
             A list of keywords for constructing keyword queries. If None, no keyword queries are created.
-        entity_keys (List[str]): 
+        entity_keys (List[str]):
             A list of entity keys to batch and process.
-        control_entities (Optional[List[str]]): 
+        control_entities (Optional[List[str]]):
             A list of control entity IDs for creating co-mentions queries. If None, no control queries are created.
-        batch_size (int, optional): 
+        sources (Optional[List[str]]):
+            A list of sources for constructing source queries. If None, search across all available sources.
+        batch_size (int, optional):
             The number of entities to include in each batch. Defaults to 10.
-        fiscal_year (int, optional): 
+        fiscal_year (int, optional):
             The fiscal year to filter queries. If None, no fiscal year filter is applied.
-        scope (DocumentType, optional): 
+        scope (DocumentType, optional):
             The document type scope (e.g., `DocumentType.ALL`, `DocumentType.TRANSCRIPTS`). Defaults to `DocumentType.ALL`.
 
     Returns:
-        List[QueryComponent]: 
+        List[QueryComponent]:
             A list of expanded and batched query components, incorporating all provided parameters.
 
     Operation:
@@ -81,7 +92,7 @@ def build_batched_query(
         6. Returns a list of expanded queries, ensuring all combinations are considered.
 
     Notes:
-        - If no `sentences`, `keywords`, or `control_entities` are provided, the function defaults to creating 
+        - If no `sentences`, `keywords`, or `control_entities` are provided, the function defaults to creating
           queries based on batched `entity_keys` alone.
         - Fiscal year filtering is applied as an additional constraint if specified.
     """
@@ -100,41 +111,74 @@ def build_batched_query(
         # If sentences are not provided, initialize a default query
         keyword_query = None
 
+    if sources:
+        source_query = Any([Source(source) for source in sources])
+    else:
+        # If sentences are not provided, initialize a default query
+        source_query = None
+
     if control_entities:
-        control_query = Any(
-            [Entity(entity_id) for entity_id in control_entities])
+        control_query = Any([Entity(entity_id) for entity_id in control_entities])
     else:
         # If sentences are not provided, initialize a default query
         control_query = None
 
         # Batch entity keys
-    entity_keys_batched = [
-        entity_keys[i:i + batch_size] for i in
-        range(0, len(entity_keys), batch_size)] if entity_keys else [None]
+    entity_keys_batched = (
+        [
+            entity_keys[i : i + batch_size]
+            for i in range(0, len(entity_keys), batch_size)
+        ]
+        if entity_keys
+        else [None]
+    )
 
-    entity_type = ReportingEntity if scope in (
-    DocumentType.TRANSCRIPTS, DocumentType.FILINGS) else Entity
-    entity_batch_queries = [
-        Any([entity_type(entity_key) for entity_key in batch]) for batch in
-        entity_keys_batched if batch] if entity_keys_batched else [None]
+    entity_type = (
+        ReportingEntity
+        if scope in (DocumentType.TRANSCRIPTS, DocumentType.FILINGS)
+        else Entity
+    )
+    entity_batch_queries = (
+        [
+            Any([entity_type(entity_key) for entity_key in batch])
+            for batch in entity_keys_batched
+            if batch
+        ]
+        if entity_keys_batched
+        else [None]
+    )
 
     queries_expanded = []
-    for entity_batch_query in (entity_batch_queries or [None]):
-        for base_query in (queries or [None]):
+    for entity_batch_query in entity_batch_queries or [None]:
+        for base_query in queries or [None]:
             expanded_query = base_query or None
             # Add entity batch
             if entity_batch_query:
-                expanded_query = expanded_query & entity_batch_query if expanded_query else entity_batch_query
+                expanded_query = (
+                    expanded_query & entity_batch_query
+                    if expanded_query
+                    else entity_batch_query
+                )
                 # Add keyword and control queries
             if keyword_query:
-                expanded_query = expanded_query & keyword_query if expanded_query else keyword_query
+                expanded_query = (
+                    expanded_query & keyword_query if expanded_query else keyword_query
+                )
             if control_query:
-                expanded_query = expanded_query & control_query if expanded_query else control_query
+                expanded_query = (
+                    expanded_query & control_query if expanded_query else control_query
+                )
+
+            if source_query:
+                expanded_query = (
+                    expanded_query & source_query if expanded_query else source_query
+                )
 
             # Add fiscal year filter if provided
             if fiscal_year:
-                expanded_query = expanded_query & FiscalYear(
-                    fiscal_year) if expanded_query else None
+                expanded_query = (
+                    expanded_query & FiscalYear(fiscal_year) if expanded_query else None
+                )
 
             # Append the expanded query to the final list
             queries_expanded.append(expanded_query)
@@ -143,19 +187,17 @@ def build_batched_query(
 
 
 def create_date_intervals(
-        start_date: str,
-        end_date: str,
-        freq: str
+    start_date: str, end_date: str, freq: str
 ) -> List[Tuple[pd.Timestamp, pd.Timestamp]]:
     """
     Generates date intervals based on a specified frequency within a given start and end date range.
 
     Args:
-        start_date (str): 
+        start_date (str):
             The start date in 'YYYY-MM-DD' format.
-        end_date (str): 
+        end_date (str):
             The end date in 'YYYY-MM-DD' format.
-        freq (str): 
+        freq (str):
             The frequency for intervals. Supported values:
                 - 'Y': Yearly intervals.
                 - 'M': Monthly intervals.
@@ -163,8 +205,8 @@ def create_date_intervals(
                 - 'D': Daily intervals.
 
     Returns:
-        List[Tuple[pd.Timestamp, pd.Timestamp]]: 
-            A list of tuples, where each tuple contains the start and end timestamp 
+        List[Tuple[pd.Timestamp, pd.Timestamp]]:
+            A list of tuples, where each tuple contains the start and end timestamp
             of an interval. The intervals are inclusive of the start and exclusive of the next start.
 
     Raises:
@@ -190,13 +232,12 @@ def create_date_intervals(
     end_date = pd.Timestamp(end_date)
 
     # Adjust frequency for yearly and monthly to use appropriate start markers
-    adjusted_freq = {'Y': 'AS', 'M': 'MS'}.get(freq,
-                                               freq)  # 'AS' for year start, 'MS' for month start
+    # 'AS' for year start, 'MS' for month start
+    adjusted_freq = freq.replace("Y", "AS").replace("M", "MS")
 
     # Generate date range based on the adjusted frequency
     try:
-        date_range = pd.date_range(start=start_date, end=end_date,
-                                   freq=adjusted_freq)
+        date_range = pd.date_range(start=start_date, end=end_date, freq=adjusted_freq)
     except ValueError:
         raise ValueError("Invalid frequency. Use 'Y', 'M', 'W', or 'D'.")
 
@@ -204,44 +245,46 @@ def create_date_intervals(
     intervals = []
     for i in range(len(date_range) - 1):
         intervals.append(
-            (date_range[i].replace(hour=0, minute=0, second=0),
-             (date_range[i + 1] - pd.Timedelta(seconds=1)).replace(hour=23,
-                                                                   minute=59,
-                                                                   second=59))
+            (
+                date_range[i].replace(hour=0, minute=0, second=0),
+                (date_range[i + 1] - pd.Timedelta(seconds=1)).replace(
+                    hour=23, minute=59, second=59
+                ),
+            )
         )
 
     # Handle the last range to include the full end_date
-    intervals.append((
-        date_range[-1].replace(hour=0, minute=0, second=0),
-        end_date.replace(hour=23, minute=59, second=59)
-    ))
+    intervals.append(
+        (
+            date_range[-1].replace(hour=0, minute=0, second=0),
+            end_date.replace(hour=23, minute=59, second=59),
+        )
+    )
 
     return intervals
 
 
 def create_date_ranges(
-        start_date: str,
-        end_date: str,
-        freq: str
+    start_date: str, end_date: str, freq: str
 ) -> List[AbsoluteDateRange]:
     """
     Generates a list of `AbsoluteDateRange` objects based on the specified frequency.
 
     Args:
-        start_date (str): 
+        start_date (str):
             The start date in 'YYYY-MM-DD' format.
-        end_date (str): 
+        end_date (str):
             The end date in 'YYYY-MM-DD' format.
-        freq (str): 
+        freq (str):
             The frequency for dividing the date range. Supported values:
                 - 'Y': Yearly.
                 - 'M': Monthly.
                 - 'W': Weekly.
                 - 'D': Daily.
-    
+
     Returns:
-        List[AbsoluteDateRange]: 
-            A list of `AbsoluteDateRange` objects, where each object represents 
+        List[AbsoluteDateRange]:
+            A list of `AbsoluteDateRange` objects, where each object represents
             a time range between two dates as determined by the specified frequency.
 
     Operation:
