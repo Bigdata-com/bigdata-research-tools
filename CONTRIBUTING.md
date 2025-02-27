@@ -244,6 +244,7 @@ To create and publish a new release:
    Create a Git tag for this version:
    ```sh
    git tag vX.X.X
+   git push origin tag vX.X.X
    ```
 
 3. **Build the release**:  
