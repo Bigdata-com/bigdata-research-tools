@@ -46,7 +46,7 @@ pygments_style = "sphinx"
 pygments_dark_style = "monokai"
 
 
-PROJECT_DIRECTORY = Path(__file__).parent.parent
+PROJECT_DIRECTORY = Path(__file__).parent.parent / "src"
 
 sys.path.insert(0, str(PROJECT_DIRECTORY))
 
