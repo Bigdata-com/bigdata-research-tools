@@ -252,8 +252,12 @@ To create and publish a new release:
    ```sh
    uv build
    ```
+4. **Prepare your PyPI token**:
+You need a PyPI for making the release, you may keep have it stored it from before,
+if not, create a new one by going inside of PyPI, go to account/account settings and
+generate a new API token.
 
-4. **Publish**:  
+5. **Publish**:  
    Finally, publish the release to PyPI by running:
    ```sh
    uv publish
