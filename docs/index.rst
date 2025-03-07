@@ -26,5 +26,6 @@ Contents
 
    reference/index.rst
    bigdata_sdk/index.rst
+   cookbooks/index.rst
    Terms of Service <https://bigdata.com/terms>
    Privacy Policy <https://bigdata.com/privacy>
