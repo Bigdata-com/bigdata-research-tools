@@ -25,6 +25,6 @@ Contents
 
 
    reference/index.rst
-   Bigdata SDK <https://sdk.bigdata.com/>
+   bigdata_sdk/index.rst
    Terms of Service <https://bigdata.com/terms>
    Privacy Policy <https://bigdata.com/privacy>
