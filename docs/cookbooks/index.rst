@@ -1,9 +1,9 @@
 .. _cookbooks:
 
-BigData Research Tools Cookbooks
+Bigdata Research Tools Cookbooks
 ==================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    
    miners.rst 
