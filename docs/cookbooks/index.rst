@@ -1,7 +1,6 @@
 .. _cookbooks:
-
-Bigdata Research Tools Cookbooks
-==================================
+Cookbooks
+=========
 
 .. toctree::
    :maxdepth: 1
