@@ -16,4 +16,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add supporting functionality for hybrid searches and labelling (labeler and search folders)
 * Add logic to export the structured dataset of labelled chunks to excel workbook (excel.py)
 * Cookbook [Miners](../docs/cookbooks/miners.rst)
-* API Reference ([API Reference][../docs/reference/miners.rst])
+* API Reference [API Reference](../docs/reference/miners.rst)
