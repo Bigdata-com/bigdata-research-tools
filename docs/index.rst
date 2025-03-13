@@ -34,6 +34,7 @@ Contents
 
    reference/index.rst
    cookbooks/index.rst
+   changelog_link.md 
    bigdata_sdk/index.rst
    Terms of Service <https://bigdata.com/terms>
    Privacy Policy <https://bigdata.com/privacy>
