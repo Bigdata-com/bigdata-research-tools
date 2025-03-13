@@ -1,10 +1,9 @@
-Bigdata Research Tools' Documentation
+Bigdata Research Tools Documentation
 ======================================
 
-👋 Welcome to the documentation for Bigdata Research Tools.
+👋 Welcome to the documentation for Bigdata Research Tools!
 
-Bigdata Research Tools is a Python library that provides plug-and-play functions for building customized chain-of-thought workflows. 
-This package offers modular, ready-to-use components that work seamlessly with the BigData API.
+Bigdata Research Tools is a Python library designed to automate research workflows. It provides plug-and-play functions for building customized, chain-of-thought research processes with minimal effort. This package includes modular, ready-to-use components that integrate seamlessly with the Bigdata API, enabling efficient data analysis and insight generation.
 
 Python versions 
 ^^^^^^^^^^^^^^^
