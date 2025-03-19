@@ -28,7 +28,7 @@ DATE_RANGE_TYPE = Union[
     RollingDateRange,
     List[Union[AbsoluteDateRange, RollingDateRange]],
 ]
-SEARCH_QUERY_RESULTS_TYPE  = Dict[
+SEARCH_QUERY_RESULTS_TYPE = Dict[
     Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]
 ]
 
@@ -149,8 +149,11 @@ class SearchManager:
 
         try:
             results = self.bigdata.search.new(
-                query=query, date_range=date_range, sortby=sortby, scope=scope,
-                rerank_threshold=rerank_threshold
+                query=query,
+                date_range=date_range,
+                sortby=sortby,
+                scope=scope,
+                rerank_threshold=rerank_threshold,
             ).run(limit=limit)
             return results
         except Exception as e:
@@ -166,8 +169,8 @@ class SearchManager:
         limit: int = 10,
         max_workers: int = MAX_WORKERS,
         timeout: float = None,
-        rerank_threshold: float = None, 
-    ) -> SEARCH_QUERY_RESULTS_TYPE :
+        rerank_threshold: float = None,
+    ) -> SEARCH_QUERY_RESULTS_TYPE:
         """
         Execute multiple searches concurrently while respecting rate limits.
         The order of results is preserved based on the input queries.

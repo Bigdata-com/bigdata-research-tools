@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -258,7 +259,7 @@ wheels = [
 
 [[package]]
 name = "bigdata-research-tools"
-version = "0.11.0"
+version = "0.11.1"
 source = { virtual = "." }
 dependencies = [
     { name = "bigdata-client" },
@@ -317,7 +318,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "autodoc-pydantic", marker = "extra == 'docs'", specifier = ">=2.0.1" },
-    { name = "bigdata-client", specifier = ">=2.5.0,<3.0.0" },
+    { name = "bigdata-client", specifier = ">=2.7.0,<3.0.0" },
     { name = "excel", specifier = ">=1.0.1" },
     { name = "furo", marker = "extra == 'docs'", specifier = ">=2024.1.29" },
     { name = "hdbscan", marker = "extra == 'all'", specifier = ">=0.8.40,<0.9.0" },
@@ -343,6 +344,7 @@ requires-dist = [
     { name = "sphinxcontrib-spelling", marker = "extra == 'docs'", specifier = ">=8.0.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
+provides-extras = ["advanced", "excel", "openai", "plotly", "all", "docs"]
 
 [package.metadata.requires-dev]
 dev = [
