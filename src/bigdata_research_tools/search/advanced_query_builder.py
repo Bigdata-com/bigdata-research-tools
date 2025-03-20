@@ -14,9 +14,9 @@ from bigdata_client.query import (
     Entity,
     FiscalYear,
     Keyword,
-    Source, 
     ReportingEntity,
     Similarity,
+    Source,
 )
 
 
@@ -47,7 +47,7 @@ def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
 
 
 def build_batched_query(
-    sentences: List[str], #TODO add sources here 
+    sentences: List[str],
     keywords: Optional[List[str]],
     control_entities: Optional[List[str]],
     sources: Optional[List[str]],

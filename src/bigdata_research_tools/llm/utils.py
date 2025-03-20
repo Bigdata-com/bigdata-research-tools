@@ -9,6 +9,7 @@ from bigdata_research_tools.llm.base import AsyncLLMEngine
 
 logger: Logger = getLogger(__name__)
 
+
 # https://platform.openai.com/docs/guides/batch
 def run_concurrent_prompts(
     llm_engine: AsyncLLMEngine,

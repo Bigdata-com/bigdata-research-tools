@@ -9,7 +9,10 @@ from typing import List, Tuple
 
 import pandas as pd
 
-from bigdata_research_tools.settings import check_libraries_installed, get_resources_path
+from bigdata_research_tools.settings import (
+    check_libraries_installed,
+    get_resources_path,
+)
 
 logger: Logger = getLogger(__name__)
 
@@ -31,6 +34,8 @@ class ExcelManager:
         max_column_width: int = 75,
         row_offset: int = 3,
         column_offset: int = 1,
+        # TODO (cpinto, 2025-03-06) Careful with this. If this file does not exist, it will raise an error.
+        #   Maybe we should provide a default logo in the package, or just make it optional.
         logo_path: str = f"{get_resources_path()}/bigdata-by-ravenpack-logo.png",
     ):
         """Initialize Excel manager with formatting parameters."""
