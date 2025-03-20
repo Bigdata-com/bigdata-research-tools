@@ -13,6 +13,7 @@ except ImportError:
 
 from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
 
+
 class AsyncOpenAIProvider(AsyncLLMProvider):
     def __init__(
         self,
