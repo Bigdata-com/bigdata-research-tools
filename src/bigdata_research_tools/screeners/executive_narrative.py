@@ -32,6 +32,20 @@ class ExecutiveNarrativeFactor:
         rerank_threshold: Optional[float] = None,
         focus: str = "",
     ):
+        """
+        This class will track narratives in the news.
+
+        Args:
+            theme_labels: List of strings which define the taxonomy of the theme.
+                These will be used in both the search and the labelling of the search result chunks.
+            start_date:   The start date for searching relevant documents (format: YYYY-MM-DD)
+            end_date:     The end date for searching relevant documents (format: YYYY-MM-DD)
+            llm_model:    Specifies the LLM to be used in text processing and analysis.
+            sources:      Used to filter search results by the sources of the documents.
+                If not provided, the search is run across all available sources.
+            rerank_threshold:  Enable the cross-encoder by setting the value between [0, 1].
+        """
+
         self.llm_model = llm_model
         self.main_theme = main_theme
         self.companies = companies
@@ -51,13 +65,15 @@ class ExecutiveNarrativeFactor:
     ) -> Dict:
         """
         Screen companies for the executive narrative factor.
+
         Args:
             document_limit: The maximum number of documents to return per Bigdata query.
             batch_size: The number of entities to include in each batched query.
             frequency: The frequency of the date ranges.
             export_path: Optional path to export results to an Excel file.
 
-        Returns: Dictionary with keys:
+        Returns:
+            dict:
             - df_labeled: The DataFrame with the labeled search results.
             - df_company: The DataFrame with the output by company.
             - df_industry: The DataFrame with the output by industry.

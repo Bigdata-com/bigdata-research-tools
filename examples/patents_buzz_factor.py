@@ -1,6 +1,6 @@
 from typing import Dict
 
-from bigdata_research_tools.screeners.patents_buzz import PatentsBuzzFactor
+from bigdata_research_tools.screeners import PatentsBuzzFactor
 from bigdata_research_tools.search.screener_search import look_up_entities_binary_search
 
 SP_500_ENTITIES = [
