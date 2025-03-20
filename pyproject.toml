@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [{ name = "Bigdata Solutions Engineering Team", email = "support@ravenpack.com" }]
 requires-python = ">=3.9"
 dependencies = [
-    "bigdata-client>=2.5.0,<3.0.0",
+    "bigdata-client>=2.7.0,<3.0.0",
     "excel>=1.0.1",
     "ipython>=8.18.1",
     "openai>=1.62.0",

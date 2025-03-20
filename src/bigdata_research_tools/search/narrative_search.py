@@ -1,15 +1,17 @@
 from itertools import chain
 from logging import Logger, getLogger
 from typing import List, Optional
+
+from bigdata_client.document import Document
+from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
 
-from bigdata_client.models.entities import Company
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client.document import Document
-
+from bigdata_research_tools.search.advanced_query_builder import (
+    build_batched_query,
+    create_date_ranges,
+)
 from bigdata_research_tools.search.search import run_search
-from bigdata_research_tools.search.advanced_query_builder import build_batched_query, create_date_ranges
 
 logger: Logger = getLogger(__name__)
 
@@ -19,25 +21,28 @@ def search_narratives(
     start_date: str,
     end_date: str,
     scope: DocumentType,
-    rerank_threshold: Optional[float],
     fiscal_year: Optional[int] = None,
-    sources: Optional[List[str]] = None, 
+    sources: Optional[List[str]] = None,
     keywords: Optional[List[str]] = None,
     control_entities: Optional[List[str]] = None,
     freq: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
+    rerank_threshold: Optional[float] = None,
     document_limit: int = 50,
     batch_size: int = 10,
 ) -> DataFrame:
-    
     """
     Screen for documents based on the input sentences and other filters.
 
     Args:
         sentences (List[str]): The list of theme sentences to screen for.
-        sources (Optional[List[str]]): List of sources to filter on. If none, we search across all sources.
         start_date (str): The start date for the search.
         end_date (str): The end date for the search.
+        scope (DocumentType): The document type scope
+            (e.g., `DocumentType.NEWS`, `DocumentType.TRANSCRIPTS`).
+        fiscal_year (Optional[int]): The fiscal year to filter queries.
+            If None, no fiscal year filter is applied.
+        sources (Optional[List[str]]): List of sources to filter on. If none, we search across all sources.
         keywords (Optional[List[str]]): A list of keywords for constructing keyword queries.
             If None, no keyword queries are created.
         control_entities (Optional[List[str]]): A list of control entity IDs for creating co-mentions queries.
@@ -45,12 +50,11 @@ def search_narratives(
         freq (str): The frequency of the date ranges. Defaults to 'M'.
         sort_by (SortBy): The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
+        rerank_threshold (Optional[float]): The threshold for reranking the search results.
+            See https://sdk.bigdata.com/en/latest/how_to_guides/rerank_search.html
         document_limit (int): The maximum number of documents to return per Bigdata query.
         batch_size (int): The number of entities to include in each batched query.
-        fiscal_year (Optional[int]): The fiscal year to filter queries.)
-            If None, no fiscal year filter is applied.
-        scope (DocumentType): The document type scope
-            (e.g., `DocumentType.NEWS`, `DocumentType.TRANSCRIPTS`).
+
     Returns:
         DataFrame: The DataFrame with the screening results. Schema:
             - Index: int
@@ -65,7 +69,7 @@ def search_narratives(
     batched_query = build_batched_query(
         sentences=sentences,
         keywords=keywords,
-        sources=sources, 
+        sources=sources,
         control_entities=control_entities,
         batch_size=batch_size,
         scope=scope,
@@ -91,11 +95,12 @@ def search_narratives(
     )
 
     results = list(chain.from_iterable(results))
-    results = process_dataframe(results)
+    results = process_narrative_search(results)
 
     return results
 
-def process_dataframe( 
+
+def process_narrative_search(
     results: List[Document],
 ) -> DataFrame:
     """
@@ -114,7 +119,7 @@ def process_dataframe(
             - headline: str
             - text: str
     """
-    
+
     rows = []
     for result in tqdm(results, desc="Processing screening results..."):
         for chunk_index, chunk in enumerate(result.chunks):
@@ -135,10 +140,7 @@ def process_dataframe(
     df = DataFrame(rows).sort_values("timestamp_utc").reset_index(drop=True)
 
     # Deduplicate by quote text as well
-    df = df.drop_duplicates(
-        subset=["timestamp_utc", "document_id", "text"]
-    )
+    df = df.drop_duplicates(subset=["timestamp_utc", "document_id", "text"])
 
     df = df.reset_index(drop=True)
     return df
-
