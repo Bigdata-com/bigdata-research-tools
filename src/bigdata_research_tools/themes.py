@@ -43,6 +43,28 @@ class ThemeTree:
     def __post_init__(self):
         self.children = self.children or []
 
+    def __str__(self) -> str:
+        return self.as_string()
+
+    def as_string(self, prefix: str = "") -> str:
+        s = prefix + self.label + "\n"
+
+        if not self.children:
+            return s
+
+        for i, child in enumerate(self.children):
+            is_last = i == (len(self.children) - 1)
+            if is_last:
+                branch = "└── "
+                child_prefix = prefix + "    "
+            else:
+                branch = "├── "
+                child_prefix = prefix + "│   "
+
+            s += prefix + branch
+            s += child.as_string(prefix=child_prefix)
+        return s
+
     @staticmethod
     def from_dict(tree_dict: dict) -> "ThemeTree":
         theme_tree = ThemeTree(**tree_dict)
@@ -87,6 +109,37 @@ class ThemeTree:
         for child in self.children:
             label_summary.update(child.get_terminal_label_summaries())
         return label_summary
+
+    def print(self, prefix: str = "") -> None:
+        print(self.as_string(prefix=prefix))
+
+    def visualize(self) -> None:
+        """
+        Visualize the tree.
+
+        :return: None. Will show the tree visualization as a plotly graph.
+        """
+        try:
+            import plotly.express as px
+        except ImportError:
+            raise ImportError(
+                "Missing optional dependency for theme visualization, "
+                "please install `bigdata_research_tools[plotly]` to enable them."
+            )
+
+        def extract_labels(node: ThemeTree, parent_label=""):
+            labels.append(node.label)
+            parents.append(parent_label)
+            for child in node.children:
+                extract_labels(child, node.label)
+
+        labels = []
+        parents = []
+        extract_labels(self)
+
+        df = pd.DataFrame({"labels": labels, "parents": parents})
+        fig = px.treemap(df, names="labels", parents="parents")
+        fig.show()
 
 
 def generate_theme_tree(
@@ -180,105 +233,41 @@ def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
     return [f"{label}: {summary}" for label, summary in label_summaries.items()]
 
 
-def extract_node_labels(tree: ThemeTree) -> List[str]:
-    """
-    Extract the node labels from the tree.
-
-    :param tree: ThemeTree object. Attributes:
-        - label: The label of the node.
-        - node: The node number.
-        - summary: The summary of the node.
-        - children: list of other ThemeTree objects.
-    :return: The node labels
-    """
-
-    sums = tree.get_label_summaries()
-    sums = stringify_label_summaries(sums)
-
-    # Remove the top level node
-    sums = sums[1:]
-    sums = [res.split(":")[0] for res in sums]
-
-    return sums
-
-
-def extract_terminal_labels(tree: ThemeTree) -> List[str]:
-    """
-    Extract the terminal labels from the tree.
-
-    :param tree: ThemeTree object. Attributes:
-        - label: The label of the node.
-        - node: The node number.
-        - summary: The summary of the node.
-        - children: list of other ThemeTree objects.
-    :return: The terminal node labels
-    """
-    summaries = tree.get_terminal_label_summaries()
-    summaries = stringify_label_summaries(summaries)
-
-    # Remove the top level node
-    return [res.split(":")[0] for res in summaries]
-
-
-def print_tree(node: ThemeTree, prefix="") -> None:
-    """
-    Print the tree.
-
-    :param node: The node to print. It can be the entire tree. Attributes:
-        - label: The label of the node.
-        - node: The node number.
-        - summary: The summary of the node.
-        - children: list of other ThemeTree objects.
-    :param prefix: Prefix to add to the branches.
-    :return: None. Will print the tree.
-    """
-    print(prefix + node.label)
-
-    if not node.children:
-        return
-
-    for i, child in enumerate(node.children):
-        is_last = i == (len(node.children) - 1)
-        if is_last:
-            branch = "└── "
-            child_prefix = prefix + "    "
-        else:
-            branch = "├── "
-            child_prefix = prefix + "│   "
-
-        print(prefix + branch, end="")
-        print_tree(child, child_prefix)
-
-
-def visualize_tree(tree: ThemeTree) -> None:
-    """
-    Visualize the tree.
-
-    :param tree: ThemeTree object. Attributes:
-        - label: The label of the node.
-        - node: The node number.
-        - summary: The summary of the node.
-        - children: list of other ThemeTree objects.
-    :return: None. Will show the tree visualization as a plotly graph.
-    """
-    try:
-        import plotly.express as px
-    except ImportError:
-        raise ImportError(
-            "Missing optional dependency for theme visualization, "
-            "please install `bigdata_research_tools[plotly]` to enable them."
-        )
-
-    def extract_labels(node: ThemeTree, parent_label=""):
-        labels.append(node.label)
-        parents.append(parent_label)
-        for child in node.children:
-            extract_labels(child, node.label)
-
-    labels = []
-    parents = []
-    extract_labels(tree)
-
-    df = pd.DataFrame({"labels": labels, "parents": parents})
-    fig = px.treemap(df, names="labels", parents="parents")
-    fig.show()
+# def extract_node_labels(tree: ThemeTree) -> List[str]:
+#     """
+#     Extract the node labels from the tree.
+#
+#     :param tree: ThemeTree object. Attributes:
+#         - label: The label of the node.
+#         - node: The node number.
+#         - summary: The summary of the node.
+#         - children: list of other ThemeTree objects.
+#     :return: The node labels
+#     """
+#
+#     sums = tree.get_label_summaries()
+#     sums = stringify_label_summaries(sums)
+#
+#     # Remove the top level node
+#     sums = sums[1:]
+#     sums = [res.split(":")[0] for res in sums]
+#
+#     return sums
+#
+#
+# def extract_terminal_labels(tree: ThemeTree) -> List[str]:
+#     """
+#     Extract the terminal labels from the tree.
+#
+#     :param tree: ThemeTree object. Attributes:
+#         - label: The label of the node.
+#         - node: The node number.
+#         - summary: The summary of the node.
+#         - children: list of other ThemeTree objects.
+#     :return: The terminal node labels
+#     """
+#     summaries = tree.get_terminal_label_summaries()
+#     summaries = stringify_label_summaries(summaries)
+#
+#     # Remove the top level node
+#     return [res.split(":")[0] for res in summaries]
