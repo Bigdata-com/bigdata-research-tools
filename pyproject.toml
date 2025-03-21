@@ -48,6 +48,7 @@ docs = [
     "sphinx-new-tab-link>=0.6.0",
     "sphinx-copybutton>=0.5.2",
     "sphinx-reredirects>=0.1.5",
+    "sphinx-togglebutton>=0.3.2",
 ]
 
 [dependency-groups]

@@ -70,6 +70,7 @@ extensions = [
     "sphinx_new_tab_link",  # Extension that forces every link to open in a new tab. This is a req for the current ones.
     "sphinx_copybutton",  # Extension to provide a copy button in the code samples
     "sphinx_reredirects",
+    "sphinx_togglebutton",
 ]
 
 # sphinx_reredirects
