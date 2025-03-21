@@ -33,17 +33,25 @@ class ExecutiveNarrativeFactor:
         focus: str = "",
     ):
         """
-        This class will track narratives in the news.
+        This class will track executive narratives in company transcripts.
 
         Args:
-            theme_labels: List of strings which define the taxonomy of the theme.
-                These will be used in both the search and the labelling of the search result chunks.
-            start_date:   The start date for searching relevant documents (format: YYYY-MM-DD)
-            end_date:     The end date for searching relevant documents (format: YYYY-MM-DD)
-            llm_model:    Specifies the LLM to be used in text processing and analysis.
-            sources:      Used to filter search results by the sources of the documents.
+            llm_model (str): LLM <provider::model> to be used in text processing and analysis.
+                For example, "openai::gpt-4o-mini".
+            main_theme (str): The main theme to screen for in the companies received.
+                A list of sub-themes will be generated based on this main theme.
+            companies (List[Company]): List of companies to analyze.
+            start_date (str): The start date for searching relevant documents.
+                Format: YYYY-MM-DD.
+            end_date (str): The end date for searching relevant documents.
+                Format: YYYY-MM-DD.
+            fiscal_year (int): The fiscal year that will be analyzed.
+            sources (Optional[List[str]]): Used to filter search results by the sources of the documents.
                 If not provided, the search is run across all available sources.
-            rerank_threshold:  Enable the cross-encoder by setting the value between [0, 1].
+            rerank_threshold (Optional[float]): The threshold for reranking the search results.
+                See https://sdk.bigdata.com/en/latest/how_to_guides/rerank_search.html.
+            focus (Optional[str]): The focus of the analysis. No value by default.
+                If used, generated sub-themes will be based on this.
         """
 
         self.llm_model = llm_model
@@ -64,12 +72,17 @@ class ExecutiveNarrativeFactor:
         export_path: str = None,
     ) -> Dict:
         """
-        Screen companies for the executive narrative factor.
+        Screen companies for the Executive Narrative Factor.
 
         Args:
-            document_limit: The maximum number of documents to return per Bigdata query.
-            batch_size: The number of entities to include in each batched query.
-            frequency: The frequency of the date ranges.
+            document_limit (int): The maximum number of documents to return per Bigdata query.
+            batch_size (int): The number of entities to include in each batched query.
+            frequency (str): The frequency of the date ranges. Supported values:
+                - 'Y': Yearly intervals.
+                - 'M': Monthly intervals.
+                - 'W': Weekly intervals.
+                - 'D': Daily intervals.
+                Defaults to '3M'.
             export_path: Optional path to export results to an Excel file.
 
         Returns:
@@ -77,7 +90,7 @@ class ExecutiveNarrativeFactor:
             - df_labeled: The DataFrame with the labeled search results.
             - df_company: The DataFrame with the output by company.
             - df_industry: The DataFrame with the output by industry.
-            - theme_tree: The theme tree created for the screening.
+            - theme_tree: The ThemeTree created for the screening.
         """
 
         if export_path and not check_excel_dependencies():
