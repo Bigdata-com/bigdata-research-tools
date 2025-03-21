@@ -1,4 +1,4 @@
-.. _miners:
+.. _screeners:
 
 Screeners (Experimental)
 =======================

@@ -3,6 +3,15 @@ from typing import Dict
 
 
 class SourceType(Enum):
+    """
+    Enumeration representing different types of data sources that can be analyzed.
+
+    Attributes:
+        PATENTS (str): Represents patent-related data.
+        JOBS (str): Represents job postings data.
+        CORPORATE_DOCS (str): Represents corporate documents such as reports or filings.
+    """
+
     PATENTS = "PATENTS"
     JOBS = "JOBS"
     CORPORATE_DOCS = "CORPORATE_DOCS"

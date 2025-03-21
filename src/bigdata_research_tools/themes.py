@@ -35,6 +35,22 @@ themes_default_llm_model_config: Dict[str, Any] = {
 
 @dataclass
 class ThemeTree:
+    """
+    A hierarchical tree structure rooted in a main theme, branching into distinct sub-themes
+    that guide the analyst's research process.
+
+    Each node in the tree provides a unique identifier, a descriptive label, and a summary
+    explaining its relevance.
+
+    Args:
+        label (str): The name of the theme or sub-theme.
+        node (int): A unique identifier for the node.
+        summary (str): A brief explanation of the node’s relevance. For the root node
+            (main theme), this describes the overall theme; for sub-nodes, it explains their
+            connection to the parent theme.
+        children (Optional[List[ThemeTree]]): A list of child nodes representing sub-themes.
+    """
+
     label: str
     node: int
     summary: str
@@ -47,6 +63,15 @@ class ThemeTree:
         return self.as_string()
 
     def as_string(self, prefix: str = "") -> str:
+        """
+        Convert the tree into a string.
+
+        Args:
+            prefix (str): prefix to add to each branch.
+
+        Returns:
+            str: The tree as a string
+        """
         s = prefix + self.label + "\n"
 
         if not self.children:
@@ -67,41 +92,58 @@ class ThemeTree:
 
     @staticmethod
     def from_dict(tree_dict: dict) -> "ThemeTree":
+        """
+        Create a ThemeTree object from a dictionary.
+
+        Args:
+            tree_dict (dict): A dictionary representing the `ThemeTree` structure with the following keys:
+
+                - `label` (str): The name of the theme or sub-theme.
+                - `node` (int): A unique identifier for the node.
+                - `summary` (str): A brief explanation of the node’s relevance.
+                - `children` (list, optional): A list of dictionaries representing sub-themes,
+                  each following the same structure.
+
+        Returns:
+            ThemeTree: The `ThemeTree` object generated from the dictionary.
+        """
         theme_tree = ThemeTree(**tree_dict)
         theme_tree.children = [
             ThemeTree.from_dict(child) for child in tree_dict.get("children", [])
         ]
         return theme_tree
 
-    def get_summaries(self) -> List[str]:
-        """
-        Extract the node summaries from a ThemeTree.
-
-        :return: List of all 'summary' values in the tree, including its children.
-        """
-        summaries = [self.summary]
-        for child in self.children:
-            summaries.extend(child.get_summaries())
-        return summaries
-
     def get_label_summaries(self) -> Dict[str, str]:
         """
         Extract the label summaries from the tree.
 
-        :return: Dictionary with all the labels of the Tree as keys and their
-            associated summaries as values.
+        Returns:
+            dict[str, str]: Dictionary with all the labels of the ThemeTree as keys and their associated summaries as values.
         """
         label_summary = {self.label: self.summary}
         for child in self.children:
             label_summary.update(child.get_label_summaries())
         return label_summary
 
+    def get_summaries(self) -> List[str]:
+        """
+        Extract the node summaries from a ThemeTree.
+
+        Returns:
+            list[str]: List of all 'summary' values in the tree, including its children.
+        """
+        summaries = [self.summary]
+        for child in self.children:
+            summaries.extend(child.get_summaries())
+        return summaries
+
     def get_terminal_label_summaries(self) -> Dict[str, str]:
         """
         Extract the summaries from terminal nodes of the tree.
 
-        :return: Dictionary with the labels of the Tree as keys and their
-            associated summaries as values, but only for terminal nodes.
+        Returns:
+            dict[str, str]: Dictionary with the labels of the ThemeTree as keys and
+            their associated summaries as values, only using terminal nodes.
         """
         label_summary = {}
         if not self.children:
@@ -111,13 +153,23 @@ class ThemeTree:
         return label_summary
 
     def print(self, prefix: str = "") -> None:
+        """
+        Print the tree.
+
+        Args:
+            prefix (str): prefix to add to each branch, if any.
+
+        Returns:
+            None.
+        """
         print(self.as_string(prefix=prefix))
 
     def visualize(self) -> None:
         """
-        Visualize the tree.
+        Visualize the tree. Will use a plotly treemap.
 
-        :return: None. Will show the tree visualization as a plotly graph.
+        Returns:
+            None. Will show the tree visualization as a plotly graph.
         """
         try:
             import plotly.express as px
@@ -149,29 +201,26 @@ def generate_theme_tree(
     llm_model_config: Dict[str, Any] = None,
 ) -> ThemeTree:
     """
-    Generate themes based on the main theme.
+    Generate a `ThemeTree` class from a main theme and a dataset.
 
-    :param main_theme: The main theme to analyze.
-    :param dataset: The type of dataset to filter by.
-    :param focus: The focus(es), if any.
-    :param llm_model_config: The large language model configuration to
-        generate the themes.
-        Expected keys:
-            - provider: The provider of the model, e.g. 'openai'.
-            - model: The model name, e.g. 'gpt-4o-mini'.
-            - kwargs: Extra arguments to execute the model, e.g.:
-                - temperature.
-                - top_p.
-                - frequency_penalty.
-                - presence_penalty.
-                - seed.
-                - etc.
-                See `LLMEngine.get_response()` for more details.
-    :return: ThemeTree object. Attributes:
-        - label: The label of the node.
-        - node: The node number.
-        - summary: The summary of the node.
-        - children: list of other ThemeTree objects.
+    Args:
+        main_theme (str): The primary theme to analyze.
+        dataset (SourceType): The dataset type to filter by.
+        focus (str, optional): Specific aspect(s) to guide sub-theme generation.
+        llm_model_config (dict): Configuration for the large language model used to
+            generate themes.
+            Expected keys:
+                - `provider` (str): The model provider (e.g., `'openai'`).
+                - `model` (str): The model name (e.g., `'gpt-4o-mini'`).
+                - `kwargs` (dict): Additional parameters for model execution, such as:
+                    - `temperature` (float)
+                    - `top_p` (float)
+                    - `frequency_penalty` (float)
+                    - `presence_penalty` (float)
+                    - `seed` (int)
+                    - etc.
+    Returns:
+        ThemeTree: The generated theme tree.
     """
     ll_model_config = llm_model_config or themes_default_llm_model_config
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
@@ -225,10 +274,13 @@ def generate_theme_tree(
 
 def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
     """
-    Convert the label summaries into a list of strings.
+    Convert the label summaries of a ThemeTree into a list of strings.
 
-    :param label_summaries: A dictionary of label summaries.
-    :return: A list of strings.
+    Args:
+        label_summaries (dict[str, str]): A dictionary of label summaries of ThemeTree.
+            Expected format: {label: summary}.
+    Returns:
+        List[str]: A list of strings, each one containing a label and its summary.
     """
     return [f"{label}: {summary}" for label, summary in label_summaries.items()]
 
