@@ -1,9 +1,7 @@
 from typing import Dict
 
 from bigdata_research_tools.client import bigdata_connection
-from bigdata_research_tools.screeners.executive_narrative import (
-    ExecutiveNarrativeFactor,
-)
+from bigdata_research_tools.screeners import ExecutiveNarrativeFactor
 
 
 def executive_narrative_example() -> Dict:

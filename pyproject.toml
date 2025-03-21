@@ -16,6 +16,18 @@ dependencies = [
     "tqdm>=4.67.1",
 ]
 
+[build-system]
+requires = ['hatchling']
+build-backend = 'hatchling.build'
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/bigdata_research_tools/**",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bigdata_research_tools"]
+
 [project.urls]
 homepage = "https://bigdata.com/api"
 
@@ -27,7 +39,6 @@ plotly = ["plotly>=6.0.0,<7.0.0"]
 all = ["openpyxl>=3.1.5,<4.0.0", "pillow>=11.1.0,<12.0.0", "openai>=1.61.1,<2.0.0",
     "plotly>=6.0.0,<7.0.0", "hdbscan>=0.8.40,<0.9.0"]
 
-
 docs = [
     "Sphinx>=7.2.6",
     "autodoc-pydantic>=2.0.1",
@@ -37,6 +48,7 @@ docs = [
     "sphinx-new-tab-link>=0.6.0",
     "sphinx-copybutton>=0.5.2",
     "sphinx-reredirects>=0.1.5",
+    "sphinx-togglebutton>=0.3.2",
 ]
 
 [dependency-groups]

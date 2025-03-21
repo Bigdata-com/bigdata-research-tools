@@ -252,36 +252,31 @@ def run_search(
     **kwargs,
 ) -> Union[SEARCH_QUERY_RESULTS_TYPE, list[list[Document]]]:
     """
-    Execute multiple searches concurrently, with rate limiting.
-    This function creates an instance of `SearchManager`
-    and utilizes it to run searches for all provided queries.
+    Execute multiple searches concurrently using the Bigdata client, with rate limiting.
 
-    :param queries:
-        A list of QueryComponent objects.
-    :param date_ranges:
-        Date range filter for the search results.
-    :param sortby:
-        The sorting criterion for the search results.
-        Defaults to SortBy.RELEVANCE.
-    :param scope:
-        The scope of the documents to include.
-        Defaults to DocumentType.ALL.
-    :param limit:
-        The maximum number of documents to return per query.
-        Defaults to 10.
-    :param only_results:
-        If True, return only the search results.
-        If False, return the queries along with the results.
-        Defaults to True.
-    :param rerank_threshold:
-        Enable the cross-encoder by setting value between [0,1]
-    :param kwargs:
-        Additional keyword arguments to pass to initialize the `SearchManager`
-        that will be used.
-    :return:
-        A mapping of the tuple of search query and date range
-        to the list of the corresponding search results.
+    Args:
+        queries (list[QueryComponent]): A list of QueryComponent objects.
+        date_ranges (Optional[Union[AbsoluteDateRange, RollingDateRange, List[Union[AbsoluteDateRange, RollingDateRange]]]]):
+            Date range filter for the search results.
+        sortby (SortBy): The sorting criterion for the search results. Defaults to SortBy.RELEVANCE.
+        scope (DocumentType): The scope of the documents to include. Defaults to DocumentType.ALL.
+        limit (int): The maximum number of documents to return per query. Defaults to 10.
+        only_results (bool): If True, return only the search results.
+            If False, return the queries along with the results.
+            Defaults to True.
+        rerank_threshold (Optional[float]): The threshold for reranking the search results.
+            See https://sdk.bigdata.com/en/latest/how_to_guides/rerank_search.html.
+    Returns:
+        Union[Dict[Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]], list[list[Document]]]:
+        If `only_results` is True, returns the list of search results.
+
+        If `only_results` is False, returns a mapping of the tuple of search query and date range to
+        the list of the corresponding search results.
     """
+    # TODO (cpinto, 2025-03-21): We can add type hints for the `kwargs` parameter, but that would mean
+    #   also exposing the `SearchManager` class:
+    # kwargs (Optional[dict]): Additional keyword arguments to pass to initialize the `SearchManager`
+    #   that will be used.
     manager = SearchManager(**kwargs)
     date_ranges = normalize_date_range(date_ranges)
     query_results = manager.concurrent_search(
