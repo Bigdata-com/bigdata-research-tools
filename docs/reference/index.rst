@@ -8,3 +8,5 @@ API Reference
 
    miners.rst
    screeners.rst
+   themes.rst
+   search.rst
