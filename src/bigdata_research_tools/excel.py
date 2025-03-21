@@ -35,7 +35,7 @@ class ExcelManager:
         row_offset: int = 3,
         column_offset: int = 1,
         # TODO (cpinto, 2025-03-06) Careful with this. If this file does not exist, it will raise an error.
-        #   Maybe we should provide a default logo in the package, or just make it optional.
+        #   We provide it in the package, but we can just make it optional.
         logo_path: str = f"{get_resources_path()}/bigdata-by-ravenpack-logo.png",
     ):
         """Initialize Excel manager with formatting parameters."""
