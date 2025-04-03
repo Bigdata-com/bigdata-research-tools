@@ -1,7 +1,7 @@
 .. _screeners:
 
 Screeners (Experimental)
-=======================
+========================
 
 
 .. autoclass:: bigdata_research_tools.screeners.ExecutiveNarrativeFactor
