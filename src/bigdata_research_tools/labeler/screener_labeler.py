@@ -50,7 +50,7 @@ class ScreenerLabeler(Labeler):
     def get_labels(
         self,
         main_theme: str,
-        summaries: List[str],
+        labels: List[str],
         texts: List[str],
         max_workers: int = 50,
     ) -> DataFrame:
@@ -59,8 +59,8 @@ class ScreenerLabeler(Labeler):
 
         Args:
             main_theme: The main theme to analyze.
-            summaries: Summaries of the sub-themes to use.
-            texts: List of texts to label.
+            labels: Labels for labelling the chunks.
+            texts: List of chunks to label.
             max_workers: Maximum number of concurrent workers.
 
         Returns:
@@ -71,7 +71,7 @@ class ScreenerLabeler(Labeler):
                 - label
         """
         system_prompt = (
-            get_screener_system_prompt(main_theme, summaries)
+            get_screener_system_prompt(main_theme, labels)
             if self.label_prompt is None
             else self.label_prompt
         )

@@ -152,6 +152,32 @@ class ThemeTree:
             label_summary.update(child.get_terminal_label_summaries())
         return label_summary
 
+    @staticmethod
+    def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
+        """
+        Convert the label summaries of a ThemeTree into a list of strings.
+
+        Args:
+            label_summaries (dict[str, str]): A dictionary of label summaries of ThemeTree.
+                Expected format: {label: summary}.
+        Returns:
+            List[str]: A list of strings, each one containing a label and its summary.
+        """
+        return [f"{label}: {summary}" for label, summary in label_summaries.items()]
+
+    def get_terminal_labels(self) -> List[str]:
+        """
+        Extract the terminal labels from the tree.
+
+        Returns:
+        :return: The terminal node labels
+        """
+        summaries = self.get_terminal_label_summaries()
+        summaries = ThemeTree.stringify_label_summaries(summaries)
+
+
+        return [res.split(":")[0] for res in summaries]
+
     def print(self, prefix: str = "") -> None:
         """
         Print the tree.
@@ -246,80 +272,3 @@ def generate_theme_tree(
     # Convert string into dictionary
     tree_dict = ast.literal_eval(tree_str)
     return ThemeTree.from_dict(tree_dict)
-
-
-# def convert_to_node_tree(tree: ThemeTree) -> List[ThemeTree]:
-#     """
-#     Convert the tree into a node tree.
-#
-#     :param tree: ThemeTree object. Attributes:
-#         - label: The label of the node.
-#         - node: The node number.
-#         - summary: The summary of the node.
-#         - children: list of other ThemeTree objects.
-#     :return: The node tree
-#     """
-#
-#     def convert_(node):
-#         new_node = {
-#             "label": node.label,
-#             "value": f"node_{node.node}",
-#             "summary": node.summary,
-#         }
-#         new_node.children = [convert_(child) for child in node.children]
-#         return new_node
-#
-#     return [convert_(tree)]
-
-
-def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
-    """
-    Convert the label summaries of a ThemeTree into a list of strings.
-
-    Args:
-        label_summaries (dict[str, str]): A dictionary of label summaries of ThemeTree.
-            Expected format: {label: summary}.
-    Returns:
-        List[str]: A list of strings, each one containing a label and its summary.
-    """
-    return [f"{label}: {summary}" for label, summary in label_summaries.items()]
-
-
-# def extract_node_labels(tree: ThemeTree) -> List[str]:
-#     """
-#     Extract the node labels from the tree.
-#
-#     :param tree: ThemeTree object. Attributes:
-#         - label: The label of the node.
-#         - node: The node number.
-#         - summary: The summary of the node.
-#         - children: list of other ThemeTree objects.
-#     :return: The node labels
-#     """
-#
-#     sums = tree.get_label_summaries()
-#     sums = stringify_label_summaries(sums)
-#
-#     # Remove the top level node
-#     sums = sums[1:]
-#     sums = [res.split(":")[0] for res in sums]
-#
-#     return sums
-#
-#
-# def extract_terminal_labels(tree: ThemeTree) -> List[str]:
-#     """
-#     Extract the terminal labels from the tree.
-#
-#     :param tree: ThemeTree object. Attributes:
-#         - label: The label of the node.
-#         - node: The node number.
-#         - summary: The summary of the node.
-#         - children: list of other ThemeTree objects.
-#     :return: The terminal node labels
-#     """
-#     summaries = tree.get_terminal_label_summaries()
-#     summaries = stringify_label_summaries(summaries)
-#
-#     # Remove the top level node
-#     return [res.split(":")[0] for res in summaries]
