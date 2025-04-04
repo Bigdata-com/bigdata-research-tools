@@ -16,6 +16,14 @@ class SourceType(Enum):
     JOBS = "JOBS"
     CORPORATE_DOCS = "CORPORATE_DOCS"
 
+    def __new__(cls, value):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        return obj
+
+    def __init__(self, value):
+        pass  # No additional initialization required
+
 
 theme_generation_default_prompts: Dict[SourceType, str] = {
     SourceType.CORPORATE_DOCS: """

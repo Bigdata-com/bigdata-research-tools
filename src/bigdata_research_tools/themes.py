@@ -207,18 +207,18 @@ def generate_theme_tree(
         main_theme (str): The primary theme to analyze.
         dataset (SourceType): The dataset type to filter by.
         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
-        llm_model_config (dict): Configuration for the large language model used to
-            generate themes.
+        llm_model_config (dict): Configuration for the large language model used to generate themes.
             Expected keys:
-                - `provider` (str): The model provider (e.g., `'openai'`).
-                - `model` (str): The model name (e.g., `'gpt-4o-mini'`).
-                - `kwargs` (dict): Additional parameters for model execution, such as:
-                    - `temperature` (float)
-                    - `top_p` (float)
-                    - `frequency_penalty` (float)
-                    - `presence_penalty` (float)
-                    - `seed` (int)
-                    - etc.
+            - `provider` (str): The model provider (e.g., `'openai'`).
+            - `model` (str): The model name (e.g., `'gpt-4o-mini'`).
+            - `kwargs` (dict): Additional parameters for model execution, such as:
+            - `temperature` (float)
+            - `top_p` (float)
+            - `frequency_penalty` (float)
+            - `presence_penalty` (float)
+            - `seed` (int)
+            - etc.
+
     Returns:
         ThemeTree: The generated theme tree.
     """

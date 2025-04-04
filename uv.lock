@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -259,8 +258,8 @@ wheels = [
 
 [[package]]
 name = "bigdata-research-tools"
-version = "0.11.1"
-source = { virtual = "." }
+version = "0.12.0"
+source = { editable = "." }
 dependencies = [
     { name = "bigdata-client" },
     { name = "excel" },
@@ -346,7 +345,6 @@ requires-dist = [
     { name = "sphinxcontrib-spelling", marker = "extra == 'docs'", specifier = ">=8.0.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
-provides-extras = ["advanced", "excel", "openai", "plotly", "all", "docs"]
 
 [package.metadata.requires-dev]
 dev = [
