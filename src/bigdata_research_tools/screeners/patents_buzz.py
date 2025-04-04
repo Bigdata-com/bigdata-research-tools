@@ -91,7 +91,7 @@ class PatentsBuzzFactor:
             focus=self.focus,
         )
 
-        summaries = theme_tree.get_summaries()
+        summaries = theme_tree.get_terminal_summaries()
         terminal_labels = theme_tree.get_terminal_labels()
 
         # Screen companies

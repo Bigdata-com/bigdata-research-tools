@@ -106,12 +106,12 @@ class ExecutiveNarrativeFactor:
             focus=self.focus,
         )
         
-        theme_labels = theme_tree.get_summaries()
+        theme_summaries = theme_tree.get_terminal_summaries()
         terminal_labels = theme_tree.get_terminal_labels()
 
         df_sentences = search_by_companies(
             companies=self.companies,
-            sentences=theme_labels,
+            sentences=theme_summaries,
             start_date=self.start_date,
             end_date=self.end_date,
             scope=DocumentType.TRANSCRIPTS,
