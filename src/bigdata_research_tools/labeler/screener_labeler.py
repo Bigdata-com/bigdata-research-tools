@@ -150,9 +150,10 @@ class ScreenerLabeler(Labeler):
         df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
         df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
 
+        df["Document ID"] = df['rp_document_id'] if not all(df['rp_document_id'].isna()) else df['document_id']
+
         df = df.rename(
             columns={
-                "document_id": "Document ID",
                 "entity_name": "Company",
                 "entity_sector": "Sector",
                 "entity_industry": "Industry",

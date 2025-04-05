@@ -18,7 +18,7 @@ def executive_narrative_example() -> Dict:
         llm_model="openai::gpt-4o-mini",
         main_theme="Chips manufacturers",
         companies=companies,
-        start_date="2024-11-01",
+        start_date="2024-01-01",
         end_date="2024-11-15",
         fiscal_year=2024,
     ).screen_companies(export_path="executive_narrative.xlsx")

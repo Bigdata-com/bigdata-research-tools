@@ -130,7 +130,7 @@ def search_by_companies(
     )
 
     results, entities = filter_search_results(results)
-    df_sentences = process_screener_search_reporting_entities if scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS) else process_screener_search_entities(results, entities, companies)
+    df_sentences = process_screener_search_reporting_entities(results, entities) if scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS) else process_screener_search_entities(results, entities, companies)
     return df_sentences
 
 
@@ -388,7 +388,6 @@ def process_screener_search_reporting_entities(
     :return: The DataFrame
     """
     entity_key_map = {entity.id: entity for entity in entities}
-
     rows = []
     for result in results:
         for chunk_index, chunk in enumerate(result.chunks):
