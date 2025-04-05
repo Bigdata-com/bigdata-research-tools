@@ -4,6 +4,7 @@ from logging import Logger, getLogger
 from re import findall
 from time import sleep
 from typing import List, Optional, Tuple
+import pandas as pd
 
 from bigdata_client.connection import RequestMaxLimitExceeds
 from bigdata_client.document import Document
@@ -129,7 +130,7 @@ def search_by_companies(
     )
 
     results, entities = filter_search_results(results)
-    df_sentences = process_screener_search(results, entities, companies)
+    df_sentences = process_screener_search_reporting_entities if scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS) else process_screener_search_entities(results, entities, companies)
     return df_sentences
 
 
@@ -265,7 +266,7 @@ def look_up_entities_binary_search(
     return entities
 
 
-def process_screener_search(
+def process_screener_search_entities(
     results: List[Document],
     entities: List[ListQueryComponent],
     companies: List[Company],
@@ -375,6 +376,74 @@ def process_screener_search(
     df = df.reset_index(drop=True)
     return df
 
+def process_screener_search_reporting_entities(
+        results: List[Document],
+        entities: List[ListQueryComponent]
+) -> pd.DataFrame:
+    """
+    Build a DataFrame from the search results and entities.
+
+    :param results: A list of search results
+    :param entities: A list of entities
+    :return: The DataFrame
+    """
+    entity_key_map = {entity.id: entity for entity in entities}
+
+    rows = []
+    for result in results:
+        for chunk_index, chunk in enumerate(result.chunks):
+            # Build a list of entities present in the chunk
+            chunk_entities = [{'key': entity.key,
+                               'name': entity_key_map[entity.key].name,
+                               'ticker': entity_key_map[entity.key].ticker,
+                               'start': entity.start,
+                               'end': entity.end}
+                              for entity in chunk.entities
+                              if entity.key in entity_key_map]
+
+            if not chunk_entities:
+                continue  # Skip if no entities are mapped
+
+            # Process each reporting entity
+            for re_key in result.reporting_entities:
+                reporting_entity = entity_key_map.get(re_key)
+                if not reporting_entity:
+                    continue  # Skip if reporting entity is not found
+
+                # Exclude the reporting entity from other entities
+                other_entities = [e
+                                  for e in chunk_entities
+                                  if e['name'] != reporting_entity.name]
+
+                # Collect all necessary information in the row
+                rows.append({
+                    'timestamp_utc': result.timestamp,
+                    'rp_document_id': result.id,
+                    'sentence_id': f'{result.id}-{chunk_index}',
+                    'headline': result.headline,
+                    'rp_entity_id': re_key,
+                    'entity_name': reporting_entity.name,
+                    'entity_sector': reporting_entity.sector,
+                    'entity_industry': reporting_entity.industry,
+                    'entity_country': reporting_entity.country,
+                    'entity_ticker': reporting_entity.ticker,
+                    'text': chunk.text,
+                    'other_entities': ', '.join(e['name']
+                                                for e in other_entities),
+                    'entities': chunk_entities
+                })
+    if not rows:
+        raise ValueError('No rows to process')
+    df = pd.DataFrame(rows)
+    df = df.sort_values('timestamp_utc').reset_index(drop=True)
+
+    # Deduplicate by quote text as well
+    df = df.drop_duplicates(subset=['timestamp_utc', 'rp_document_id',
+                                    'text', 'rp_entity_id'])
+    
+    df = mask_sentences(df, DocumentType.TRANSCRIPTS)
+    df = df.reset_index(drop=True)
+    return df
 
 def mask_sentences(
     df: DataFrame,
