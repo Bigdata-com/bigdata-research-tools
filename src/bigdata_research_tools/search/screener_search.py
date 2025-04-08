@@ -4,8 +4,8 @@ from logging import Logger, getLogger
 from re import findall
 from time import sleep
 from typing import List, Optional, Tuple
-import pandas as pd
 
+import pandas as pd
 from bigdata_client.connection import RequestMaxLimitExceeds
 from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import ListQueryComponent
@@ -130,7 +130,11 @@ def search_by_companies(
     )
 
     results, entities = filter_search_results(results)
-    df_sentences = process_screener_search_reporting_entities(results, entities) if scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS) else process_screener_search_entities(results, entities, companies)
+    df_sentences = (
+        process_screener_search_reporting_entities(results, entities)
+        if scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS)
+        else process_screener_search_entities(results, entities, companies)
+    )
     return df_sentences
 
 
@@ -308,7 +312,7 @@ def process_screener_search_entities(
     entity_key_map = {entity.id: entity for entity in entities}
 
     rows = []
-    for result in tqdm(results, desc="Processing screening results..."):
+    for result in tqdm(results, desc="Processing screening entities..."):
         for chunk_index, chunk in enumerate(result.chunks):
             # Build a list of entities present in the chunk
             chunk_entities = [
@@ -376,29 +380,59 @@ def process_screener_search_entities(
     df = df.reset_index(drop=True)
     return df
 
+
 def process_screener_search_reporting_entities(
-        results: List[Document],
-        entities: List[ListQueryComponent]
+    results: List[Document], entities: List[ListQueryComponent]
 ) -> pd.DataFrame:
     """
     Build a DataFrame from the search results and entities.
 
-    :param results: A list of search results
-    :param entities: A list of entities
-    :return: The DataFrame
+    Args:
+        results (List[Document]): A list of Bigdata search results.
+        entities (List[ListQueryComponent]): A list of entities.
+
+    Returns:
+        DataFrame: Screening DataFrame. Schema:
+        - Index: int
+        - Columns:
+            - timestamp_utc: datetime64
+            - rp_document_id: str
+            - sentence_id: str
+            - headline: str
+            - rp_entity_id: str
+            - entity_name: str
+            - entity_sector: str
+            - entity_industry: str
+            - entity_country: str
+            - entity_ticker: str
+            - text: str
+            - other_entities: str
+            - entities: List[Dict[str, Any]]
+                - key: str
+                - name: str
+                - ticker: str
+                - start: int
+                - end: int
+            - masked_text: str
+            - other_entities_map: List[Tuple[int, str]]
     """
+    # TODO (cpinto, 2025-04-08) check differences with `process_screener_search_entities`
     entity_key_map = {entity.id: entity for entity in entities}
     rows = []
-    for result in results:
+    for result in tqdm(results, desc="Processing screening reporting entities..."):
         for chunk_index, chunk in enumerate(result.chunks):
             # Build a list of entities present in the chunk
-            chunk_entities = [{'key': entity.key,
-                               'name': entity_key_map[entity.key].name,
-                               'ticker': entity_key_map[entity.key].ticker,
-                               'start': entity.start,
-                               'end': entity.end}
-                              for entity in chunk.entities
-                              if entity.key in entity_key_map]
+            chunk_entities = [
+                {
+                    "key": entity.key,
+                    "name": entity_key_map[entity.key].name,
+                    "ticker": entity_key_map[entity.key].ticker,
+                    "start": entity.start,
+                    "end": entity.end,
+                }
+                for entity in chunk.entities
+                if entity.key in entity_key_map
+            ]
 
             if not chunk_entities:
                 continue  # Skip if no entities are mapped
@@ -406,43 +440,47 @@ def process_screener_search_reporting_entities(
             # Process each reporting entity
             for re_key in result.reporting_entities:
                 reporting_entity = entity_key_map.get(re_key)
+
                 if not reporting_entity:
                     continue  # Skip if reporting entity is not found
 
                 # Exclude the reporting entity from other entities
-                other_entities = [e
-                                  for e in chunk_entities
-                                  if e['name'] != reporting_entity.name]
+                other_entities = [
+                    e for e in chunk_entities if e["name"] != reporting_entity.name
+                ]
 
                 # Collect all necessary information in the row
-                rows.append({
-                    'timestamp_utc': result.timestamp,
-                    'rp_document_id': result.id,
-                    'sentence_id': f'{result.id}-{chunk_index}',
-                    'headline': result.headline,
-                    'rp_entity_id': re_key,
-                    'entity_name': reporting_entity.name,
-                    'entity_sector': reporting_entity.sector,
-                    'entity_industry': reporting_entity.industry,
-                    'entity_country': reporting_entity.country,
-                    'entity_ticker': reporting_entity.ticker,
-                    'text': chunk.text,
-                    'other_entities': ', '.join(e['name']
-                                                for e in other_entities),
-                    'entities': chunk_entities
-                })
+                rows.append(
+                    {
+                        "timestamp_utc": result.timestamp,
+                        "rp_document_id": result.id,
+                        "sentence_id": f"{result.id}-{chunk_index}",
+                        "headline": result.headline,
+                        "rp_entity_id": re_key,
+                        "entity_name": reporting_entity.name,
+                        "entity_sector": reporting_entity.sector,
+                        "entity_industry": reporting_entity.industry,
+                        "entity_country": reporting_entity.country,
+                        "entity_ticker": reporting_entity.ticker,
+                        "text": chunk.text,
+                        "other_entities": ", ".join(e["name"] for e in other_entities),
+                        "entities": chunk_entities,
+                    }
+                )
     if not rows:
-        raise ValueError('No rows to process')
-    df = pd.DataFrame(rows)
-    df = df.sort_values('timestamp_utc').reset_index(drop=True)
+        raise ValueError("No rows to process")
+
+    df = pd.DataFrame(rows).sort_values("timestamp_utc").reset_index(drop=True)
 
     # Deduplicate by quote text as well
-    df = df.drop_duplicates(subset=['timestamp_utc', 'rp_document_id',
-                                    'text', 'rp_entity_id'])
-    
+    df = df.drop_duplicates(
+        subset=["timestamp_utc", "rp_document_id", "text", "rp_entity_id"]
+    )
+
     df = mask_sentences(df, DocumentType.TRANSCRIPTS)
     df = df.reset_index(drop=True)
     return df
+
 
 def mask_sentences(
     df: DataFrame,
@@ -453,10 +491,15 @@ def mask_sentences(
     Mask the target entity and other entities in the text.
 
     Args:
-        df (DataFrame): The input DataFrame
+        df (DataFrame): The input DataFrame. Columns required:
+            - text
+            - masked_text
         document_type (DocumentType): The document type
     Returns:
-        DataFrame: The masked DataFrame
+        DataFrame: masked DataFrame. Will add/transform the columns:
+            - text
+            - masked_text
+            - other_entities_map
     """
     df["text"] = df["text"].str.replace("{", "", regex=False)
     df["text"] = df["text"].str.replace("}", "", regex=False)
