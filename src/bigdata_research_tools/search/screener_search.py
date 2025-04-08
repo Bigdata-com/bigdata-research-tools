@@ -72,7 +72,32 @@ def search_by_companies(
         batch_size (int): The number of entities to include in each batched query.
 
     Returns:
-        DataFrame: The DataFrame with the screening results. Schema:
+        DataFrame: The DataFrame with the screening results.
+        Depending on the `scope` parameter, the result has different column names.
+        If scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS):
+            - Index: int
+            - Columns:
+                - timestamp_utc: datetime64
+                - rp_document_id: str
+                - sentence_id: str
+                - headline: str
+                - rp_entity_id: str
+                - entity_name: str
+                - entity_sector: str
+                - entity_industry: str
+                - entity_country: str
+                - entity_ticker: str
+                - text: str
+                - other_entities: str
+                - entities: List[Dict[str, Any]]
+                    - key: str
+                    - name: str
+                    - ticker: str
+                    - start: int
+                    - end: int
+                - masked_text: str
+                - other_entities_map: List[Tuple[int, str]]
+        else:
             - Index: int
             - Columns:
                 - timestamp_utc: datetime64
@@ -94,7 +119,7 @@ def search_by_companies(
                     - start: int
                     - end: int
                 - masked_text: str
-                - other_entities_map: List[Tuple[int, str
+                - other_entities_map: List[Tuple[int, str]]
     """
     # Extract entities for search querying
     entity_keys = [entity.id for entity in companies]
@@ -130,6 +155,8 @@ def search_by_companies(
     )
 
     results, entities = filter_search_results(results)
+    # TODO (cpinto, 2025-04-08) having different output schemas depending on the scope
+    #  can be a bit confusing here
     df_sentences = (
         process_screener_search_reporting_entities(results, entities)
         if scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS)
