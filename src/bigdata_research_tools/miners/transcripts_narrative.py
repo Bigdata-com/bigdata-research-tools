@@ -95,6 +95,7 @@ class TranscriptsNarrativeMiner:
                 - Quote
                 - Motivation
                 - Label
+
             If no relevant content is found, returns None.
         """
 

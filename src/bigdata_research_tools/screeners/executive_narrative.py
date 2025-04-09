@@ -12,7 +12,6 @@ from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.themes import (
     SourceType,
     generate_theme_tree,
-    stringify_label_summaries,
 )
 
 logger: Logger = getLogger(__name__)
@@ -106,13 +105,13 @@ class ExecutiveNarrativeFactor:
             dataset=SourceType.CORPORATE_DOCS,
             focus=self.focus,
         )
-        theme_labels = theme_tree.get_summaries()
-        terminal_summaries = theme_tree.get_terminal_label_summaries()
-        summaries = stringify_label_summaries(terminal_summaries)
+        
+        theme_summaries = theme_tree.get_terminal_summaries()
+        terminal_labels = theme_tree.get_terminal_labels()
 
         df_sentences = search_by_companies(
             companies=self.companies,
-            sentences=theme_labels,
+            sentences=theme_summaries,
             start_date=self.start_date,
             end_date=self.end_date,
             scope=DocumentType.TRANSCRIPTS,
@@ -128,7 +127,7 @@ class ExecutiveNarrativeFactor:
         labeler = ScreenerLabeler(llm_model=self.llm_model)
         df_labels = labeler.get_labels(
             main_theme=self.main_theme,
-            summaries=summaries,
+            labels=terminal_labels,
             texts=df_sentences["masked_text"].tolist(),
         )
 

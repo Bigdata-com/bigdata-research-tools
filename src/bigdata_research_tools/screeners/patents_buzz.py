@@ -13,11 +13,7 @@ from bigdata_research_tools.labeler.patents_labeler import PatentsLabeler
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
 from bigdata_research_tools.screeners.utils import get_scored_df, save_factor_to_excel
 from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.themes import (
-    SourceType,
-    generate_theme_tree,
-    stringify_label_summaries,
-)
+from bigdata_research_tools.themes import SourceType, generate_theme_tree
 
 logger: Logger = getLogger(__name__)
 
@@ -91,8 +87,9 @@ class PatentsBuzzFactor:
             dataset=SourceType.PATENTS,
             focus=self.focus,
         )
-        terminal_label_summaries = theme_tree.get_terminal_label_summaries()
-        summaries = stringify_label_summaries(terminal_label_summaries)
+
+        summaries = theme_tree.get_terminal_summaries()
+        terminal_labels = theme_tree.get_terminal_labels()
 
         # Screen companies
         df_sentences = search_by_companies(
@@ -121,7 +118,7 @@ class PatentsBuzzFactor:
         labeler = ScreenerLabeler(llm_model=self.llm_model)
         df_labels = labeler.get_labels(
             main_theme=self.main_theme,
-            summaries=summaries,
+            labels=terminal_labels,
             texts=df_sentences["masked_text"].tolist(),
         )
 
@@ -151,14 +148,18 @@ class PatentsBuzzFactor:
         )
 
         # Cluster similar patents
-        df["cluster_labels"] = df.groupby(["entity_id"])["embedding"].transform(
+        df["cluster_labels"] = df.groupby(["rp_entity_id"])["embedding"].transform(
             lambda x: (
                 HDBSCAN(min_cluster_size=2).fit_predict(vstack(x)) if len(x) > 1 else -1
             )
         )
 
         # Take first instance of each cluster
-        df = df.groupby(["entity_id", "cluster_labels", "label"]).first().reset_index()
+        df = (
+            df.groupby(["rp_entity_id", "cluster_labels", "label"])
+            .first()
+            .reset_index()
+        )
 
         df = labeler.post_process_dataframe(df)
         # TODO (cpinto, 2025-03-08) This check can be done after executing

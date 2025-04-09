@@ -7,6 +7,26 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2025-03-24
+
+### Added
+
+* Add screener class for the Narrative Executive Factor:
+  * `screeners.ExecutiveNarrativeFactor`
+* Add labeler for company screening: 
+  * `labeler.screener_labeler`.
+* Add screener search:
+  * `search.screener_search`.
+* Add a themes module with logic to generate sub-themes from a main one:
+  * `themes.generate_theme_tree`.
+  * `themes.ThemeTree` class.
+* Resources folder moved inside the package source data.
+* API Reference updated:
+  * [Screeners](../docs/reference/screeners.rst)
+  * [Search](../docs/reference/search.rst)
+  * [Themes](../docs/reference/themes.rst)
+
+
 ## [0.11.0] - 2025-02-27
 
 ### Added

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from string import Template
 from typing import Any, Dict, List
 
-import pandas as pd
+from pandas import DataFrame
 
 from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.themes import (
@@ -139,7 +139,7 @@ class ThemeTree:
 
     def get_terminal_label_summaries(self) -> Dict[str, str]:
         """
-        Extract the summaries from terminal nodes of the tree.
+        Extract the items (labels, summaries) from terminal nodes of the tree.
 
         Returns:
             dict[str, str]: Dictionary with the labels of the ThemeTree as keys and
@@ -151,6 +151,24 @@ class ThemeTree:
         for child in self.children:
             label_summary.update(child.get_terminal_label_summaries())
         return label_summary
+
+    def get_terminal_labels(self) -> List[str]:
+        """
+        Extract the terminal labels from the tree.
+
+        Returns:
+            list[str]: The terminal node labels.
+        """
+        return list(self.get_terminal_label_summaries().keys())
+
+    def get_terminal_summaries(self) -> List[str]:
+        """
+        Extract summaries from terminal nodes of the tree.
+
+        Returns:
+            list[str] The summaries of terminal nodes.
+        """
+        return list(self.get_terminal_label_summaries().values())
 
     def print(self, prefix: str = "") -> None:
         """
@@ -164,9 +182,99 @@ class ThemeTree:
         """
         print(self.as_string(prefix=prefix))
 
-    def visualize(self) -> None:
+    def visualize(self, engine: str = "graphviz") -> None:
         """
-        Visualize the tree. Will use a plotly treemap.
+        Creates a vertical mind map from the given tree structure.
+        Uses labels for middle nodes and summaries for leaf/terminal nodes.
+
+        Args:
+            engine (str): The rendering engine to use. Currently, only 'graphviz' and 'plotly' supported.
+                Default to 'graphviz'.
+
+        Returns:
+            Depending on the engine used:
+                - 'graphviz': A Graphviz Digraph object for rendering the mindmap.
+                - 'plotly': A Plotly figure object for rendering the mindmap.
+        """
+        if engine == "graphviz":
+            return self._visualize_graphviz()
+        elif engine == "plotly":
+            return self._visualize_plotly()
+        else:
+            raise ValueError(
+                f"Unsupported engine '{engine}'. "
+                f"Supported engines are 'graphviz' and 'plotly'."
+            )
+
+    def _visualize_graphviz(self) -> "graphviz.Digraph":
+        """
+        Auxiliary function to visualize the tree using Graphviz.
+
+        Returns:
+            A Graphviz Digraph object for rendering the mindmap.
+        """
+        try:
+            import graphviz
+        except ImportError:
+            raise ImportError(
+                "Missing optional dependency for theme visualization, "
+                "please install `bigdata_research_tools[graphviz]` to enable them."
+            )
+
+        mindmap = graphviz.Digraph()
+
+        # Set direction to left-right
+        mindmap.attr(
+            rankdir="LR",
+            ordering="in",
+            splines="curved",
+        )
+
+        def add_nodes(node):
+            # Determine if the node is a terminal (leaf) node
+            is_terminal = not node.children
+
+            # For terminal nodes, use summary if available, otherwise use label
+            # For middle nodes, use the label
+            node_text = (
+                node.summary if is_terminal and hasattr(node, "summary") else node.label
+            )
+
+            # Add a node to the mind map with a box shape
+            mindmap.node(
+                str(node),
+                node_text,
+                shape="box",
+                style="filled",
+                # Make terminal nodes lighter than middle nodes
+                fillcolor="lightgrey" if not is_terminal else "#e0e0e0",
+                margin="0.2,0",
+                align="left",
+                fontsize="12",
+                fontname="Arial",
+            )
+
+            # If the node has children, recursively add them
+            if node.children:
+                for child in node.children:
+                    # Add an edge from the parent to each child
+                    mindmap.edge(
+                        str(node),
+                        str(child),
+                    )
+                    # Recursively add child nodes
+                    add_nodes(child)
+
+        # Start with the root node
+        add_nodes(self)
+
+        # Return the Graphviz dot object for rendering
+        return mindmap
+
+    def _visualize_plotly(self) -> None:
+        """
+        Auxiliary function to visualize the tree using Plotly.
+        Will use a plotly treemap.
 
         Returns:
             None. Will show the tree visualization as a plotly graph.
@@ -189,7 +297,7 @@ class ThemeTree:
         parents = []
         extract_labels(self)
 
-        df = pd.DataFrame({"labels": labels, "parents": parents})
+        df = DataFrame({"labels": labels, "parents": parents})
         fig = px.treemap(df, names="labels", parents="parents")
         fig.show()
 
@@ -207,18 +315,18 @@ def generate_theme_tree(
         main_theme (str): The primary theme to analyze.
         dataset (SourceType): The dataset type to filter by.
         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
-        llm_model_config (dict): Configuration for the large language model used to
-            generate themes.
+        llm_model_config (dict): Configuration for the large language model used to generate themes.
             Expected keys:
-                - `provider` (str): The model provider (e.g., `'openai'`).
-                - `model` (str): The model name (e.g., `'gpt-4o-mini'`).
-                - `kwargs` (dict): Additional parameters for model execution, such as:
-                    - `temperature` (float)
-                    - `top_p` (float)
-                    - `frequency_penalty` (float)
-                    - `presence_penalty` (float)
-                    - `seed` (int)
-                    - etc.
+            - `provider` (str): The model provider (e.g., `'openai'`).
+            - `model` (str): The model name (e.g., `'gpt-4o-mini'`).
+            - `kwargs` (dict): Additional parameters for model execution, such as:
+            - `temperature` (float)
+            - `top_p` (float)
+            - `frequency_penalty` (float)
+            - `presence_penalty` (float)
+            - `seed` (int)
+            - etc.
+
     Returns:
         ThemeTree: The generated theme tree.
     """
@@ -248,30 +356,6 @@ def generate_theme_tree(
     return ThemeTree.from_dict(tree_dict)
 
 
-# def convert_to_node_tree(tree: ThemeTree) -> List[ThemeTree]:
-#     """
-#     Convert the tree into a node tree.
-#
-#     :param tree: ThemeTree object. Attributes:
-#         - label: The label of the node.
-#         - node: The node number.
-#         - summary: The summary of the node.
-#         - children: list of other ThemeTree objects.
-#     :return: The node tree
-#     """
-#
-#     def convert_(node):
-#         new_node = {
-#             "label": node.label,
-#             "value": f"node_{node.node}",
-#             "summary": node.summary,
-#         }
-#         new_node.children = [convert_(child) for child in node.children]
-#         return new_node
-#
-#     return [convert_(tree)]
-
-
 def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
     """
     Convert the label summaries of a ThemeTree into a list of strings.
@@ -280,46 +364,7 @@ def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
         label_summaries (dict[str, str]): A dictionary of label summaries of ThemeTree.
             Expected format: {label: summary}.
     Returns:
-        List[str]: A list of strings, each one containing a label and its summary.
+        List[str]: A list of strings, each one containing a label and its summary, i.e.
+            ["{label}: {summary}", ...].
     """
     return [f"{label}: {summary}" for label, summary in label_summaries.items()]
-
-
-# def extract_node_labels(tree: ThemeTree) -> List[str]:
-#     """
-#     Extract the node labels from the tree.
-#
-#     :param tree: ThemeTree object. Attributes:
-#         - label: The label of the node.
-#         - node: The node number.
-#         - summary: The summary of the node.
-#         - children: list of other ThemeTree objects.
-#     :return: The node labels
-#     """
-#
-#     sums = tree.get_label_summaries()
-#     sums = stringify_label_summaries(sums)
-#
-#     # Remove the top level node
-#     sums = sums[1:]
-#     sums = [res.split(":")[0] for res in sums]
-#
-#     return sums
-#
-#
-# def extract_terminal_labels(tree: ThemeTree) -> List[str]:
-#     """
-#     Extract the terminal labels from the tree.
-#
-#     :param tree: ThemeTree object. Attributes:
-#         - label: The label of the node.
-#         - node: The node number.
-#         - summary: The summary of the node.
-#         - children: list of other ThemeTree objects.
-#     :return: The terminal node labels
-#     """
-#     summaries = tree.get_terminal_label_summaries()
-#     summaries = stringify_label_summaries(summaries)
-#
-#     # Remove the top level node
-#     return [res.split(":")[0] for res in summaries]

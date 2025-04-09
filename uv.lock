@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -259,11 +258,12 @@ wheels = [
 
 [[package]]
 name = "bigdata-research-tools"
-version = "0.11.1"
-source = { virtual = "." }
+version = "0.12.0"
+source = { editable = "." }
 dependencies = [
     { name = "bigdata-client" },
     { name = "excel" },
+    { name = "graphviz" },
     { name = "ipython", version = "8.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "ipython", version = "8.32.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "openai" },
@@ -322,6 +322,7 @@ requires-dist = [
     { name = "bigdata-client", specifier = ">=2.7.0,<3.0.0" },
     { name = "excel", specifier = ">=1.0.1" },
     { name = "furo", marker = "extra == 'docs'", specifier = ">=2024.1.29" },
+    { name = "graphviz", specifier = ">=0.20.3" },
     { name = "hdbscan", marker = "extra == 'all'", specifier = ">=0.8.40,<0.9.0" },
     { name = "ipython", specifier = ">=8.18.1" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=2.0.0" },
@@ -346,7 +347,6 @@ requires-dist = [
     { name = "sphinxcontrib-spelling", marker = "extra == 'docs'", specifier = ">=8.0.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
-provides-extras = ["advanced", "excel", "openai", "plotly", "all", "docs"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -684,6 +684,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a0/e2/d351d69a9a9e4badb4a5be062c2d0e87bd9e6c23b5e57337fef14bef34c8/furo-2024.8.6.tar.gz", hash = "sha256:b63e4cee8abfc3136d3bc03a3d45a76a850bada4d6374d24c1716b0e01394a01", size = 1661506 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/27/48/e791a7ed487dbb9729ef32bb5d1af16693d8925f4366befef54119b2e576/furo-2024.8.6-py3-none-any.whl", hash = "sha256:6cd97c58b47813d3619e63e9081169880fbe331f0ca883c871ff1f3f11814f5c", size = 341333 },
+]
+
+[[package]]
+name = "graphviz"
+version = "0.20.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fa/83/5a40d19b8347f017e417710907f824915fba411a9befd092e52746b63e9f/graphviz-0.20.3.zip", hash = "sha256:09d6bc81e6a9fa392e7ba52135a9d49f1ed62526f96499325930e87ca1b5925d", size = 256455 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/00/be/d59db2d1d52697c6adc9eacaf50e8965b6345cc143f671e1ed068818d5cf/graphviz-0.20.3-py3-none-any.whl", hash = "sha256:81f848f2904515d8cd359cc611faba817598d2feaac4027b266aa3eda7b3dde5", size = 47126 },
 ]
 
 [[package]]

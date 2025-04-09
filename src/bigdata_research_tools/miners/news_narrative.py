@@ -92,6 +92,7 @@ class NewsNarrativeMiner:
                 - Quote
                 - Motivation
                 - Label
+
             If no relevant content is found, returns None.
         """
 
