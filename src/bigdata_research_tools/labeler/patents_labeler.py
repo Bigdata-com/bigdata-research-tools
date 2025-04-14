@@ -24,7 +24,7 @@ class PatentsLabeler(Labeler):
         llm_model: str,
         filing_prompt: str = None,
         object_prompt: str = None,
-        temperature: float = 0.01,
+        temperature: float = 0,
     ):
         """
         Args:

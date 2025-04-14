@@ -33,7 +33,7 @@ class ScreenerLabeler(Labeler):
         # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
         #  Changing it here would break the process.
         unknown_label: str = "unclear",
-        temperature: float = 0.01,
+        temperature: float = 0,
     ):
         """
         Args:
@@ -150,7 +150,11 @@ class ScreenerLabeler(Labeler):
         df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
         df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
 
-        df["Document ID"] = df['rp_document_id'] if not all(df['rp_document_id'].isna()) else df['document_id']
+        df["Document ID"] = (
+            df["rp_document_id"]
+            if not all(df["rp_document_id"].isna())
+            else df["document_id"]
+        )
 
         df = df.rename(
             columns={
