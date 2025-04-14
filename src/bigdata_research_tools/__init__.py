@@ -2,4 +2,6 @@
 Bigdata.com Research Tools
 """
 
-__version__ = "0.12.1"
+import importlib.metadata
+
+__version__: str = importlib.metadata.version("bigdata-research-tools")

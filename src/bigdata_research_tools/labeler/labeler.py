@@ -24,7 +24,7 @@ class Labeler:
         llm_model: str,
         # Note that his value is also used in the prompts.
         unknown_label: str = "unclear",
-        temperature: float = 0.01,
+        temperature: float = 0,
     ):
         """Initialize base Labeler.
 

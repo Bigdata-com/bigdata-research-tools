@@ -23,7 +23,7 @@ themes_default_llm_model_config: Dict[str, Any] = {
     "provider": "openai",
     "model": "gpt-4o-mini",
     "kwargs": {
-        "temperature": 0.01,  # Deterministic as possible
+        "temperature": 0,  # Deterministic as possible
         "top_p": 1,
         "frequency_penalty": 0,
         "presence_penalty": 0,

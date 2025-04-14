@@ -27,7 +27,7 @@ class NarrativeLabeler(Labeler):
         llm_model: str,
         label_prompt: Optional[str] = None,
         unknown_label: str = "unclear",
-        temperature: float = 0.01,
+        temperature: float = 0,
     ):
         """Initialize narrative labeler.
 
