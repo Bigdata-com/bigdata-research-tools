@@ -10,6 +10,8 @@ import ast
 from dataclasses import dataclass
 from string import Template
 from typing import Any, Dict, List
+import json 
+import logging
 
 from pandas import DataFrame
 
@@ -17,6 +19,10 @@ from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.themes import (
     SourceType,
     theme_generation_default_prompts,
+    compose_themes_system_prompt_onestep,
+    compose_themes_system_prompt_base,
+    compose_themes_system_prompt_focus
+
 )
 
 themes_default_llm_model_config: Dict[str, Any] = {
@@ -302,6 +308,60 @@ class ThemeTree:
         fig.show()
 
 
+# def generate_theme_tree(
+#     main_theme: str,
+#     dataset: SourceType,
+#     focus: str = "",
+#     llm_model_config: Dict[str, Any] = None,
+# ) -> ThemeTree:
+#     """
+#     Generate a `ThemeTree` class from a main theme and a dataset.
+
+#     Args:
+#         main_theme (str): The primary theme to analyze.
+#         dataset (SourceType): The dataset type to filter by.
+#         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
+#         llm_model_config (dict): Configuration for the large language model used to generate themes.
+#             Expected keys:
+#             - `provider` (str): The model provider (e.g., `'openai'`).
+#             - `model` (str): The model name (e.g., `'gpt-4o-mini'`).
+#             - `kwargs` (dict): Additional parameters for model execution, such as:
+#             - `temperature` (float)
+#             - `top_p` (float)
+#             - `frequency_penalty` (float)
+#             - `presence_penalty` (float)
+#             - `seed` (int)
+#             
+
+#     Returns:
+#         ThemeTree: The generated theme tree.
+#     """
+#     ll_model_config = llm_model_config or themes_default_llm_model_config
+#     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
+#     llm = LLMEngine(model=model_str)
+
+#     system_prompt_template = theme_generation_default_prompts[dataset]
+#     system_prompt = Template(system_prompt_template).safe_substitute(
+#         main_theme=main_theme, focus=focus
+#     )
+
+#     chat_history = [
+#         {"role": "system", "content": system_prompt},
+#         {"role": "user", "content": main_theme},
+#     ]
+#     if dataset == SourceType.CORPORATE_DOCS and focus:
+#         chat_history.append({"role": "user", "content": focus})
+
+#     tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
+
+#     # tree_str = re.sub('```', '', tree_str)
+#     # tree_str = re.sub('json', '', tree_str)
+
+#     # Convert string into dictionary
+#     tree_dict = ast.literal_eval(tree_str)
+#     return ThemeTree.from_dict(tree_dict)
+
+
 def generate_theme_tree(
     main_theme: str,
     dataset: SourceType,
@@ -315,17 +375,18 @@ def generate_theme_tree(
         main_theme (str): The primary theme to analyze.
         dataset (SourceType): The dataset type to filter by.
         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
+            If provided, a two-step process is used to better integrate the focus.
         llm_model_config (dict): Configuration for the large language model used to generate themes.
             Expected keys:
-            - `provider` (str): The model provider (e.g., `'openai'`).
-            - `model` (str): The model name (e.g., `'gpt-4o-mini'`).
+            - `provider` (str): The model provider (e.g., 'openai').
+            - `model` (str): The model name (e.g., 'gpt-4o-mini').
             - `kwargs` (dict): Additional parameters for model execution, such as:
             - `temperature` (float)
             - `top_p` (float)
             - `frequency_penalty` (float)
             - `presence_penalty` (float)
             - `seed` (int)
-            - etc.
+            
 
     Returns:
         ThemeTree: The generated theme tree.
@@ -334,25 +395,58 @@ def generate_theme_tree(
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
     llm = LLMEngine(model=model_str)
 
-    system_prompt_template = theme_generation_default_prompts[dataset]
-    system_prompt = Template(system_prompt_template).safe_substitute(
-        main_theme=main_theme, focus=focus
-    )
+    # Handle focus using different strategies
+    if not focus:
+        # One-step process without focus
+        if dataset == SourceType.CORPORATE_DOCS:
+            # Use the one-step prompt for corporate docs
+            system_prompt = compose_themes_system_prompt_onestep(main_theme)
+        else:
+            # Use the default prompts for other datasets
+            system_prompt_template = theme_generation_default_prompts[dataset]
+            system_prompt = Template(system_prompt_template).safe_substitute(
+                main_theme=main_theme, focus=focus
+            )
+        
+        chat_history = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": main_theme},
+        ]
+        
+        tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
+    else:
+        # Two-step process with focus
+        # Step 1: Generate base tree
+        base_prompt = compose_themes_system_prompt_base(main_theme)
+        base_chat_history = [
+            {"role": "system", "content": base_prompt},
+            {"role": "user", "content": main_theme},
+        ]
+        
+        initial_tree_str = llm.get_response(base_chat_history, **ll_model_config["kwargs"])
+        
+        # Step 2: Refine with focus
+        focus_prompt = compose_themes_system_prompt_focus(main_theme, focus)
+        focus_chat_history = [
+            {"role": "system", "content": focus_prompt},
+            {"role": "user", "content": main_theme},
+            {"role": "user", "content": focus},
+            {"role": "user", "content": initial_tree_str},
+        ]
+        
+        tree_str = llm.get_response(focus_chat_history, **ll_model_config["kwargs"])
 
-    chat_history = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": main_theme},
-    ]
-    if dataset == SourceType.CORPORATE_DOCS and focus:
-        chat_history.append({"role": "user", "content": focus})
+    # Improved error handling for parsing
+    try:
+        tree_dict = json.loads(tree_str)
+    except json.JSONDecodeError:
+        try:
+            tree_dict = ast.literal_eval(tree_str)
+        except (SyntaxError, ValueError) as e:
+            logger.error(f"Error parsing tree: {e}")
+            logger.error(f"Tree string (first 500 chars): {tree_str[:500]}...")
+            raise
 
-    tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
-
-    # tree_str = re.sub('```', '', tree_str)
-    # tree_str = re.sub('json', '', tree_str)
-
-    # Convert string into dictionary
-    tree_dict = ast.literal_eval(tree_str)
     return ThemeTree.from_dict(tree_dict)
 
 

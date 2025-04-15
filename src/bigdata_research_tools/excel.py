@@ -106,12 +106,24 @@ class ExcelManager:
             cell.value = "-"
 
     def _add_branding(self, sheet) -> None:
-        """Add branding elements to worksheet."""
+        """Add branding elements to worksheet with LibreOffice compatibility."""
         from openpyxl.drawing.image import Image
 
-        brand_image = Image(self.logo_path)
-        sheet.add_image(brand_image, anchor="A1")
-        sheet.row_dimensions[1].height = 70
+        # Create image with basic settings
+        img = Image(self.logo_path)
+        
+        # Scale down to 20% of original size
+        img.width = img.width * 0.2
+        img.height = img.height * 0.2
+        
+        # Use simplest anchor format for cross-application compatibility
+        img.anchor = "A1"
+        
+        # Add image to sheet
+        sheet.add_image(img)
+        
+        # Adjust row height and column width
+        sheet.row_dimensions[1].height = 30
         sheet.column_dimensions["A"].width = 5
 
     def _format_header(self, sheet) -> None:

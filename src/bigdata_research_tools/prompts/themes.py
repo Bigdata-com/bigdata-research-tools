@@ -25,6 +25,230 @@ class SourceType(Enum):
         pass  # No additional initialization required
 
 
+def compose_themes_system_prompt_onestep(main_theme: str, analyst_focus: str = "") -> str:
+    return f"""
+	Forget all previous prompts. 
+	You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies. 
+	Your objective is to generate a comprehensive tree structure of distinct sub-themes that will guide the analyst's research process.
+	
+	Follow these steps strictly:
+	
+	1. **Understand the Core Theme {main_theme}**:
+	   - The theme {main_theme} is a central concept. All components are essential for a thorough understanding.
+	
+	2. **Create a Taxonomy of Sub-themes for {main_theme}**:
+	   - Decompose the main theme {main_theme} into concise, focused, and self-contained sub-themes.
+	   - Each sub-theme should represent a singular, concise, informative, and clear aspect of the main theme.
+	   - Expand the sub-theme to be relevant for the {main_theme}: a single word is not informative enough.    
+	   - Prioritize clarity and specificity in your sub-themes.
+	   - Avoid repetition and strive for diverse angles of exploration.
+	   - Provide a comprehensive list of potential sub-themes.
+	  
+	3. **Iterate Based on the Analyst's Focus {analyst_focus}**:
+	   - If no specific {analyst_focus} is provided, transition directly to formatting the JSON response.
+	
+	4. **Format Your Response as a JSON Object**:
+	   - Each node in the JSON object must include:
+	     - `Node`: an integer representing the unique identifier for the node.
+	     - `Label`: a string for the name of the sub-theme.
+	     - `Summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}.
+	       - For the node referring to the first node {main_theme}, just define briefly in maximum 15 words the theme {main_theme}.
+	     - `Children`: an array of child nodes.
+	
+	## Example Structure:
+	**Theme: Global Warming**
+	
+	{{
+	    "Node": 1,
+	    "Label": "Global Warming",
+	    "Children": [
+	        {{
+	            "Node": 2,
+	            "Label": "Renewable Energy Adoption",
+	            "Summary": "Renewable energy reduces greenhouse gas emissions and thereby global warming and climate change effects",
+	            "Children": [
+	                {{"Node": 5, "Label": "Solar Energy", "Summary": "Solar energy reduces greenhouse gas emissions"}},
+	                {{"Node": 6, "Label": "Wind Energy", "Summary": "Wind energy reduces greenhouse gas emissions"}},
+	                {{"Node": 7, "Label": "Hydropower", "Summary": "Hydropower reduces greenhouse gas emissions"}}
+	            ]
+	        }},
+	        {{
+	            "Node": 3,
+	            "Label": "Carbon Emission Reduction",
+	            "Summary": "Carbon emission reduction decreases greenhouse gases",
+	            "Children": [
+	                {{"Node": 8, "Label": "Carbon Capture Technology", "Summary": "Carbon capture technology reduces atmospheric CO2"}},
+	                {{"Node": 9, "Label": "Emission Trading Systems", "Summary": "Emission trading systems incentivize reductions in greenhouse gases"}}
+	            ]
+	        }},
+	        {{
+	            "Node": 4,
+	            "Label": "Climate Resilience and Adaptation",
+	            "Summary": "Climate resilience adapts to global warming impacts, reducing vulnerability",
+	            "Children": [
+	                {{"Node": 10, "Label": "Sustainable Agriculture", "Summary": "Sustainable agriculture reduces emissions, enhancing food security amid climate change"}},
+	                {{"Node": 11, "Label": "Infrastructure Upgrades", "Summary": "Infrastructure upgrades enhance resilience and reduce emissions against climate change"}}
+	            ]
+	        }},
+	        {{
+	            "Node": 12,
+	            "Label": "Biodiversity Conservation",
+	            "Summary": "Biodiversity conservation supports ecosystems",
+	            "Children": [
+	                {{"Node": 13, "Label": "Protected Areas", "Summary": "Protected areas preserve ecosystems, aiding climate resilience and mitigation"}},
+	                {{"Node": 14, "Label": "Restoration Projects", "Summary": "Restoration projects sequester carbon"}}
+	            ]
+	        }},
+	        {{
+	            "Node": 15,
+	            "Label": "Climate Policy and Governance",
+	            "Summary": "Climate policy governs emissions, guiding efforts to combat global warming",
+	            "Children": [
+	                {{"Node": 16, "Label": "International Agreements", "Summary": "International agreements coordinate global efforts to reduce greenhouse gas emissions"}},
+	                {{"Node": 17, "Label": "National Legislation", "Summary": "National legislation enforces policies that reduce greenhouse gas emissions"}}
+	            ]
+	        }}
+	    ]
+	}}
+    """.strip()
+    return prompt
+
+def compose_themes_system_prompt_base(main_theme: str) -> str:
+    return f"""
+        You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies. 
+        Your objective is to generate a concise yet comprehensive tree structure of distinct sub-themes that will guide the analyst's research process.
+        
+        Follow these steps strictly:
+        
+        1. **Understand the Core Theme {main_theme}**:
+           - The theme {main_theme} is a central concept. All components are essential for a thorough understanding.
+        
+        2. **Create a Focused Taxonomy of Sub-themes for {main_theme}**:
+           - Decompose the main theme {main_theme} into concise, focused, and self-contained sub-themes.
+           - Each sub-theme should represent a distinct, fundamental aspect of the main theme.
+           - Ensure sub-themes are conceptually independent from each other and collectively comprehensive.
+           - Use clear, specific labels that communicate the essence of each concept.
+           - Avoid single-word labels; instead, use descriptive phrases that capture the full meaning.
+           - Aim for a total of 4-6 main sub-themes under the root theme.
+        
+        3. **Format Your Response as a JSON Object**:
+           - Each node in the JSON object must include:
+             - `Node`: an integer representing the unique identifier for the node.
+             - `Label`: a string for the name of the sub-theme.
+             - `Summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}.
+               - For the node referring to the first node {main_theme}, just define briefly in maximum 15 words the theme {main_theme}.
+             - `Children`: an array of child nodes (limit to 2-3 children per parent node).
+           - The entire tree structure should contain no more than 10-15 nodes total.
+
+        ### Example Structure (Main Theme Only):
+        **Theme: Consumer Spending**
+        {{
+            "Node": 1,
+            "Label": "Consumer Spending",
+            "Children": [
+                {{
+                    "Node": 2,
+                    "Label": "Retail Expenditure",
+                    "Summary": "Retail spending plays a significant role in overall consumer expenditures.",
+                    "Children": [
+                        {{"Node": 5, "Label": "E-commerce", "Summary": "Online shopping is a key part of consumer spending, affecting traditional retail."}},
+                        {{"Node": 6, "Label": "In-Store Purchases", "Summary": "In-store purchases continue to represent a substantial portion of consumer spending."}}
+                    ]
+                }},
+                {{
+                    "Node": 3,
+                    "Label": "Housing and Real Estate",
+                    "Summary": "A significant portion of consumer spending is directed toward housing and real estate markets.",
+                    "Children": [
+                        {{"Node": 7, "Label": "Home Purchases", "Summary": "Home purchases are an essential part of long-term consumer spending."}},
+                        {{"Node": 8, "Label": "Renting", "Summary": "Renting is an important category of consumer spending in the housing sector."}}
+                    ]
+                }},
+                {{
+                    "Node": 4,
+                    "Label": "Travel and Leisure",
+                    "Summary": "Consumer spending in travel and leisure reflects discretionary spending behaviors.",
+                    "Children": [
+                        {{"Node": 9, "Label": "Domestic Travel", "Summary": "Domestic travel represents a key category in overall travel spending."}},
+                        {{"Node": 10, "Label": "International Travel", "Summary": "International travel contributes significantly to global consumer spending in the leisure sector."}}
+                    ]
+                }}
+            ]
+        }}
+    """.strip()
+    return prompt
+
+def compose_themes_system_prompt_focus(main_theme: str, analyst_focus: str) -> str:
+    return f"""
+        You are assisting a professional analyst in refining a previously created taxonomy `initial_tree_str` for the theme {main_theme}. The analyst now wants to focus on a specific aspect {analyst_focus} to enhance the taxonomy.
+    
+        Follow these steps strictly:
+        
+        1. **Understand the Core Theme {main_theme} and the Provided Tree Structure**:
+           - Review the JSON tree structure provided by the analyst.
+           - Identify how the {analyst_focus} relates to the existing taxonomy.
+        
+        2. **Integrate the Analyst's Focus {analyst_focus} Naturally**:
+           - Instead of adding the term {analyst_focus} directly to node labels, focus on the ways that the core theme {main_theme} is impacted by or intersects with the {analyst_focus}.
+           - The labels should still be focused on {main_theme}, but the added complexity from {analyst_focus} should subtly guide the refinement.
+           - Ensure the breakdown of the tree provides valuable and actionable insights to the analyst, demonstrating the nuanced impact of the {analyst_focus}.
+        
+        3. **Format Your Response as a JSON Object**:
+           - Transform the structure to reflect the integrated perspective:
+             - `Node`: an integer representing the unique identifier for the node.
+             - `Label`: a string for the name of the sub-theme (naturally incorporating the focus area).
+             - `Summary`: a string to explain briefly in maximum 15 words how this aspect relates to the main theme.
+             - `Children`: an array of child nodes (limit to 2-3 children per parent).
+        
+        ### Example Structure (Main Theme with Analyst Focus):
+        **Theme: Consumer Spending**  
+        **Analyst Focus: Remote Work Technologies**
+        {{
+            "Node": 1,
+            "Label": "Consumer Spending",
+            "Children": [
+                {{
+                    "Node": 2,
+                    "Label": "E-commerce Trends",
+                    "Summary": "E-commerce plays a significant role in consumer spending, with transactions occurring increasingly online.",
+                    "Children": [
+                        {{"Node": 5, "Label": "Subscription Services", "Summary": "Consumers allocate spending to subscription models for digital services and goods."}},
+                        {{"Node": 6, "Label": "Digital Payment Solutions", "Summary": "Digital payments are an integral part of consumer spending in online transactions."}}
+                    ]
+                }},
+                {{
+                    "Node": 3,
+                    "Label": "Housing Demand Shifts",
+                    "Summary": "Consumer spending in housing reflects preferences for various housing types and real estate markets.",
+                    "Children": [
+                        {{"Node": 7, "Label": "Suburban Housing Preferences", "Summary": "Spending in suburban housing reflects consumer choices influenced by various factors."}},
+                        {{"Node": 8, "Label": "Home Office Equipment Spending", "Summary": "Consumers allocate spending to home office equipment, reflecting the importance of remote work setups."}}
+                    ]
+                }},
+                {{
+                    "Node": 4,
+                    "Label": "Technology Adoption for Consumer Goods",
+                    "Summary": "Technological innovations in consumer goods contribute to shaping how consumers spend their money on products and services.",
+                    "Children": [
+                        {{"Node": 9, "Label": "Smart Home Devices", "Summary": "Consumers spend on smart home devices to enhance their living environments."}},
+                        {{"Node": 10, "Label": "Virtual Products and Experiences", "Summary": "Virtual products and experiences represent significant categories of consumer spending."}}
+                    ]
+                }},
+                {{
+                    "Node": 5,
+                    "Label": "Service-Based Consumption",
+                    "Summary": "Spending on services is a key component of consumer expenditures, influenced by evolving consumer preferences.",
+                    "Children": [
+                        {{"Node": 11, "Label": "Online Education and Training", "Summary": "Consumers allocate spending to online education and training services for personal and professional development."}},
+                        {{"Node": 12, "Label": "Entertainment Subscriptions", "Summary": "Entertainment subscription services are a growing part of consumer spending in the entertainment sector."}}
+                    ]
+                }}
+            ]
+        }}
+    """.strip()
+    return prompt
+
+
 theme_generation_default_prompts: Dict[SourceType, str] = {
     SourceType.CORPORATE_DOCS: """
 Forget all previous prompts. 
