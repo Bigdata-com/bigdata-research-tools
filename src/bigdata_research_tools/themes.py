@@ -96,6 +96,29 @@ class ThemeTree:
             s += child.as_string(prefix=child_prefix)
         return s
 
+    # @staticmethod
+    # def from_dict(tree_dict: dict) -> "ThemeTree":
+    #     """
+    #     Create a ThemeTree object from a dictionary.
+
+    #     Args:
+    #         tree_dict (dict): A dictionary representing the `ThemeTree` structure with the following keys:
+
+    #             - `label` (str): The name of the theme or sub-theme.
+    #             - `node` (int): A unique identifier for the node.
+    #             - `summary` (str): A brief explanation of the node’s relevance.
+    #             - `children` (list, optional): A list of dictionaries representing sub-themes,
+    #               each following the same structure.
+
+    #     Returns:
+    #         ThemeTree: The `ThemeTree` object generated from the dictionary.
+    #     """
+    #     theme_tree = ThemeTree(**tree_dict)
+    #     theme_tree.children = [
+    #         ThemeTree.from_dict(child) for child in tree_dict.get("children", [])
+    #     ]
+    #     return theme_tree
+
     @staticmethod
     def from_dict(tree_dict: dict) -> "ThemeTree":
         """
@@ -106,17 +129,32 @@ class ThemeTree:
 
                 - `label` (str): The name of the theme or sub-theme.
                 - `node` (int): A unique identifier for the node.
-                - `summary` (str): A brief explanation of the node’s relevance.
+                - `summary` (str): A brief explanation of the node's relevance.
                 - `children` (list, optional): A list of dictionaries representing sub-themes,
-                  each following the same structure.
+                each following the same structure.
 
         Returns:
             ThemeTree: The `ThemeTree` object generated from the dictionary.
         """
-        theme_tree = ThemeTree(**tree_dict)
-        theme_tree.children = [
-            ThemeTree.from_dict(child) for child in tree_dict.get("children", [])
-        ]
+        # Normalize dictionary keys to lowercase
+        normalized_dict = {}
+        for key, value in tree_dict.items():
+            if key.lower() == 'children':
+                # Skip children for now, we'll handle them separately
+                continue
+            normalized_dict[key.lower()] = value
+        
+        # Create theme tree with normalized keys
+        theme_tree = ThemeTree(**normalized_dict)
+        
+        # Process children if present (case-insensitive check)
+        children_key = next((k for k in tree_dict if k.lower() == 'children'), None)
+        if children_key and tree_dict[children_key]:
+            theme_tree.children = [
+                ThemeTree.from_dict(child) for child in tree_dict[children_key]
+                if child  # Skip None values
+            ]
+        
         return theme_tree
 
     def get_label_summaries(self) -> Dict[str, str]:

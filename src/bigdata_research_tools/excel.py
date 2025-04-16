@@ -28,24 +28,66 @@ def check_excel_dependencies() -> bool:
 class ExcelManager:
     """Class for managing Excel workbook operations."""
 
+    # def __init__(
+    #     self,
+    #     min_column_width: int = 12,
+    #     max_column_width: int = 75,
+    #     row_offset: int = 3,
+    #     column_offset: int = 1,
+    #     # TODO (cpinto, 2025-03-06) Careful with this. If this file does not exist, it will raise an error.
+    #     #   We provide it in the package, but we can just make it optional.
+    #     logo_path: str = f"{get_resources_path()}/bigdata-by-ravenpack-logo.png",
+    # ):
+    #     """Initialize Excel manager with formatting parameters."""
+    #     from openpyxl.styles import Border, Side
+
+    #     self.min_column_width = min_column_width
+    #     self.max_column_width = max_column_width
+    #     self.row_offset = row_offset
+    #     self.column_offset = column_offset
+    #     self.logo_path = logo_path
+    #     self.thick_border = Border(left=Side(style="thick"), right=Side(style="thick"))
+
     def __init__(
         self,
         min_column_width: int = 12,
         max_column_width: int = 75,
         row_offset: int = 3,
         column_offset: int = 1,
-        # TODO (cpinto, 2025-03-06) Careful with this. If this file does not exist, it will raise an error.
-        #   We provide it in the package, but we can just make it optional.
-        logo_path: str = f"{get_resources_path()}/bigdata-by-ravenpack-logo.png",
+        logo_path: str = None,
     ):
         """Initialize Excel manager with formatting parameters."""
         from openpyxl.styles import Border, Side
-
+        import os
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
         self.min_column_width = min_column_width
         self.max_column_width = max_column_width
         self.row_offset = row_offset
         self.column_offset = column_offset
-        self.logo_path = logo_path
+        
+        # If logo_path is provided, use it
+        if logo_path and os.path.exists(logo_path):
+            self.logo_path = logo_path
+        else:
+            # Try to find logo in default locations
+            from bigdata_research_tools.settings import get_resources_path
+            resources_path = get_resources_path()
+            
+            # Try different logo filenames
+            possible_logos = [
+                os.path.join(resources_path, "bigdata-by-ravenpack-logo.png"),
+                os.path.join(resources_path, "bigdata-by-ravenpack-logo-dark.png"),
+            ]
+            
+            # Use the first logo file that exists
+            self.logo_path = next((p for p in possible_logos if os.path.exists(p)), None)
+            
+            if not self.logo_path:
+                logger.warning(f"No valid logo file found in {resources_path}. Branding will be skipped.")
+        
         self.thick_border = Border(left=Side(style="thick"), right=Side(style="thick"))
 
     def save_workbook(
@@ -105,26 +147,61 @@ class ExcelManager:
         if cell.value == 0:
             cell.value = "-"
 
+    # def _add_branding(self, sheet) -> None:
+    #     """Add branding elements to worksheet with LibreOffice compatibility."""
+    #     from openpyxl.drawing.image import Image
+
+    #     # Create image with basic settings
+    #     img = Image(self.logo_path)
+        
+    #     # Scale down to 20% of original size
+    #     img.width = img.width * 0.2
+    #     img.height = img.height * 0.2
+        
+    #     # Use simplest anchor format for cross-application compatibility
+    #     img.anchor = "A1"
+        
+    #     # Add image to sheet
+    #     sheet.add_image(img)
+        
+    #     # Adjust row height and column width
+    #     sheet.row_dimensions[1].height = 30
+    #     sheet.column_dimensions["A"].width = 5
+
     def _add_branding(self, sheet) -> None:
         """Add branding elements to worksheet with LibreOffice compatibility."""
         from openpyxl.drawing.image import Image
-
-        # Create image with basic settings
-        img = Image(self.logo_path)
+        import os
+        import logging
         
-        # Scale down to 20% of original size
-        img.width = img.width * 0.2
-        img.height = img.height * 0.2
+        logger = logging.getLogger(__name__)
         
-        # Use simplest anchor format for cross-application compatibility
-        img.anchor = "A1"
-        
-        # Add image to sheet
-        sheet.add_image(img)
-        
-        # Adjust row height and column width
-        sheet.row_dimensions[1].height = 30
-        sheet.column_dimensions["A"].width = 5
+        try:
+            # Check if logo file exists
+            if not self.logo_path or not os.path.exists(self.logo_path):
+                logger.warning(f"Logo file not found at '{self.logo_path}'. Skipping branding.")
+                return
+                
+            # Create image with basic settings
+            img = Image(self.logo_path)
+                
+            # Scale down to 20% of original size
+            img.width = img.width * 0.2
+            img.height = img.height * 0.2
+                
+            # Use simplest anchor format for cross-application compatibility
+            img.anchor = "A1"
+            
+            # Add image to sheet
+            sheet.add_image(img)
+                
+            # Adjust row height and column width
+            sheet.row_dimensions[1].height = 30
+            sheet.column_dimensions["A"].width = 5
+        except Exception as e:
+            # Log error but don't fail the entire export process
+            logger.error(f"Error adding branding: {e}")
+            # Continue without branding
 
     def _format_header(self, sheet) -> None:
         """Format header row."""
