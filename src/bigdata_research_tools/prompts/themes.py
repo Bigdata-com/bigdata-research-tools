@@ -26,7 +26,7 @@ class SourceType(Enum):
 
 
 def compose_themes_system_prompt_onestep(main_theme: str, analyst_focus: str = "") -> str:
-    return f"""
+    prompt = f"""
 	Forget all previous prompts. 
 	You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies. 
 	Your objective is to generate a comprehensive tree structure of distinct sub-themes that will guide the analyst's research process.
@@ -110,11 +110,11 @@ def compose_themes_system_prompt_onestep(main_theme: str, analyst_focus: str = "
 	        }}
 	    ]
 	}}
-    """.strip()
-    return prompt
+    """
+    return prompt.strip()
 
 def compose_themes_system_prompt_base(main_theme: str) -> str:
-    return f"""
+    prompt = f"""
         You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies. 
         Your objective is to generate a concise yet comprehensive tree structure of distinct sub-themes that will guide the analyst's research process.
         
@@ -175,11 +175,11 @@ def compose_themes_system_prompt_base(main_theme: str) -> str:
                 }}
             ]
         }}
-    """.strip()
-    return prompt
+    """
+    return prompt.strip()
 
 def compose_themes_system_prompt_focus(main_theme: str, analyst_focus: str) -> str:
-    return f"""
+    prompt = f"""
         You are assisting a professional analyst in refining a previously created taxonomy `initial_tree_str` for the theme {main_theme}. The analyst now wants to focus on a specific aspect {analyst_focus} to enhance the taxonomy.
     
         Follow these steps strictly:
@@ -245,8 +245,8 @@ def compose_themes_system_prompt_focus(main_theme: str, analyst_focus: str) -> s
                 }}
             ]
         }}
-    """.strip()
-    return prompt
+    """
+    return prompt.strip()
 
 
 theme_generation_default_prompts: Dict[SourceType, str] = {

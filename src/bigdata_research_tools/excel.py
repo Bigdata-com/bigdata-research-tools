@@ -16,6 +16,15 @@ from bigdata_research_tools.settings import (
 
 logger: Logger = getLogger(__name__)
 
+# Constants for Excel formatting
+MIN_COLUMN_WIDTH = 12
+MAX_COLUMN_WIDTH = 75
+ROW_OFFSET = 3
+COLUMN_OFFSET = 1
+LOGO_SCALE_FACTOR = 0.2
+LOGO_ROW_HEIGHT = 30
+LOGO_COLUMN_WIDTH = 5
+
 
 def check_excel_dependencies() -> bool:
     """
@@ -28,33 +37,13 @@ def check_excel_dependencies() -> bool:
 class ExcelManager:
     """Class for managing Excel workbook operations."""
 
-    # def __init__(
-    #     self,
-    #     min_column_width: int = 12,
-    #     max_column_width: int = 75,
-    #     row_offset: int = 3,
-    #     column_offset: int = 1,
-    #     # TODO (cpinto, 2025-03-06) Careful with this. If this file does not exist, it will raise an error.
-    #     #   We provide it in the package, but we can just make it optional.
-    #     logo_path: str = f"{get_resources_path()}/bigdata-by-ravenpack-logo.png",
-    # ):
-    #     """Initialize Excel manager with formatting parameters."""
-    #     from openpyxl.styles import Border, Side
-
-    #     self.min_column_width = min_column_width
-    #     self.max_column_width = max_column_width
-    #     self.row_offset = row_offset
-    #     self.column_offset = column_offset
-    #     self.logo_path = logo_path
-    #     self.thick_border = Border(left=Side(style="thick"), right=Side(style="thick"))
-
     def __init__(
-        self,
-        min_column_width: int = 12,
-        max_column_width: int = 75,
-        row_offset: int = 3,
-        column_offset: int = 1,
-        logo_path: str = None,
+    self,
+    min_column_width: int = MIN_COLUMN_WIDTH,
+    max_column_width: int = MAX_COLUMN_WIDTH,
+    row_offset: int = ROW_OFFSET,
+    column_offset: int = COLUMN_OFFSET,
+    logo_path: str = None,
     ):
         """Initialize Excel manager with formatting parameters."""
         from openpyxl.styles import Border, Side
@@ -147,27 +136,7 @@ class ExcelManager:
         if cell.value == 0:
             cell.value = "-"
 
-    # def _add_branding(self, sheet) -> None:
-    #     """Add branding elements to worksheet with LibreOffice compatibility."""
-    #     from openpyxl.drawing.image import Image
-
-    #     # Create image with basic settings
-    #     img = Image(self.logo_path)
-        
-    #     # Scale down to 20% of original size
-    #     img.width = img.width * 0.2
-    #     img.height = img.height * 0.2
-        
-    #     # Use simplest anchor format for cross-application compatibility
-    #     img.anchor = "A1"
-        
-    #     # Add image to sheet
-    #     sheet.add_image(img)
-        
-    #     # Adjust row height and column width
-    #     sheet.row_dimensions[1].height = 30
-    #     sheet.column_dimensions["A"].width = 5
-
+    
     def _add_branding(self, sheet) -> None:
         """Add branding elements to worksheet with LibreOffice compatibility."""
         from openpyxl.drawing.image import Image
@@ -185,9 +154,9 @@ class ExcelManager:
             # Create image with basic settings
             img = Image(self.logo_path)
                 
-            # Scale down to 20% of original size
-            img.width = img.width * 0.2
-            img.height = img.height * 0.2
+            # Scale down to defined percentage
+            img.width = img.width * LOGO_SCALE_FACTOR
+            img.height = img.height * LOGO_SCALE_FACTOR
                 
             # Use simplest anchor format for cross-application compatibility
             img.anchor = "A1"
@@ -196,8 +165,8 @@ class ExcelManager:
             sheet.add_image(img)
                 
             # Adjust row height and column width
-            sheet.row_dimensions[1].height = 30
-            sheet.column_dimensions["A"].width = 5
+            sheet.row_dimensions[1].height = LOGO_ROW_HEIGHT
+            sheet.column_dimensions["A"].width = LOGO_COLUMN_WIDTH
         except Exception as e:
             # Log error but don't fail the entire export process
             logger.error(f"Error adding branding: {e}")

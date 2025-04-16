@@ -96,60 +96,31 @@ class ThemeTree:
             s += child.as_string(prefix=child_prefix)
         return s
 
-    # @staticmethod
-    # def from_dict(tree_dict: dict) -> "ThemeTree":
-    #     """
-    #     Create a ThemeTree object from a dictionary.
-
-    #     Args:
-    #         tree_dict (dict): A dictionary representing the `ThemeTree` structure with the following keys:
-
-    #             - `label` (str): The name of the theme or sub-theme.
-    #             - `node` (int): A unique identifier for the node.
-    #             - `summary` (str): A brief explanation of the node’s relevance.
-    #             - `children` (list, optional): A list of dictionaries representing sub-themes,
-    #               each following the same structure.
-
-    #     Returns:
-    #         ThemeTree: The `ThemeTree` object generated from the dictionary.
-    #     """
-    #     theme_tree = ThemeTree(**tree_dict)
-    #     theme_tree.children = [
-    #         ThemeTree.from_dict(child) for child in tree_dict.get("children", [])
-    #     ]
-    #     return theme_tree
-
     @staticmethod
     def from_dict(tree_dict: dict) -> "ThemeTree":
         """
         Create a ThemeTree object from a dictionary.
 
         Args:
-            tree_dict (dict): A dictionary representing the `ThemeTree` structure with the following keys:
-
-                - `label` (str): The name of the theme or sub-theme.
-                - `node` (int): A unique identifier for the node.
-                - `summary` (str): A brief explanation of the node's relevance.
-                - `children` (list, optional): A list of dictionaries representing sub-themes,
-                each following the same structure.
+            tree_dict (dict): A dictionary representing the ThemeTree structure.
 
         Returns:
-            ThemeTree: The `ThemeTree` object generated from the dictionary.
+            ThemeTree: The ThemeTree object generated from the dictionary.
         """
-        # Normalize dictionary keys to lowercase
-        normalized_dict = {}
-        for key, value in tree_dict.items():
-            if key.lower() == 'children':
-                # Skip children for now, we'll handle them separately
-                continue
-            normalized_dict[key.lower()] = value
+        # Handle case sensitivity in keys
+        keys_map = {k.lower(): k for k in tree_dict.keys()}
         
-        # Create theme tree with normalized keys
-        theme_tree = ThemeTree(**normalized_dict)
+        # Extract values using case-insensitive lookup
+        label = tree_dict.get(keys_map.get('label', ''), "")
+        node = tree_dict.get(keys_map.get('node', ''), 0)
+        summary = tree_dict.get(keys_map.get('summary', ''), "")
         
-        # Process children if present (case-insensitive check)
-        children_key = next((k for k in tree_dict if k.lower() == 'children'), None)
-        if children_key and tree_dict[children_key]:
+        # Create the tree without children first
+        theme_tree = ThemeTree(label=label, node=node, summary=summary)
+        
+        # Now process children if they exist (case-insensitive)
+        children_key = keys_map.get('children', '')
+        if children_key and tree_dict.get(children_key):
             theme_tree.children = [
                 ThemeTree.from_dict(child) for child in tree_dict[children_key]
                 if child  # Skip None values
@@ -346,59 +317,6 @@ class ThemeTree:
         fig.show()
 
 
-# def generate_theme_tree(
-#     main_theme: str,
-#     dataset: SourceType,
-#     focus: str = "",
-#     llm_model_config: Dict[str, Any] = None,
-# ) -> ThemeTree:
-#     """
-#     Generate a `ThemeTree` class from a main theme and a dataset.
-
-#     Args:
-#         main_theme (str): The primary theme to analyze.
-#         dataset (SourceType): The dataset type to filter by.
-#         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
-#         llm_model_config (dict): Configuration for the large language model used to generate themes.
-#             Expected keys:
-#             - `provider` (str): The model provider (e.g., `'openai'`).
-#             - `model` (str): The model name (e.g., `'gpt-4o-mini'`).
-#             - `kwargs` (dict): Additional parameters for model execution, such as:
-#             - `temperature` (float)
-#             - `top_p` (float)
-#             - `frequency_penalty` (float)
-#             - `presence_penalty` (float)
-#             - `seed` (int)
-#             
-
-#     Returns:
-#         ThemeTree: The generated theme tree.
-#     """
-#     ll_model_config = llm_model_config or themes_default_llm_model_config
-#     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
-#     llm = LLMEngine(model=model_str)
-
-#     system_prompt_template = theme_generation_default_prompts[dataset]
-#     system_prompt = Template(system_prompt_template).safe_substitute(
-#         main_theme=main_theme, focus=focus
-#     )
-
-#     chat_history = [
-#         {"role": "system", "content": system_prompt},
-#         {"role": "user", "content": main_theme},
-#     ]
-#     if dataset == SourceType.CORPORATE_DOCS and focus:
-#         chat_history.append({"role": "user", "content": focus})
-
-#     tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
-
-#     # tree_str = re.sub('```', '', tree_str)
-#     # tree_str = re.sub('json', '', tree_str)
-
-#     # Convert string into dictionary
-#     tree_dict = ast.literal_eval(tree_str)
-#     return ThemeTree.from_dict(tree_dict)
-
 
 def generate_theme_tree(
     main_theme: str,
@@ -478,13 +396,8 @@ def generate_theme_tree(
     try:
         tree_dict = json.loads(tree_str)
     except json.JSONDecodeError:
-        try:
-            tree_dict = ast.literal_eval(tree_str)
-        except (SyntaxError, ValueError) as e:
-            logger.error(f"Error parsing tree: {e}")
-            logger.error(f"Tree string (first 500 chars): {tree_str[:500]}...")
-            raise
-
+        tree_dict = ast.literal_eval(tree_str)
+            
     return ThemeTree.from_dict(tree_dict)
 
 
