@@ -16,16 +16,10 @@ class SourceType(Enum):
     JOBS = "JOBS"
     CORPORATE_DOCS = "CORPORATE_DOCS"
 
-    def __new__(cls, value):
-        obj = object.__new__(cls)
-        obj._value_ = value
-        return obj
 
-    def __init__(self, value):
-        pass  # No additional initialization required
-
-
-def compose_themes_system_prompt_onestep(main_theme: str, analyst_focus: str = "") -> str:
+def compose_themes_system_prompt_onestep(
+    main_theme: str, analyst_focus: str = ""
+) -> str:
     prompt = f"""
 	Forget all previous prompts. 
 	You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies. 
@@ -49,69 +43,70 @@ def compose_themes_system_prompt_onestep(main_theme: str, analyst_focus: str = "
 	
 	4. **Format Your Response as a JSON Object**:
 	   - Each node in the JSON object must include:
-	     - `Node`: an integer representing the unique identifier for the node.
-	     - `Label`: a string for the name of the sub-theme.
-	     - `Summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}.
+	     - `node`: an integer representing the unique identifier for the node.
+	     - `label`: a string for the name of the sub-theme.
+	     - `summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}.
 	       - For the node referring to the first node {main_theme}, just define briefly in maximum 15 words the theme {main_theme}.
-	     - `Children`: an array of child nodes.
+	     - `children`: an array of child nodes.
 	
 	## Example Structure:
 	**Theme: Global Warming**
 	
 	{{
-	    "Node": 1,
-	    "Label": "Global Warming",
-	    "Children": [
+	    "node": 1,
+	    "label": "Global Warming",
+	    "children": [
 	        {{
-	            "Node": 2,
-	            "Label": "Renewable Energy Adoption",
-	            "Summary": "Renewable energy reduces greenhouse gas emissions and thereby global warming and climate change effects",
-	            "Children": [
-	                {{"Node": 5, "Label": "Solar Energy", "Summary": "Solar energy reduces greenhouse gas emissions"}},
-	                {{"Node": 6, "Label": "Wind Energy", "Summary": "Wind energy reduces greenhouse gas emissions"}},
-	                {{"Node": 7, "Label": "Hydropower", "Summary": "Hydropower reduces greenhouse gas emissions"}}
+	            "node": 2,
+	            "label": "Renewable Energy Adoption",
+	            "summary": "Renewable energy reduces greenhouse gas emissions and thereby global warming and climate change effects",
+	            "children": [
+	                {{"node": 5, "label": "Solar Energy", "summary": "Solar energy reduces greenhouse gas emissions"}},
+	                {{"node": 6, "label": "Wind Energy", "summary": "Wind energy reduces greenhouse gas emissions"}},
+	                {{"node": 7, "label": "Hydropower", "summary": "Hydropower reduces greenhouse gas emissions"}}
 	            ]
 	        }},
 	        {{
-	            "Node": 3,
-	            "Label": "Carbon Emission Reduction",
-	            "Summary": "Carbon emission reduction decreases greenhouse gases",
-	            "Children": [
-	                {{"Node": 8, "Label": "Carbon Capture Technology", "Summary": "Carbon capture technology reduces atmospheric CO2"}},
-	                {{"Node": 9, "Label": "Emission Trading Systems", "Summary": "Emission trading systems incentivize reductions in greenhouse gases"}}
+	            "node": 3,
+	            "label": "Carbon Emission Reduction",
+	            "summary": "Carbon emission reduction decreases greenhouse gases",
+	            "children": [
+	                {{"node": 8, "label": "Carbon Capture Technology", "summary": "Carbon capture technology reduces atmospheric CO2"}},
+	                {{"node": 9, "label": "Emission Trading Systems", "summary": "Emission trading systems incentivize reductions in greenhouse gases"}}
 	            ]
 	        }},
 	        {{
-	            "Node": 4,
-	            "Label": "Climate Resilience and Adaptation",
-	            "Summary": "Climate resilience adapts to global warming impacts, reducing vulnerability",
-	            "Children": [
-	                {{"Node": 10, "Label": "Sustainable Agriculture", "Summary": "Sustainable agriculture reduces emissions, enhancing food security amid climate change"}},
-	                {{"Node": 11, "Label": "Infrastructure Upgrades", "Summary": "Infrastructure upgrades enhance resilience and reduce emissions against climate change"}}
+	            "node": 4,
+	            "label": "Climate Resilience and Adaptation",
+	            "summary": "Climate resilience adapts to global warming impacts, reducing vulnerability",
+	            "children": [
+	                {{"node": 10, "label": "Sustainable Agriculture", "summary": "Sustainable agriculture reduces emissions, enhancing food security amid climate change"}},
+	                {{"node": 11, "label": "Infrastructure Upgrades", "summary": "Infrastructure upgrades enhance resilience and reduce emissions against climate change"}}
 	            ]
 	        }},
 	        {{
-	            "Node": 12,
-	            "Label": "Biodiversity Conservation",
-	            "Summary": "Biodiversity conservation supports ecosystems",
-	            "Children": [
-	                {{"Node": 13, "Label": "Protected Areas", "Summary": "Protected areas preserve ecosystems, aiding climate resilience and mitigation"}},
-	                {{"Node": 14, "Label": "Restoration Projects", "Summary": "Restoration projects sequester carbon"}}
+	            "node": 12,
+	            "label": "Biodiversity Conservation",
+	            "summary": "Biodiversity conservation supports ecosystems",
+	            "children": [
+	                {{"node": 13, "label": "Protected Areas", "summary": "Protected areas preserve ecosystems, aiding climate resilience and mitigation"}},
+	                {{"node": 14, "label": "Restoration Projects", "summary": "Restoration projects sequester carbon"}}
 	            ]
 	        }},
 	        {{
-	            "Node": 15,
-	            "Label": "Climate Policy and Governance",
-	            "Summary": "Climate policy governs emissions, guiding efforts to combat global warming",
-	            "Children": [
-	                {{"Node": 16, "Label": "International Agreements", "Summary": "International agreements coordinate global efforts to reduce greenhouse gas emissions"}},
-	                {{"Node": 17, "Label": "National Legislation", "Summary": "National legislation enforces policies that reduce greenhouse gas emissions"}}
+	            "node": 15,
+	            "label": "Climate Policy and Governance",
+	            "summary": "Climate policy governs emissions, guiding efforts to combat global warming",
+	            "children": [
+	                {{"node": 16, "label": "International Agreements", "summary": "International agreements coordinate global efforts to reduce greenhouse gas emissions"}},
+	                {{"node": 17, "label": "National Legislation", "summary": "National legislation enforces policies that reduce greenhouse gas emissions"}}
 	            ]
 	        }}
 	    ]
 	}}
     """
     return prompt.strip()
+
 
 def compose_themes_system_prompt_base(main_theme: str) -> str:
     prompt = f"""
@@ -133,50 +128,51 @@ def compose_themes_system_prompt_base(main_theme: str) -> str:
         
         3. **Format Your Response as a JSON Object**:
            - Each node in the JSON object must include:
-             - `Node`: an integer representing the unique identifier for the node.
-             - `Label`: a string for the name of the sub-theme.
-             - `Summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}.
+             - `node`: an integer representing the unique identifier for the node.
+             - `label`: a string for the name of the sub-theme.
+             - `summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}.
                - For the node referring to the first node {main_theme}, just define briefly in maximum 15 words the theme {main_theme}.
-             - `Children`: an array of child nodes (limit to 2-3 children per parent node).
+             - `children`: an array of child nodes (limit to 2-3 children per parent node).
            - The entire tree structure should contain no more than 10-15 nodes total.
 
         ### Example Structure (Main Theme Only):
         **Theme: Consumer Spending**
         {{
-            "Node": 1,
-            "Label": "Consumer Spending",
-            "Children": [
+            "node": 1,
+            "label": "Consumer Spending",
+            "children": [
                 {{
-                    "Node": 2,
-                    "Label": "Retail Expenditure",
-                    "Summary": "Retail spending plays a significant role in overall consumer expenditures.",
-                    "Children": [
-                        {{"Node": 5, "Label": "E-commerce", "Summary": "Online shopping is a key part of consumer spending, affecting traditional retail."}},
-                        {{"Node": 6, "Label": "In-Store Purchases", "Summary": "In-store purchases continue to represent a substantial portion of consumer spending."}}
+                    "node": 2,
+                    "label": "Retail Expenditure",
+                    "summary": "Retail spending plays a significant role in overall consumer expenditures.",
+                    "children": [
+                        {{"node": 5, "label": "E-commerce", "summary": "Online shopping is a key part of consumer spending, affecting traditional retail."}},
+                        {{"node": 6, "label": "In-Store Purchases", "summary": "In-store purchases continue to represent a substantial portion of consumer spending."}}
                     ]
                 }},
                 {{
-                    "Node": 3,
-                    "Label": "Housing and Real Estate",
-                    "Summary": "A significant portion of consumer spending is directed toward housing and real estate markets.",
-                    "Children": [
-                        {{"Node": 7, "Label": "Home Purchases", "Summary": "Home purchases are an essential part of long-term consumer spending."}},
-                        {{"Node": 8, "Label": "Renting", "Summary": "Renting is an important category of consumer spending in the housing sector."}}
+                    "node": 3,
+                    "label": "Housing and Real Estate",
+                    "summary": "A significant portion of consumer spending is directed toward housing and real estate markets.",
+                    "children": [
+                        {{"node": 7, "label": "Home Purchases", "summary": "Home purchases are an essential part of long-term consumer spending."}},
+                        {{"node": 8, "label": "Renting", "summary": "Renting is an important category of consumer spending in the housing sector."}}
                     ]
                 }},
                 {{
-                    "Node": 4,
-                    "Label": "Travel and Leisure",
-                    "Summary": "Consumer spending in travel and leisure reflects discretionary spending behaviors.",
-                    "Children": [
-                        {{"Node": 9, "Label": "Domestic Travel", "Summary": "Domestic travel represents a key category in overall travel spending."}},
-                        {{"Node": 10, "Label": "International Travel", "Summary": "International travel contributes significantly to global consumer spending in the leisure sector."}}
+                    "node": 4,
+                    "label": "Travel and Leisure",
+                    "summary": "Consumer spending in travel and leisure reflects discretionary spending behaviors.",
+                    "children": [
+                        {{"node": 9, "label": "Domestic Travel", "summary": "Domestic travel represents a key category in overall travel spending."}},
+                        {{"node": 10, "label": "International Travel", "summary": "International travel contributes significantly to global consumer spending in the leisure sector."}}
                     ]
                 }}
             ]
         }}
     """
     return prompt.strip()
+
 
 def compose_themes_system_prompt_focus(main_theme: str, analyst_focus: str) -> str:
     prompt = f"""
@@ -195,52 +191,52 @@ def compose_themes_system_prompt_focus(main_theme: str, analyst_focus: str) -> s
         
         3. **Format Your Response as a JSON Object**:
            - Transform the structure to reflect the integrated perspective:
-             - `Node`: an integer representing the unique identifier for the node.
-             - `Label`: a string for the name of the sub-theme (naturally incorporating the focus area).
-             - `Summary`: a string to explain briefly in maximum 15 words how this aspect relates to the main theme.
-             - `Children`: an array of child nodes (limit to 2-3 children per parent).
+             - `node`: an integer representing the unique identifier for the node.
+             - `label`: a string for the name of the sub-theme (naturally incorporating the focus area).
+             - `summary`: a string to explain briefly in maximum 15 words how this aspect relates to the main theme.
+             - `children`: an array of child nodes (limit to 2-3 children per parent).
         
         ### Example Structure (Main Theme with Analyst Focus):
         **Theme: Consumer Spending**  
         **Analyst Focus: Remote Work Technologies**
         {{
-            "Node": 1,
-            "Label": "Consumer Spending",
-            "Children": [
+            "node": 1,
+            "label": "Consumer Spending",
+            "children": [
                 {{
-                    "Node": 2,
-                    "Label": "E-commerce Trends",
-                    "Summary": "E-commerce plays a significant role in consumer spending, with transactions occurring increasingly online.",
-                    "Children": [
-                        {{"Node": 5, "Label": "Subscription Services", "Summary": "Consumers allocate spending to subscription models for digital services and goods."}},
-                        {{"Node": 6, "Label": "Digital Payment Solutions", "Summary": "Digital payments are an integral part of consumer spending in online transactions."}}
+                    "node": 2,
+                    "label": "E-commerce Trends",
+                    "summary": "E-commerce plays a significant role in consumer spending, with transactions occurring increasingly online.",
+                    "children": [
+                        {{"node": 5, "label": "Subscription Services", "summary": "Consumers allocate spending to subscription models for digital services and goods."}},
+                        {{"node": 6, "label": "Digital Payment Solutions", "summary": "Digital payments are an integral part of consumer spending in online transactions."}}
                     ]
                 }},
                 {{
-                    "Node": 3,
-                    "Label": "Housing Demand Shifts",
-                    "Summary": "Consumer spending in housing reflects preferences for various housing types and real estate markets.",
-                    "Children": [
-                        {{"Node": 7, "Label": "Suburban Housing Preferences", "Summary": "Spending in suburban housing reflects consumer choices influenced by various factors."}},
-                        {{"Node": 8, "Label": "Home Office Equipment Spending", "Summary": "Consumers allocate spending to home office equipment, reflecting the importance of remote work setups."}}
+                    "node": 3,
+                    "label": "Housing Demand Shifts",
+                    "summary": "Consumer spending in housing reflects preferences for various housing types and real estate markets.",
+                    "children": [
+                        {{"node": 7, "label": "Suburban Housing Preferences", "summary": "Spending in suburban housing reflects consumer choices influenced by various factors."}},
+                        {{"node": 8, "label": "Home Office Equipment Spending", "summary": "Consumers allocate spending to home office equipment, reflecting the importance of remote work setups."}}
                     ]
                 }},
                 {{
-                    "Node": 4,
-                    "Label": "Technology Adoption for Consumer Goods",
-                    "Summary": "Technological innovations in consumer goods contribute to shaping how consumers spend their money on products and services.",
-                    "Children": [
-                        {{"Node": 9, "Label": "Smart Home Devices", "Summary": "Consumers spend on smart home devices to enhance their living environments."}},
-                        {{"Node": 10, "Label": "Virtual Products and Experiences", "Summary": "Virtual products and experiences represent significant categories of consumer spending."}}
+                    "node": 4,
+                    "label": "Technology Adoption for Consumer Goods",
+                    "summary": "Technological innovations in consumer goods contribute to shaping how consumers spend their money on products and services.",
+                    "children": [
+                        {{"node": 9, "label": "Smart Home Devices", "summary": "Consumers spend on smart home devices to enhance their living environments."}},
+                        {{"node": 10, "label": "Virtual Products and Experiences", "summary": "Virtual products and experiences represent significant categories of consumer spending."}}
                     ]
                 }},
                 {{
-                    "Node": 5,
-                    "Label": "Service-Based Consumption",
-                    "Summary": "Spending on services is a key component of consumer expenditures, influenced by evolving consumer preferences.",
-                    "Children": [
-                        {{"Node": 11, "Label": "Online Education and Training", "Summary": "Consumers allocate spending to online education and training services for personal and professional development."}},
-                        {{"Node": 12, "Label": "Entertainment Subscriptions", "Summary": "Entertainment subscription services are a growing part of consumer spending in the entertainment sector."}}
+                    "node": 5,
+                    "label": "Service-Based Consumption",
+                    "summary": "Spending on services is a key component of consumer expenditures, influenced by evolving consumer preferences.",
+                    "children": [
+                        {{"node": 11, "label": "Online Education and Training", "summary": "Consumers allocate spending to online education and training services for personal and professional development."}},
+                        {{"node": 12, "label": "Entertainment Subscriptions", "summary": "Entertainment subscription services are a growing part of consumer spending in the entertainment sector."}}
                     ]
                 }}
             ]

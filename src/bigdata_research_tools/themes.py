@@ -7,29 +7,27 @@ Author: Jelena Starovic (jstarovic@ravenpack.com)
 """
 
 import ast
+import json
 from dataclasses import dataclass
 from string import Template
 from typing import Any, Dict, List
-import json 
-import logging
 
 from pandas import DataFrame
 
 from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.themes import (
     SourceType,
-    theme_generation_default_prompts,
-    compose_themes_system_prompt_onestep,
     compose_themes_system_prompt_base,
-    compose_themes_system_prompt_focus
-
+    compose_themes_system_prompt_focus,
+    compose_themes_system_prompt_onestep,
+    theme_generation_default_prompts,
 )
 
 themes_default_llm_model_config: Dict[str, Any] = {
     "provider": "openai",
     "model": "gpt-4o-mini",
     "kwargs": {
-        "temperature": 0,  # Deterministic as possible
+        "temperature": 0,
         "top_p": 1,
         "frequency_penalty": 0,
         "presence_penalty": 0,
@@ -68,6 +66,26 @@ class ThemeTree:
     def __str__(self) -> str:
         return self.as_string()
 
+    @staticmethod
+    def from_dict(tree_dict: dict) -> "ThemeTree":
+        """
+        Create a ThemeTree object from a dictionary.
+
+        Args:
+            tree_dict (dict): A dictionary representing the ThemeTree structure.
+
+        Returns:
+            ThemeTree: The ThemeTree object generated from the dictionary.
+        """
+        # Handle case sensitivity in keys
+        tree_dict = dict_keys_to_lowercase(tree_dict)
+
+        theme_tree = ThemeTree(**tree_dict)
+        theme_tree.children = [
+            ThemeTree.from_dict(child) for child in tree_dict.get("children", [])
+        ]
+        return theme_tree
+
     def as_string(self, prefix: str = "") -> str:
         """
         Convert the tree into a string.
@@ -95,38 +113,6 @@ class ThemeTree:
             s += prefix + branch
             s += child.as_string(prefix=child_prefix)
         return s
-
-    @staticmethod
-    def from_dict(tree_dict: dict) -> "ThemeTree":
-        """
-        Create a ThemeTree object from a dictionary.
-
-        Args:
-            tree_dict (dict): A dictionary representing the ThemeTree structure.
-
-        Returns:
-            ThemeTree: The ThemeTree object generated from the dictionary.
-        """
-        # Handle case sensitivity in keys
-        keys_map = {k.lower(): k for k in tree_dict.keys()}
-        
-        # Extract values using case-insensitive lookup
-        label = tree_dict.get(keys_map.get('label', ''), "")
-        node = tree_dict.get(keys_map.get('node', ''), 0)
-        summary = tree_dict.get(keys_map.get('summary', ''), "")
-        
-        # Create the tree without children first
-        theme_tree = ThemeTree(label=label, node=node, summary=summary)
-        
-        # Now process children if they exist (case-insensitive)
-        children_key = keys_map.get('children', '')
-        if children_key and tree_dict.get(children_key):
-            theme_tree.children = [
-                ThemeTree.from_dict(child) for child in tree_dict[children_key]
-                if child  # Skip None values
-            ]
-        
-        return theme_tree
 
     def get_label_summaries(self) -> Dict[str, str]:
         """
@@ -317,7 +303,6 @@ class ThemeTree:
         fig.show()
 
 
-
 def generate_theme_tree(
     main_theme: str,
     dataset: SourceType,
@@ -342,7 +327,6 @@ def generate_theme_tree(
             - `frequency_penalty` (float)
             - `presence_penalty` (float)
             - `seed` (int)
-            
 
     Returns:
         ThemeTree: The generated theme tree.
@@ -363,12 +347,12 @@ def generate_theme_tree(
             system_prompt = Template(system_prompt_template).safe_substitute(
                 main_theme=main_theme, focus=focus
             )
-        
+
         chat_history = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": main_theme},
         ]
-        
+
         tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
     else:
         # Two-step process with focus
@@ -378,9 +362,11 @@ def generate_theme_tree(
             {"role": "system", "content": base_prompt},
             {"role": "user", "content": main_theme},
         ]
-        
-        initial_tree_str = llm.get_response(base_chat_history, **ll_model_config["kwargs"])
-        
+
+        initial_tree_str = llm.get_response(
+            base_chat_history, **ll_model_config["kwargs"]
+        )
+
         # Step 2: Refine with focus
         focus_prompt = compose_themes_system_prompt_focus(main_theme, focus)
         focus_chat_history = [
@@ -389,16 +375,31 @@ def generate_theme_tree(
             {"role": "user", "content": focus},
             {"role": "user", "content": initial_tree_str},
         ]
-        
+
         tree_str = llm.get_response(focus_chat_history, **ll_model_config["kwargs"])
 
-    # Improved error handling for parsing
-    try:
-        tree_dict = json.loads(tree_str)
-    except json.JSONDecodeError:
-        tree_dict = ast.literal_eval(tree_str)
-            
+    tree_dict = ast.literal_eval(tree_str)
+
     return ThemeTree.from_dict(tree_dict)
+
+
+def dict_keys_to_lowercase(d: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert all keys in a dictionary to lowercase, including nested dictionaries.
+
+    Args:
+        d (dict): The dictionary to convert.
+
+    Returns:
+        dict: A new dictionary with all keys converted to lowercase.
+    """
+    new_dict = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            new_dict[k.lower()] = dict_keys_to_lowercase(v)
+        else:
+            new_dict[k.lower()] = v
+    return new_dict
 
 
 def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
