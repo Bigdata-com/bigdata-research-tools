@@ -4,6 +4,7 @@ Module for managing Excel workbook operations.
 Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
 """
 
+import os.path
 from logging import Logger, getLogger
 from typing import List, Tuple
 
@@ -15,6 +16,15 @@ from bigdata_research_tools.settings import (
 )
 
 logger: Logger = getLogger(__name__)
+
+# Constants for Excel formatting
+MIN_COLUMN_WIDTH = 12
+MAX_COLUMN_WIDTH = 75
+ROW_OFFSET = 3
+COLUMN_OFFSET = 1
+LOGO_SCALE_FACTOR = 0.2
+LOGO_ROW_HEIGHT = 30
+LOGO_COLUMN_WIDTH = 5
 
 
 def check_excel_dependencies() -> bool:
@@ -30,13 +40,10 @@ class ExcelManager:
 
     def __init__(
         self,
-        min_column_width: int = 12,
-        max_column_width: int = 75,
-        row_offset: int = 3,
-        column_offset: int = 1,
-        # TODO (cpinto, 2025-03-06) Careful with this. If this file does not exist, it will raise an error.
-        #   We provide it in the package, but we can just make it optional.
-        logo_path: str = f"{get_resources_path()}/bigdata-by-ravenpack-logo.png",
+        min_column_width: int = MIN_COLUMN_WIDTH,
+        max_column_width: int = MAX_COLUMN_WIDTH,
+        row_offset: int = ROW_OFFSET,
+        column_offset: int = COLUMN_OFFSET,
     ):
         """Initialize Excel manager with formatting parameters."""
         from openpyxl.styles import Border, Side
@@ -45,7 +52,9 @@ class ExcelManager:
         self.max_column_width = max_column_width
         self.row_offset = row_offset
         self.column_offset = column_offset
-        self.logo_path = logo_path
+
+        self.logo_path = f"{get_resources_path()}/bigdata-by-ravenpack-logo.png"
+
         self.thick_border = Border(left=Side(style="thick"), right=Side(style="thick"))
 
     def save_workbook(
@@ -76,6 +85,49 @@ class ExcelManager:
             self._beautify_worksheet(wb[sheet_name])
         wb.save(workbook_path)
 
+    def _add_branding(self, sheet) -> None:
+        """Add branding elements to worksheet with LibreOffice compatibility."""
+        from openpyxl.drawing.image import Image
+
+        img = Image(self.logo_path)
+
+        img.width = int(img.width * LOGO_SCALE_FACTOR)
+        img.height = int(img.height * LOGO_SCALE_FACTOR)
+
+        img.anchor = "A1"
+
+        sheet.add_image(img)
+
+        sheet.row_dimensions[1].height = LOGO_ROW_HEIGHT
+        sheet.column_dimensions["A"].width = LOGO_COLUMN_WIDTH
+
+    def _adjust_column_widths(self, sheet) -> None:
+        """Adjust column widths based on content."""
+        for column_cells in sheet.columns:
+            max_length = 0
+            column = column_cells[0].column_letter
+            for cell in column_cells[self.column_offset + 1 :]:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            adjusted_width = min(
+                max(max_length, self.min_column_width), self.max_column_width
+            )
+            sheet.column_dimensions[column].width = adjusted_width + 2
+
+    def _apply_zebra_striping(self, sheet) -> None:
+        """Apply zebra striping to worksheet."""
+        from openpyxl.styles import PatternFill
+
+        stripe_fill = PatternFill(
+            start_color="DDDDDD", end_color="DDDDDD", fill_type="solid"
+        )
+        for idx, row in enumerate(
+            sheet.iter_rows(min_row=self.row_offset, min_col=self.column_offset + 1)
+        ):
+            if idx % 2 == 1:
+                for cell in row:
+                    cell.fill = stripe_fill
+
     def _beautify_worksheet(self, sheet) -> None:
         """Apply formatting to worksheet."""
         sheet.sheet_view.showGridLines = False
@@ -105,15 +157,6 @@ class ExcelManager:
         if cell.value == 0:
             cell.value = "-"
 
-    def _add_branding(self, sheet) -> None:
-        """Add branding elements to worksheet."""
-        from openpyxl.drawing.image import Image
-
-        brand_image = Image(self.logo_path)
-        sheet.add_image(brand_image, anchor="A1")
-        sheet.row_dimensions[1].height = 70
-        sheet.column_dimensions["A"].width = 5
-
     def _format_header(self, sheet) -> None:
         """Format header row."""
         from openpyxl.styles import Alignment, Font, PatternFill
@@ -129,33 +172,6 @@ class ExcelManager:
             )
         header_ref = f"{header_row[0].coordinate}:{header_row[-1].coordinate}"
         sheet.auto_filter.ref = header_ref
-
-    def _adjust_column_widths(self, sheet) -> None:
-        """Adjust column widths based on content."""
-        for column_cells in sheet.columns:
-            max_length = 0
-            column = column_cells[0].column_letter
-            for cell in column_cells[self.column_offset + 1 :]:
-                if cell.value:
-                    max_length = max(max_length, len(str(cell.value)))
-            adjusted_width = min(
-                max(max_length, self.min_column_width), self.max_column_width
-            )
-            sheet.column_dimensions[column].width = adjusted_width + 2
-
-    def _apply_zebra_striping(self, sheet) -> None:
-        """Apply zebra striping to worksheet."""
-        from openpyxl.styles import PatternFill
-
-        stripe_fill = PatternFill(
-            start_color="DDDDDD", end_color="DDDDDD", fill_type="solid"
-        )
-        for idx, row in enumerate(
-            sheet.iter_rows(min_row=self.row_offset, min_col=self.column_offset + 1)
-        ):
-            if idx % 2 == 1:
-                for cell in row:
-                    cell.fill = stripe_fill
 
     def _format_special_columns(self, sheet) -> None:
         """Format first and last columns."""

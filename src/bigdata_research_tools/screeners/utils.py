@@ -64,4 +64,3 @@ def save_factor_to_excel(
             (df_semantic_labels, "Semantic Labels", (0, 0)),
         ]
         excel_manager.save_workbook(excel_args, file_path)
-        excel_manager.beautify_workbook(file_path)

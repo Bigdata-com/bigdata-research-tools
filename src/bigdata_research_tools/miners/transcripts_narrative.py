@@ -65,7 +65,6 @@ class TranscriptsNarrativeMiner:
         ]
 
         excel_manager.save_workbook(excel_args, file_path)
-        excel_manager.beautify_workbook(file_path)
 
     # TODO (cpinto, 2025-03-08): Rename to `get_narratives`?
     def mine_narratives(

@@ -65,7 +65,6 @@ class FilingsNarrativeMiner:
         ]
 
         excel_manager.save_workbook(excel_args, file_path)
-        excel_manager.beautify_workbook(file_path)
 
     def mine_narratives(
         self,
