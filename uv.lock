@@ -1,5 +1,5 @@
 version = 1
-requires-python = ">=3.9"
+requires-python = ">=3.9, <4.0"
 resolution-markers = [
     "python_full_version >= '3.12'",
     "python_full_version == '3.11.*'",
@@ -258,12 +258,11 @@ wheels = [
 
 [[package]]
 name = "bigdata-research-tools"
-version = "0.12.0"
-source = { editable = "." }
+version = "0.12.3"
+source = { virtual = "." }
 dependencies = [
     { name = "bigdata-client" },
     { name = "excel" },
-    { name = "graphviz" },
     { name = "ipython", version = "8.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "ipython", version = "8.32.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "openai" },
@@ -278,6 +277,7 @@ advanced = [
     { name = "pandas" },
 ]
 all = [
+    { name = "graphviz" },
     { name = "hdbscan" },
     { name = "openai" },
     { name = "openpyxl" },
@@ -302,6 +302,9 @@ excel = [
     { name = "openpyxl" },
     { name = "pillow" },
 ]
+graphviz = [
+    { name = "graphviz" },
+]
 openai = [
     { name = "openai" },
 ]
@@ -322,7 +325,8 @@ requires-dist = [
     { name = "bigdata-client", specifier = ">=2.7.0,<3.0.0" },
     { name = "excel", specifier = ">=1.0.1" },
     { name = "furo", marker = "extra == 'docs'", specifier = ">=2024.1.29" },
-    { name = "graphviz", specifier = ">=0.20.3" },
+    { name = "graphviz", marker = "extra == 'all'", specifier = ">=0.20.3,<0.21.0" },
+    { name = "graphviz", marker = "extra == 'graphviz'", specifier = ">=0.20.3,<0.21.0" },
     { name = "hdbscan", marker = "extra == 'all'", specifier = ">=0.8.40,<0.9.0" },
     { name = "ipython", specifier = ">=8.18.1" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=2.0.0" },
