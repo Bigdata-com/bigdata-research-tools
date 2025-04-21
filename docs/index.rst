@@ -31,8 +31,8 @@ Contents
    :maxdepth: 2
 
 
-   reference/index.rst
    cookbooks/index.rst
+   reference/index.rst
    changelog_link.md 
    bigdata_sdk/index.rst
    Terms of Service <https://bigdata.com/terms>
