@@ -16,6 +16,15 @@ class SourceType(Enum):
     JOBS = "JOBS"
     CORPORATE_DOCS = "CORPORATE_DOCS"
 
+    def __new__(cls, value):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        return obj
+
+    def __init__(self, value):
+        pass 
+
+
 
 def compose_themes_system_prompt_onestep(
     main_theme: str, analyst_focus: str = ""
