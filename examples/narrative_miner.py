@@ -1,19 +1,20 @@
 from typing import Dict
 
 from bigdata_research_tools.client import bigdata_connection
-from bigdata_research_tools.miners import NewsNarrativeMiner
+from bigdata_research_tools.workflows import NarrativeMiner
+from bigdata_client.models.search import DocumentType
 
 
-def example(
-    watchlist_id: str, output_file_str: str = "news_narrative_scores.xlsx"
+def narrative_miner_example(
+    watchlist_id: str, output_file_str: str = "narrative_miner_scores.xlsx"
 ) -> Dict:
 
     bigdata = bigdata_connection()
     # Retrieve the watchlist object
     GRID_watchlist = bigdata.watchlists.get(watchlist_id)
 
-    news_miner = NewsNarrativeMiner(
-        theme_labels=[
+    narrative_miner = NarrativeMiner(
+        narrative_sentences=[
             "Supervised Learning Techniques",
             "Unsupervised Learning Approaches",
             "Reinforcement Learning Systems",
@@ -35,9 +36,11 @@ def example(
         start_date="2024-11-01",
         end_date="2024-11-15",
         rerank_threshold=None,
+        document_type=DocumentType.TRANSCRIPTS,
+        fiscal_year=2024
     )
 
-    return news_miner.mine_narratives(export_to_path=output_file_str)
+    return narrative_miner.mine_narratives(export_path=output_file_str)
 
 
 if __name__ == "__main__":
@@ -53,4 +56,4 @@ if __name__ == "__main__":
     if not watchlist_id:
         raise ValueError("Please replace watchlist_id with a watchlist id you own")
 
-    example(watchlist_id)
+    narrative_miner_example(watchlist_id)

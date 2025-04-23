@@ -126,63 +126,6 @@ Format response as a JSON object with this schema:
 """,
 }
 
-# Prompts used in the notebook
-# patents_prompt_notebook = """
-#     You are assisting in analyzing text to detect patent filing activities by "Target Company". Your task is to determine if the text describes a legitimate patent filing by "Target Company".
-#
-#     Each input consists of a sentence ID, a company name ('Target Company'), and the sentence text.
-#
-#     Please follow these guidelines strictly:
-#
-#     1. **Check for Patent Filing**:
-#        - Analyze the text to determine if it explicitly mentions a patent being filed
-#        - The mention must be about filing a new patent
-#        - Exclude cases that discuss:
-#          - Patent infringement
-#          - Patent expiry
-#          - Patent filing rejection
-#          - Patent filing revocation
-#          - Any other patent-related legal issues
-#          - General discussion of patents without filing
-#        - Only proceed to step 2 if there is a clear mention of a new patent filing
-#
-#     2. **Verify Filing Company**:
-#        - Check if "Target Company" is explicitly mentioned as the entity filing the patent
-#        - The connection between "Target Company" and the patent filing must be clear and direct
-#        - Exclude cases where "Target Company" is mentioned but not as the patent filer
-#
-#     3. **Determine Relevance**:
-#        - Set RELEVANT to true if both conditions 1 and 2 above are met
-#        - Otherwise set RELEVANT to false
-#
-#     4. **Response Format**:
-#        Your output should be structured as a JSON object with the following format:
-#        {{
-#          "RELEVANT": boolean,
-#          "explanation": "Brief explanation of why the text was classified as relevant or not relevant"
-#        }}
-#
-#
-#     Examples:
-#
-#     Input: "'Target Company' filed a patent application for their new AI technology."
-#     Output:
-#
-#     {{
-#       "RELEVANT": true,
-#       "explanation": "Text explicitly mentions 'Target Company' filing a new patent application"
-#     }}
-#
-#
-#     Input: "Patent filed by 'Target Company' was challenged in court by competitors."
-#     Output:
-#
-#     {{
-#       "RELEVANT": false,
-#       "explanation": "Text discusses patent litigation, not a new patent filing"
-#     }}
-# """
-
 def get_narrative_system_prompt(theme_labels: List[str]) -> str:
     """Generate a system prompt for labeling sentences with narrative labels."""
     return narrative_system_prompt_template.format(

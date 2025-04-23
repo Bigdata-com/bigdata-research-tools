@@ -7,7 +7,7 @@ from pandas import DataFrame, merge
 
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
-from bigdata_research_tools.screeners.utils import get_scored_df, save_factor_to_excel
+from bigdata_research_tools.workflows.workflow_utils import get_scored_df, save_to_excel, validate_params
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.themes import (
     SourceType,
@@ -17,7 +17,7 @@ from bigdata_research_tools.themes import (
 logger: Logger = getLogger(__name__)
 
 
-class ExecutiveNarrativeFactor:
+class ThematicScreener:
 
     def __init__(
         self,
@@ -26,13 +26,14 @@ class ExecutiveNarrativeFactor:
         companies: List[Company],
         start_date: str,
         end_date: str,
-        fiscal_year: int,
+        document_type: DocumentType,
+        fiscal_year: Optional[int] = None,
         sources: Optional[List[str]] = None,
         rerank_threshold: Optional[float] = None,
         focus: str = "",
     ):
         """
-        This class will track executive narratives in company transcripts.
+        This class will screen a universe's (specified in 'companies') exposure to a given theme ('main_theme').
 
         Args:
             llm_model (str): LLM <provider::model> to be used in text processing and analysis.
@@ -44,6 +45,7 @@ class ExecutiveNarrativeFactor:
                 Format: YYYY-MM-DD.
             end_date (str): The end date for searching relevant documents.
                 Format: YYYY-MM-DD.
+            document_type (DocumentType): Specifies the type of documents to search over
             fiscal_year (int): The fiscal year that will be analyzed.
             sources (Optional[List[str]]): Used to filter search results by the sources of the documents.
                 If not provided, the search is run across all available sources.
@@ -52,6 +54,8 @@ class ExecutiveNarrativeFactor:
             focus (Optional[str]): The focus of the analysis. No value by default.
                 If used, generated sub-themes will be based on this.
         """
+        validate_params(document_scope=document_type, 
+                        fiscal_year=fiscal_year)
 
         self.llm_model = llm_model
         self.main_theme = main_theme
@@ -59,6 +63,7 @@ class ExecutiveNarrativeFactor:
         self.start_date = start_date
         self.end_date = end_date
         self.fiscal_year = fiscal_year
+        self.document_type = document_type
         self.sources = sources
         self.rerank_threshold = rerank_threshold
         self.focus = focus
@@ -114,7 +119,7 @@ class ExecutiveNarrativeFactor:
             sentences=theme_summaries,
             start_date=self.start_date,
             end_date=self.end_date,
-            scope=DocumentType.TRANSCRIPTS,
+            scope=self.document_type,
             fiscal_year=self.fiscal_year,
             sources=self.sources,
             rerank_threshold=self.rerank_threshold,
@@ -154,12 +159,15 @@ class ExecutiveNarrativeFactor:
 
         # Export to Excel if path provided
         if export_path:
-            save_factor_to_excel(
+            save_to_excel(
                 file_path=export_path,
-                df_company=df_company,
-                df_industry=df_industry,
-                df_semantic_labels=df,
+                tables={
+                    "Semantic Labels": (df, (0, 0)),
+                    "By Company": (df_company, (2, 4)),
+                    "By Industry": (df_industry, (2, 2))
+                }
             )
+
 
         return {
             "df_labeled": df,
