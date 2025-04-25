@@ -4,7 +4,7 @@ from pandas import merge
 from bigdata_client.models.search import DocumentType
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
-from bigdata_research_tools.workflows.workflow_utils import save_to_excel, validate_params
+from bigdata_research_tools.workflows.utils import save_to_excel, validate_params
 from bigdata_research_tools.search import search_narratives
 
 logger: Logger = getLogger(__name__)

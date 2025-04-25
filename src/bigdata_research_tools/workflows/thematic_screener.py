@@ -7,7 +7,7 @@ from pandas import DataFrame, merge
 
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
-from bigdata_research_tools.workflows.workflow_utils import get_scored_df, save_to_excel, validate_params
+from bigdata_research_tools.workflows.utils import get_scored_df, save_to_excel, validate_params
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.themes import (
     SourceType,
