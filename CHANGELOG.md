@@ -7,6 +7,21 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2025-04-25
+
+### Added
+
+* Add prompt which better integrates analyst focus into mindmapper
+
+### Changed
+
+* Updated narrative miners cookbook to use another source (as we no longer have CNBC)
+* Fix excel logo 
+* Update cookbooks section of documentation to explain why to look at the cookbook(s)
+* Change ordering of docs
+* Fix the labelling prompt to be the same as in thematic screener notebook
+* Set the default temperature for all LLM calls to 0
+
 ## [0.12.0] - 2025-03-24
 
 ### Added
