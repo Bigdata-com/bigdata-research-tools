@@ -176,7 +176,11 @@ class ScreenerLabeler(Labeler):
             "Motivation",
             "Theme",
         ]
-        return df[export_columns]
+        
+        sort_columns = ["Date", "Time Period"]
+        df = df[export_columns].sort_values(sort_columns)
+        
+        return df
 
 
 def replace_company_placeholders(row: Series) -> str:
