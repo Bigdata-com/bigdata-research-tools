@@ -1,28 +1,39 @@
 """
 Script with any common helper functions used across the workflows.
 """
+
+from typing import List
+
 from bigdata_client.models.search import DocumentType
-from typing import List, Optional
 from pandas import DataFrame
+
 from bigdata_research_tools.excel import ExcelManager, check_excel_dependencies
 
-def validate_params(**kwargs):
-    """Validates parameters based on predefined rules."""
 
-    document_scope = kwargs.get('document_scope')
-    fiscal_year = kwargs.get('fiscal_year')
-
+def validate_parameters(
+    document_scope: DocumentType = None, fiscal_year: int = None
+) -> None:
+    """
+    Validates parameters based on predefined rules.
+    Will raise a ValueError if any of the rules are violated.
+    Will return None otherwise.
+    """
     # Skip validation if document_scope is not provided
     if document_scope is None:
         return
 
     if document_scope in [DocumentType.FILINGS, DocumentType.TRANSCRIPTS]:
         if fiscal_year is None:
-            raise ValueError(f"fiscal_year is required when document_scope is {document_scope.value}")
+            raise ValueError(
+                f"`fiscal_year` is required when `document_scope` is `{document_scope.value}`"
+            )
 
     if document_scope == DocumentType.NEWS:
         if fiscal_year is not None:
-            raise ValueError(f"fiscal_year must be None when document_scope is {document_scope.value}")
+            raise ValueError(
+                f"`fiscal_year` must be None when `document_scope` is `{document_scope.value}`"
+            )
+
 
 def get_scored_df(
     df: DataFrame, index_columns: List[str], pivot_column: str
@@ -76,8 +87,7 @@ def save_to_excel(
     excel_manager = ExcelManager()
 
     excel_args = [
-        (df, sheet_name, position)
-        for sheet_name, (df, position) in tables.items()
+        (df, sheet_name, position) for sheet_name, (df, position) in tables.items()
     ]
 
     excel_manager.save_workbook(excel_args, file_path)

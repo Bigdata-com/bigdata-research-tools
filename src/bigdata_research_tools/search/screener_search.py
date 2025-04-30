@@ -131,18 +131,21 @@ def search_by_companies(
     )
 
     results, entities = filter_search_results(results)
-    
+
     # Determine whether to filter by companies based on document type
     # For filings and transcripts, we don't need to filter as we use reporting entities
     # For news, we need to check against our original universe of companies as a news article
     # may mention other companies we're not interested in
-    needs_company_filtering = scope not in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS)
-    
+    needs_company_filtering = scope not in (
+        DocumentType.FILINGS,
+        DocumentType.TRANSCRIPTS,
+    )
+
     df_sentences = process_screener_search_results(
         results=results,
         entities=entities,
         companies=companies if needs_company_filtering else None,
-        document_type=scope
+        document_type=scope,
     )
     return df_sentences
 
@@ -282,18 +285,18 @@ def process_screener_search_results(
     results: List[Document],
     entities: List[ListQueryComponent],
     companies: Optional[List[Company]] = None,
-    document_type: DocumentType = DocumentType.NEWS
+    document_type: DocumentType = DocumentType.NEWS,
 ) -> DataFrame:
     """
     Build a unified DataFrame from search results for any document type.
-    
+
     Args:
         results (List[Document]): A list of Bigdata search results.
         entities (List[ListQueryComponent]): A list of entities.
         companies (Optional[List[Company]]): A list of companies to filter for.
             Only used for non-reporting entity documents.
         document_type (DocumentType): The type of documents being processed.
-    
+
     Returns:
         DataFrame: Standardized screening DataFrame with consistent schema:
         - Index: int
@@ -317,7 +320,7 @@ def process_screener_search_results(
             - other_entities_map: List[Tuple[int, str]]
     """
     entity_key_map = {entity.id: entity for entity in entities}
-    
+
     rows = []
     for result in tqdm(results, desc=f"Processing {document_type} results..."):
         for chunk_index, chunk in enumerate(result.chunks):
@@ -325,8 +328,16 @@ def process_screener_search_results(
             chunk_entities = [
                 {
                     "key": entity.key,
-                    "name": entity_key_map[entity.key].name if entity.key in entity_key_map else None,
-                    "ticker": entity_key_map[entity.key].ticker if entity.key in entity_key_map else None,
+                    "name": (
+                        entity_key_map[entity.key].name
+                        if entity.key in entity_key_map
+                        else None
+                    ),
+                    "ticker": (
+                        entity_key_map[entity.key].ticker
+                        if entity.key in entity_key_map
+                        else None
+                    ),
                     "start": entity.start,
                     "end": entity.end,
                 }
@@ -336,85 +347,93 @@ def process_screener_search_results(
 
             if not chunk_entities:
                 continue  # Skip if no entities are mapped
-            
+
             # Handle differently based on document type
             if document_type in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS):
                 # Process reporting entities
                 for re_key in result.reporting_entities:
                     reporting_entity = entity_key_map.get(re_key)
-                    
+
                     if not reporting_entity:
                         continue  # Skip if reporting entity is not found
-                    
+
                     # Exclude the reporting entity from other entities
                     other_entities = [
                         e for e in chunk_entities if e["name"] != reporting_entity.name
                     ]
-                    
+
                     # Collect information in standard format
-                    rows.append({
-                        "timestamp_utc": result.timestamp,
-                        "document_id": result.id,
-                        "sentence_id": f"{result.id}-{chunk_index}",
-                        "headline": result.headline,
-                        "entity_id": re_key,
-                        "document_type": document_type.value,
-                        "is_reporting_entity": True,
-                        "entity_name": reporting_entity.name,
-                        "entity_sector": reporting_entity.sector,
-                        "entity_industry": reporting_entity.industry,
-                        "entity_country": reporting_entity.country,
-                        "entity_ticker": reporting_entity.ticker,
-                        "text": chunk.text,
-                        "other_entities": ", ".join(e["name"] for e in other_entities),
-                        "entities": chunk_entities,
-                    })
+                    rows.append(
+                        {
+                            "timestamp_utc": result.timestamp,
+                            "document_id": result.id,
+                            "sentence_id": f"{result.id}-{chunk_index}",
+                            "headline": result.headline,
+                            "entity_id": re_key,
+                            "document_type": document_type.value,
+                            "is_reporting_entity": True,
+                            "entity_name": reporting_entity.name,
+                            "entity_sector": reporting_entity.sector,
+                            "entity_industry": reporting_entity.industry,
+                            "entity_country": reporting_entity.country,
+                            "entity_ticker": reporting_entity.ticker,
+                            "text": chunk.text,
+                            "other_entities": ", ".join(
+                                e["name"] for e in other_entities
+                            ),
+                            "entities": chunk_entities,
+                        }
+                    )
             else:
                 # Process standard entities
                 for chunk_entity in chunk_entities:
                     entity_key = entity_key_map.get(chunk_entity["key"])
-                    
+
                     if not entity_key:
                         continue  # Skip if entity is not found
-                    
+
                     # if entity isn't in our original watchlist, skip
                     if companies and entity_key not in companies:
                         continue
-                    
+
                     # Exclude the entity from other entities
                     other_entities = [
                         e for e in chunk_entities if e["name"] != chunk_entity["name"]
                     ]
-                    
+
                     # Collect information in standard format
-                    rows.append({
-                        "timestamp_utc": result.timestamp,
-                        "document_id": result.id,
-                        "sentence_id": f"{result.id}-{chunk_index}",
-                        "headline": result.headline,
-                        "entity_id": chunk_entity["key"],
-                        "document_type": document_type.value,
-                        "is_reporting_entity": False,
-                        "entity_name": entity_key.name,
-                        "entity_sector": entity_key.sector,
-                        "entity_industry": entity_key.industry,
-                        "entity_country": entity_key.country,
-                        "entity_ticker": entity_key.ticker,
-                        "text": chunk.text,
-                        "other_entities": ", ".join(e["name"] for e in other_entities),
-                        "entities": chunk_entities,
-                    })
-    
+                    rows.append(
+                        {
+                            "timestamp_utc": result.timestamp,
+                            "document_id": result.id,
+                            "sentence_id": f"{result.id}-{chunk_index}",
+                            "headline": result.headline,
+                            "entity_id": chunk_entity["key"],
+                            "document_type": document_type.value,
+                            "is_reporting_entity": False,
+                            "entity_name": entity_key.name,
+                            "entity_sector": entity_key.sector,
+                            "entity_industry": entity_key.industry,
+                            "entity_country": entity_key.country,
+                            "entity_ticker": entity_key.ticker,
+                            "text": chunk.text,
+                            "other_entities": ", ".join(
+                                e["name"] for e in other_entities
+                            ),
+                            "entities": chunk_entities,
+                        }
+                    )
+
     if not rows:
         raise ValueError("No rows to process")
-    
+
     df = DataFrame(rows).sort_values("timestamp_utc").reset_index(drop=True)
-    
+
     # Deduplicate by quote text as well
     df = df.drop_duplicates(
         subset=["timestamp_utc", "document_id", "text", "entity_id"]
     )
-    
+
     df = mask_sentences(df, document_type)
     return df.reset_index(drop=True)
 
@@ -440,9 +459,7 @@ def mask_sentences(
     df["text"] = df["text"].str.replace("{", "", regex=False)
     df["text"] = df["text"].str.replace("}", "", regex=False)
 
-    df = mask_entity_coordinates(
-        df=df
-    )
+    df = mask_entity_coordinates(df=df)
 
     df["masked_text"] = df["masked_text"].apply(
         lambda x: x.replace("{", "").replace("}", "")
@@ -458,7 +475,7 @@ def mask_entity_coordinates(
 ) -> DataFrame:
     """
     Mask the target entity and other entities in the text.
-    
+
     Args:
         df (DataFrame): The input DataFrame
     Returns:
@@ -472,7 +489,7 @@ def mask_entity_coordinates(
     # Ensure columns are compatible with string/object assignments
     df["masked_text"] = df["masked_text"].astype("object")
     df["other_entities_map"] = df["other_entities_map"].astype("object")
-    
+
     # Process each row
     for idx, row in df.iterrows():
         text = row["text"]

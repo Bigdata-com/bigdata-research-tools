@@ -7,11 +7,12 @@ from pandas import DataFrame, merge
 
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
-from bigdata_research_tools.workflows.utils import get_scored_df, save_to_excel, validate_params
 from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.themes import (
-    SourceType,
-    generate_theme_tree,
+from bigdata_research_tools.themes import SourceType, generate_theme_tree
+from bigdata_research_tools.workflows.utils import (
+    get_scored_df,
+    save_to_excel,
+    validate_parameters,
 )
 
 logger: Logger = getLogger(__name__)
@@ -54,8 +55,7 @@ class ThematicScreener:
             focus (Optional[str]): The focus of the analysis. No value by default.
                 If used, generated sub-themes will be based on this.
         """
-        validate_params(document_scope=document_type, 
-                        fiscal_year=fiscal_year)
+        validate_parameters(document_scope=document_type, fiscal_year=fiscal_year)
 
         self.llm_model = llm_model
         self.main_theme = main_theme
@@ -101,7 +101,7 @@ class ThematicScreener:
             logger.error(
                 "`excel` optional dependencies are not installed. "
                 "You can run `pip install bigdata_research_tools[excel]` to install them. "
-                "Consider installing them to save the `executive_narrative` factor into the "
+                "Consider installing them to save the Thematic Screener result into the "
                 f"path `{export_path}`."
             )
 
@@ -110,7 +110,7 @@ class ThematicScreener:
             dataset=SourceType.CORPORATE_DOCS,
             focus=self.focus,
         )
-        
+
         theme_summaries = theme_tree.get_terminal_summaries()
         terminal_labels = theme_tree.get_terminal_labels()
 
@@ -164,10 +164,9 @@ class ThematicScreener:
                 tables={
                     "Semantic Labels": (df, (0, 0)),
                     "By Company": (df_company, (2, 4)),
-                    "By Industry": (df_industry, (2, 2))
-                }
+                    "By Industry": (df_industry, (2, 2)),
+                },
             )
-
 
         return {
             "df_labeled": df,
