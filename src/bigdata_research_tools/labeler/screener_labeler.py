@@ -30,8 +30,6 @@ class ScreenerLabeler(Labeler):
         self,
         llm_model: str,
         label_prompt: Optional[str] = None,
-        # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
-        #  Changing it here would break the process.
         unknown_label: str = "unclear",
         temperature: float = 0,
     ):
@@ -41,7 +39,7 @@ class ScreenerLabeler(Labeler):
                 <provider>::<model>, e.g. "openai::gpt-4o-mini"
             label_prompt: Prompt provided by user to label the search result chunks.
                 If not provided, then our default labelling prompt is used.
-            unknown_label: Label for unclear classifications
+            unknown_label: Label for unclear classifications.
             temperature: Temperature to use in the LLM model.
         """
         super().__init__(llm_model, unknown_label, temperature)
@@ -70,10 +68,8 @@ class ScreenerLabeler(Labeler):
                 - motivation
                 - label
         """
-        system_prompt = (
-            get_screener_system_prompt(main_theme, labels)
-            if self.label_prompt is None
-            else self.label_prompt
+        system_prompt = self.label_prompt or get_screener_system_prompt(
+            main_theme, labels, unknown_label=self.unknown_label
         )
         prompts = get_prompts_for_labeler(texts)
 

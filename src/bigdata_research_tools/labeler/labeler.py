@@ -110,7 +110,6 @@ def get_prompts_for_labeler(
 
     Args:
         texts: texts to get the labels from.
-        chunk_size: Number of texts per chunk.
 
     Returns:
         A list of prompts for the labeling system.
