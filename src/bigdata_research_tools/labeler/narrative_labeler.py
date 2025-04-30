@@ -141,7 +141,7 @@ class NarrativeLabeler(Labeler):
             "Label",
         ]
 
-        sort_columns = ["Date", "Time Period"]
+        sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Quote"]
         df = df[export_columns].sort_values(sort_columns)
         
         return df

@@ -176,9 +176,9 @@ class ScreenerLabeler(Labeler):
             "Motivation",
             "Theme",
         ]
-        
-        sort_columns = ["Date", "Time Period"]
-        df = df[export_columns].sort_values(sort_columns)
+
+        sort_columns = ["Date", "Time Period", "Company", "Document ID", "Headline", "Quote"]
+        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)        
         
         return df
 
