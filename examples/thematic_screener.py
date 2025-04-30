@@ -1,10 +1,14 @@
 from typing import Dict
 
-from bigdata_research_tools.client import bigdata_connection
-from bigdata_research_tools.workflows import ThematicScreener
 from bigdata_client.models.search import DocumentType
 
-def thematic_screener_example() -> Dict:
+from bigdata_research_tools.client import bigdata_connection
+from bigdata_research_tools.workflows import ThematicScreener
+
+
+def thematic_screener_example(
+    export_path: str = "thematic_screener_results.xlsx",
+) -> Dict:
 
     GRID_watchlist_ID = "a60c351a-1822-4a88-8c45-a4e78abd979a"
 
@@ -22,15 +26,21 @@ def thematic_screener_example() -> Dict:
         end_date="2024-11-15",
         document_type=DocumentType.TRANSCRIPTS,
         fiscal_year=2024,
-    ).screen_companies(export_path="thematic_screener_results.xlsx")
+    ).screen_companies(export_path=export_path)
     return thematic_screener
 
 
 if __name__ == "__main__":
 
+    import logging
+
     from dotenv import load_dotenv
 
     # Load environment variables for authentication
     print(f"Environment variables loaded: {load_dotenv()}")
+
+    # Set the logging configuration to show the logs of the library
+    logging.basicConfig()
+    logging.getLogger("bigdata_research_tools").setLevel(logging.INFO)
 
     thematic_screener_example()

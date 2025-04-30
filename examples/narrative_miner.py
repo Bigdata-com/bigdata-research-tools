@@ -1,17 +1,11 @@
 from typing import Dict
 
-from bigdata_research_tools.client import bigdata_connection
-from bigdata_research_tools.workflows import NarrativeMiner
 from bigdata_client.models.search import DocumentType
 
+from bigdata_research_tools.workflows import NarrativeMiner
 
-def narrative_miner_example(
-    watchlist_id: str, output_file_str: str = "narrative_miner_scores.xlsx"
-) -> Dict:
 
-    bigdata = bigdata_connection()
-    # Retrieve the watchlist object
-    GRID_watchlist = bigdata.watchlists.get(watchlist_id)
+def narrative_miner_example(export_path: str = "narrative_miner_sample.xlsx") -> Dict:
 
     narrative_miner = NarrativeMiner(
         narrative_sentences=[
@@ -37,23 +31,23 @@ def narrative_miner_example(
         end_date="2024-11-15",
         rerank_threshold=None,
         document_type=DocumentType.TRANSCRIPTS,
-        fiscal_year=2024
+        fiscal_year=2024,
     )
 
-    return narrative_miner.mine_narratives(export_path=output_file_str)
+    return narrative_miner.mine_narratives(export_path=export_path)
 
 
 if __name__ == "__main__":
+
+    import logging
 
     from dotenv import load_dotenv
 
     # Load environment variables for authentication
     print(f"Environment variables loaded: {load_dotenv()}")
 
-    watchlist_id = (
-        "a60c351a-1822-4a88-8c45-a4e78abd979a"  # Input your watchlist ID here
-    )
-    if not watchlist_id:
-        raise ValueError("Please replace watchlist_id with a watchlist id you own")
+    # Set the logging configuration to show the logs of the library
+    logging.basicConfig()
+    logging.getLogger("bigdata_research_tools").setLevel(logging.INFO)
 
-    narrative_miner_example(watchlist_id)
+    narrative_miner_example()
