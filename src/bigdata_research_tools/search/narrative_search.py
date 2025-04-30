@@ -7,7 +7,7 @@ from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
 
-from bigdata_research_tools.search.advanced_query_builder import (
+from bigdata_research_tools.search.query_builder import (
     build_batched_query,
     create_date_ranges,
 )

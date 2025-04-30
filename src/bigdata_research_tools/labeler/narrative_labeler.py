@@ -140,4 +140,8 @@ class NarrativeLabeler(Labeler):
             "Motivation",
             "Label",
         ]
-        return df[export_columns]
+
+        sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Quote"]
+        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True) 
+        
+        return df

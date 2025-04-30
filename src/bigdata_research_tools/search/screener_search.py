@@ -5,7 +5,6 @@ from re import findall
 from time import sleep
 from typing import List, Optional, Tuple
 
-import pandas as pd
 from bigdata_client.connection import RequestMaxLimitExceeds
 from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import ListQueryComponent
@@ -21,7 +20,7 @@ from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
     get_target_entity_placeholder,
 )
-from bigdata_research_tools.search.advanced_query_builder import (
+from bigdata_research_tools.search.query_builder import (
     build_batched_query,
     create_date_ranges,
 )
@@ -73,53 +72,30 @@ def search_by_companies(
 
     Returns:
         DataFrame: The DataFrame with the screening results.
-        Depending on the `scope` parameter, the result has different column names.
-        If scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS):
-            - Index: int
-            - Columns:
-                - timestamp_utc: datetime64
-                - rp_document_id: str
-                - sentence_id: str
-                - headline: str
-                - rp_entity_id: str
-                - entity_name: str
-                - entity_sector: str
-                - entity_industry: str
-                - entity_country: str
-                - entity_ticker: str
-                - text: str
-                - other_entities: str
-                - entities: List[Dict[str, Any]]
-                    - key: str
-                    - name: str
-                    - ticker: str
-                    - start: int
-                    - end: int
-                - masked_text: str
-                - other_entities_map: List[Tuple[int, str]]
-        else:
-            - Index: int
-            - Columns:
-                - timestamp_utc: datetime64
-                - document_id: str
-                - sentence_id: str
-                - headline: str
-                - entity_id: str
-                - entity_name: str
-                - entity_sector: str
-                - entity_industry: str
-                - entity_country: str
-                - entity_ticker: str
-                - text: str
-                - other_entities: str
-                - entities: List[Dict[str, Any]]
-                    - key: str
-                    - name: str
-                    - ticker: str
-                    - start: int
-                    - end: int
-                - masked_text: str
-                - other_entities_map: List[Tuple[int, str]]
+        - Index: int
+        - Columns:
+            - timestamp_utc: datetime64
+            - document_id: str
+            - sentence_id: str
+            - headline: str
+            - entity_id: str
+            - document_type: str
+            - is_reporting_entity: bool
+            - entity_name: str
+            - entity_sector: str
+            - entity_industry: str
+            - entity_country: str
+            - entity_ticker: str
+            - text: str
+            - other_entities: str
+            - entities: List[Dict[str, Any]]
+                - key: str
+                - name: str
+                - ticker: str
+                - start: int
+                - end: int
+            - masked_text: str
+            - other_entities_map: List[Tuple[int, str]]
     """
     # Extract entities for search querying
     entity_keys = [entity.id for entity in companies]
@@ -155,12 +131,21 @@ def search_by_companies(
     )
 
     results, entities = filter_search_results(results)
-    # TODO (cpinto, 2025-04-08) having different output schemas depending on the scope
-    #  can be a bit confusing here
-    df_sentences = (
-        process_screener_search_reporting_entities(results, entities)
-        if scope in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS)
-        else process_screener_search_entities(results, entities, companies)
+
+    # Determine whether to filter by companies based on document type
+    # For filings and transcripts, we don't need to filter as we use reporting entities
+    # For news, we need to check against our original universe of companies as a news article
+    # may mention other companies we're not interested in
+    needs_company_filtering = scope not in (
+        DocumentType.FILINGS,
+        DocumentType.TRANSCRIPTS,
+    )
+
+    df_sentences = process_screener_search_results(
+        results=results,
+        entities=entities,
+        companies=companies if needs_company_filtering else None,
+        document_type=scope,
     )
     return df_sentences
 
@@ -245,7 +230,6 @@ def look_up_entities_binary_search(
 
     entities = []
     non_entities = []
-    # TODO non_entities never gets used. Is that intentional?
 
     def depth_first_search(batch: List[str]) -> None:
         """
@@ -297,22 +281,24 @@ def look_up_entities_binary_search(
     return entities
 
 
-def process_screener_search_entities(
+def process_screener_search_results(
     results: List[Document],
     entities: List[ListQueryComponent],
-    companies: List[Company],
+    companies: Optional[List[Company]] = None,
+    document_type: DocumentType = DocumentType.NEWS,
 ) -> DataFrame:
     """
-    Build a DataFrame from the screening results and entities.
+    Build a unified DataFrame from search results for any document type.
 
     Args:
         results (List[Document]): A list of Bigdata search results.
         entities (List[ListQueryComponent]): A list of entities.
-        companies (List[Company]): A list of companies to filter for.
-            Detected entities not in this list will be skipped.
+        companies (Optional[List[Company]]): A list of companies to filter for.
+            Only used for non-reporting entity documents.
+        document_type (DocumentType): The type of documents being processed.
 
     Returns:
-        DataFrame: Screening DataFrame. Schema:
+        DataFrame: Standardized screening DataFrame with consistent schema:
         - Index: int
         - Columns:
             - timestamp_utc: datetime64
@@ -320,6 +306,8 @@ def process_screener_search_entities(
             - sentence_id: str
             - headline: str
             - entity_id: str
+            - document_type: str (metadata field showing the document type)
+            - is_reporting_entity: bool (True if entity is a reporting entity)
             - entity_name: str
             - entity_sector: str
             - entity_industry: str
@@ -328,25 +316,28 @@ def process_screener_search_entities(
             - text: str
             - other_entities: str
             - entities: List[Dict[str, Any]]
-                - key: str
-                - name: str
-                - ticker: str
-                - start: int
-                - end: int
             - masked_text: str
             - other_entities_map: List[Tuple[int, str]]
     """
     entity_key_map = {entity.id: entity for entity in entities}
 
     rows = []
-    for result in tqdm(results, desc="Processing screening entities..."):
+    for result in tqdm(results, desc=f"Processing {document_type} results..."):
         for chunk_index, chunk in enumerate(result.chunks):
             # Build a list of entities present in the chunk
             chunk_entities = [
                 {
                     "key": entity.key,
-                    "name": entity_key_map[entity.key].name,
-                    "ticker": entity_key_map[entity.key].ticker,
+                    "name": (
+                        entity_key_map[entity.key].name
+                        if entity.key in entity_key_map
+                        else None
+                    ),
+                    "ticker": (
+                        entity_key_map[entity.key].ticker
+                        if entity.key in entity_key_map
+                        else None
+                    ),
                     "start": entity.start,
                     "end": entity.end,
                 }
@@ -357,39 +348,81 @@ def process_screener_search_entities(
             if not chunk_entities:
                 continue  # Skip if no entities are mapped
 
-            for chunk_entity in chunk_entities:
-                entity_key = entity_key_map.get(chunk_entity["key"])
+            # Handle differently based on document type
+            if document_type in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS):
+                # Process reporting entities
+                for re_key in result.reporting_entities:
+                    reporting_entity = entity_key_map.get(re_key)
 
-                if not entity_key:
-                    continue  # Skip if entity is not found
+                    if not reporting_entity:
+                        continue  # Skip if reporting entity is not found
 
-                # if entity isn't in our original watchlist, skip
-                if entity_key not in companies:
-                    continue
+                    # Exclude the reporting entity from other entities
+                    other_entities = [
+                        e for e in chunk_entities if e["name"] != reporting_entity.name
+                    ]
 
-                # Exclude the entity from other entities
-                other_entities = [
-                    e for e in chunk_entities if e["name"] != chunk_entity["name"]
-                ]
+                    # Collect information in standard format
+                    rows.append(
+                        {
+                            "timestamp_utc": result.timestamp,
+                            "document_id": result.id,
+                            "sentence_id": f"{result.id}-{chunk_index}",
+                            "headline": result.headline,
+                            "entity_id": re_key,
+                            "document_type": document_type.value,
+                            "is_reporting_entity": True,
+                            "entity_name": reporting_entity.name,
+                            "entity_sector": reporting_entity.sector,
+                            "entity_industry": reporting_entity.industry,
+                            "entity_country": reporting_entity.country,
+                            "entity_ticker": reporting_entity.ticker,
+                            "text": chunk.text,
+                            "other_entities": ", ".join(
+                                e["name"] for e in other_entities
+                            ),
+                            "entities": chunk_entities,
+                        }
+                    )
+            else:
+                # Process standard entities
+                for chunk_entity in chunk_entities:
+                    entity_key = entity_key_map.get(chunk_entity["key"])
 
-                # Collect all necessary information in the row
-                rows.append(
-                    {
-                        "timestamp_utc": result.timestamp,
-                        "document_id": result.id,
-                        "sentence_id": f"{result.id}-{chunk_index}",
-                        "headline": result.headline,
-                        "entity_id": chunk_entity["key"],
-                        "entity_name": entity_key.name,
-                        "entity_sector": entity_key.sector,
-                        "entity_industry": entity_key.industry,
-                        "entity_country": entity_key.country,
-                        "entity_ticker": entity_key.ticker,
-                        "text": chunk.text,
-                        "other_entities": ", ".join(e["name"] for e in other_entities),
-                        "entities": chunk_entities,
-                    }
-                )
+                    if not entity_key:
+                        continue  # Skip if entity is not found
+
+                    # if entity isn't in our original watchlist, skip
+                    if companies and entity_key not in companies:
+                        continue
+
+                    # Exclude the entity from other entities
+                    other_entities = [
+                        e for e in chunk_entities if e["name"] != chunk_entity["name"]
+                    ]
+
+                    # Collect information in standard format
+                    rows.append(
+                        {
+                            "timestamp_utc": result.timestamp,
+                            "document_id": result.id,
+                            "sentence_id": f"{result.id}-{chunk_index}",
+                            "headline": result.headline,
+                            "entity_id": chunk_entity["key"],
+                            "document_type": document_type.value,
+                            "is_reporting_entity": False,
+                            "entity_name": entity_key.name,
+                            "entity_sector": entity_key.sector,
+                            "entity_industry": entity_key.industry,
+                            "entity_country": entity_key.country,
+                            "entity_ticker": entity_key.ticker,
+                            "text": chunk.text,
+                            "other_entities": ", ".join(
+                                e["name"] for e in other_entities
+                            ),
+                            "entities": chunk_entities,
+                        }
+                    )
 
     if not rows:
         raise ValueError("No rows to process")
@@ -400,120 +433,15 @@ def process_screener_search_entities(
     df = df.drop_duplicates(
         subset=["timestamp_utc", "document_id", "text", "entity_id"]
     )
-    df = mask_sentences(
-        df,
-        document_type=DocumentType.NEWS,
-    )
-    df = df.reset_index(drop=True)
-    return df
 
-
-def process_screener_search_reporting_entities(
-    results: List[Document], entities: List[ListQueryComponent]
-) -> pd.DataFrame:
-    """
-    Build a DataFrame from the search results and entities.
-
-    Args:
-        results (List[Document]): A list of Bigdata search results.
-        entities (List[ListQueryComponent]): A list of entities.
-
-    Returns:
-        DataFrame: Screening DataFrame. Schema:
-        - Index: int
-        - Columns:
-            - timestamp_utc: datetime64
-            - rp_document_id: str
-            - sentence_id: str
-            - headline: str
-            - rp_entity_id: str
-            - entity_name: str
-            - entity_sector: str
-            - entity_industry: str
-            - entity_country: str
-            - entity_ticker: str
-            - text: str
-            - other_entities: str
-            - entities: List[Dict[str, Any]]
-                - key: str
-                - name: str
-                - ticker: str
-                - start: int
-                - end: int
-            - masked_text: str
-            - other_entities_map: List[Tuple[int, str]]
-    """
-    # TODO (cpinto, 2025-04-08) check differences with `process_screener_search_entities`
-    entity_key_map = {entity.id: entity for entity in entities}
-    rows = []
-    for result in tqdm(results, desc="Processing screening reporting entities..."):
-        for chunk_index, chunk in enumerate(result.chunks):
-            # Build a list of entities present in the chunk
-            chunk_entities = [
-                {
-                    "key": entity.key,
-                    "name": entity_key_map[entity.key].name,
-                    "ticker": entity_key_map[entity.key].ticker,
-                    "start": entity.start,
-                    "end": entity.end,
-                }
-                for entity in chunk.entities
-                if entity.key in entity_key_map
-            ]
-
-            if not chunk_entities:
-                continue  # Skip if no entities are mapped
-
-            # Process each reporting entity
-            for re_key in result.reporting_entities:
-                reporting_entity = entity_key_map.get(re_key)
-
-                if not reporting_entity:
-                    continue  # Skip if reporting entity is not found
-
-                # Exclude the reporting entity from other entities
-                other_entities = [
-                    e for e in chunk_entities if e["name"] != reporting_entity.name
-                ]
-
-                # Collect all necessary information in the row
-                rows.append(
-                    {
-                        "timestamp_utc": result.timestamp,
-                        "rp_document_id": result.id,
-                        "sentence_id": f"{result.id}-{chunk_index}",
-                        "headline": result.headline,
-                        "rp_entity_id": re_key,
-                        "entity_name": reporting_entity.name,
-                        "entity_sector": reporting_entity.sector,
-                        "entity_industry": reporting_entity.industry,
-                        "entity_country": reporting_entity.country,
-                        "entity_ticker": reporting_entity.ticker,
-                        "text": chunk.text,
-                        "other_entities": ", ".join(e["name"] for e in other_entities),
-                        "entities": chunk_entities,
-                    }
-                )
-    if not rows:
-        raise ValueError("No rows to process")
-
-    df = pd.DataFrame(rows).sort_values("timestamp_utc").reset_index(drop=True)
-
-    # Deduplicate by quote text as well
-    df = df.drop_duplicates(
-        subset=["timestamp_utc", "rp_document_id", "text", "rp_entity_id"]
-    )
-
-    df = mask_sentences(df, DocumentType.TRANSCRIPTS)
-    df = df.reset_index(drop=True)
-    return df
+    df = mask_sentences(df, document_type)
+    return df.reset_index(drop=True)
 
 
 def mask_sentences(
     df: DataFrame,
     document_type: DocumentType,
 ) -> DataFrame:
-    # TODO (cpinto, 2025-02-05) check this document_type parameter
     """
     Mask the target entity and other entities in the text.
 
@@ -521,7 +449,7 @@ def mask_sentences(
         df (DataFrame): The input DataFrame. Columns required:
             - text
             - masked_text
-        document_type (DocumentType): The document type
+        document_type (DocumentType): The document type (for logging only)
     Returns:
         DataFrame: masked DataFrame. Will add/transform the columns:
             - text
@@ -531,10 +459,7 @@ def mask_sentences(
     df["text"] = df["text"].str.replace("{", "", regex=False)
     df["text"] = df["text"].str.replace("}", "", regex=False)
 
-    df = mask_entity_coordinates(
-        df=df,
-        document_type=document_type,
-    )
+    df = mask_entity_coordinates(df=df)
 
     df["masked_text"] = df["masked_text"].apply(
         lambda x: x.replace("{", "").replace("}", "")
@@ -547,17 +472,15 @@ def mask_sentences(
 
 def mask_entity_coordinates(
     df: DataFrame,
-    document_type: DocumentType,
 ) -> DataFrame:
     """
     Mask the target entity and other entities in the text.
 
-    :param df: The input DataFrame
-    TODO (cpinto, 2025-02-05) check this document_type parameter
-    :param document_type: The document type
-    :return: The masked DataFrame
+    Args:
+        df (DataFrame): The input DataFrame
+    Returns:
+        DataFrame: The masked DataFrame
     """
-
     i = 1
     entity_counter = {}
     df["masked_text"] = None
@@ -566,12 +489,6 @@ def mask_entity_coordinates(
     # Ensure columns are compatible with string/object assignments
     df["masked_text"] = df["masked_text"].astype("object")
     df["other_entities_map"] = df["other_entities_map"].astype("object")
-    # Determine entity ID field based on document type
-    entity_id_field = (
-        "rp_entity_id"
-        if document_type in (DocumentType.TRANSCRIPTS, DocumentType.FILINGS)
-        else "entity_id"
-    )
 
     # Process each row
     for idx, row in df.iterrows():
@@ -583,7 +500,7 @@ def mask_entity_coordinates(
         target_start = []
         target_end = []
         for entity in entities:
-            if entity["key"] == row[entity_id_field]:
+            if entity["key"] == row["entity_id"]:
                 target_start.append(entity["start"])
                 target_end.append(entity["end"])
 
@@ -592,7 +509,7 @@ def mask_entity_coordinates(
         for entity in entities:
             start, end = entity["start"], entity["end"]
 
-            if entity["key"] == row[entity_id_field]:
+            if entity["key"] == row["entity_id"]:
                 # Mask target entity
                 masked_text = f"{masked_text[:start]}{get_target_entity_placeholder()}{masked_text[end:]}"
 

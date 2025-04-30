@@ -51,24 +51,24 @@ screener_system_prompt_template: str = """
  1. **Analyze the Sentence**:
     - Each input consists of a sentence ID, a company name ('Target Company'), and the sentence text.
     - Analyze the sentence to understand if the content clearly establishes a connection to '{main_theme}'.
-    - Your primary goal is to label as 'unclear' the sentences that don't explicitly mention '{main_theme}'.
+    - Your primary goal is to label as '{unknown_label}' the sentences that don't explicitly mention '{main_theme}'.
     - Analyze the list of labels '{label_summaries}' used for label assignment. '{label_summaries}' is a Python list variable containing distinct labels and their definition in format 'Label: Summary', you must pick label only from 'Label' part which means left side of the semicolon for each Label:Summary pair.
     - Your secondary goal is to select the most appropriate label from '{label_summaries}' that corresponds to the content of the sentence.
 
  2. **First Label Assignment**:
-    - Assign the label 'unclear' to the sentence related to "Target Company" when it does not explicitly mentions '{main_theme}'. Otherwise, don't assign a label.
+    - Assign the label '{unknown_label}' to the sentence related to "Target Company" when it does not explicitly mentions '{main_theme}'. Otherwise, don't assign a label.
     - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
     - Use only the information contained within the sentence for your label assignment.
     - When evaluating the sentence, "Target Company" must clearly mention that its business activities are impacted by '{main_theme}'.
-    - Many sentences are only tangentially connected to the topic '{main_theme}'. These sentences must be assigned the label 'unclear'.
+    - Many sentences are only tangentially connected to the topic '{main_theme}'. These sentences must be assigned the label '{unknown_label}'.
 
  3. **Second Label Assignment**:
-    - For the sentences not labeled as 'unclear' and only for them, assign a unique label from the list '{label_summaries}' to the sentence related to "Target Company".
+    - For the sentences not labeled as '{unknown_label}' and only for them, assign a unique label from the list '{label_summaries}' to the sentence related to "Target Company".
     - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
     - Use only the information contained within the sentence for your label assignment.
     - Ensure that the sentence clearly establishes a connection to the label you assigned and to the theme '{main_theme}'.
     - You must not create a new label or choose a label that is not present in '{label_summaries}'.
-    - If the sentence does not explicitly mention the label, assign the label 'unclear'.
+    - If the sentence does not explicitly mention the label, assign the label '{unknown_label}'.
     - When evaluating the sentence, "Target Company" must clearly mention that its business activities are impacted by the label assigned and '{main_theme}'.
 
  4. **Response Format**:
@@ -79,7 +79,7 @@ screener_system_prompt_template: str = """
           4. The cost efficiency.
     - Each entry must start with the sentence ID and contain a clear motivation that begins with "Target Company".
     - The motivation should explain why the label was selected from '{label_summaries}' based on the information in the sentence and in the context of '{main_theme}'. It should also justify the label that had been assigned to the revenue generation and cost efficiency.
-    - Ensure that the exact context is understood and labels are based only on explicitly mentioned information in the sentence. Otherwise, assign the label 'unclear'.
+    - Ensure that the exact context is understood and labels are based only on explicitly mentioned information in the sentence. Otherwise, assign the label '{unknown_label}'.
     - The assigned label should be only the string that precedes the character ':'.
     - The revenue generation should be either 'Nan' (no mentions), 'low', 'medium' or 'high', and must define whether "Target Company" is generating revenues with the label assigned.
     - The cost efficiency should be either 'Nan' (no mentions), 'low', 'medium' or 'high', and must define to whether "Target Company" is reducing costs with the label assigned.
@@ -126,62 +126,6 @@ Format response as a JSON object with this schema:
 """,
 }
 
-# Prompts used in the notebook
-# patents_prompt_notebook = """
-#     You are assisting in analyzing text to detect patent filing activities by "Target Company". Your task is to determine if the text describes a legitimate patent filing by "Target Company".
-#
-#     Each input consists of a sentence ID, a company name ('Target Company'), and the sentence text.
-#
-#     Please follow these guidelines strictly:
-#
-#     1. **Check for Patent Filing**:
-#        - Analyze the text to determine if it explicitly mentions a patent being filed
-#        - The mention must be about filing a new patent
-#        - Exclude cases that discuss:
-#          - Patent infringement
-#          - Patent expiry
-#          - Patent filing rejection
-#          - Patent filing revocation
-#          - Any other patent-related legal issues
-#          - General discussion of patents without filing
-#        - Only proceed to step 2 if there is a clear mention of a new patent filing
-#
-#     2. **Verify Filing Company**:
-#        - Check if "Target Company" is explicitly mentioned as the entity filing the patent
-#        - The connection between "Target Company" and the patent filing must be clear and direct
-#        - Exclude cases where "Target Company" is mentioned but not as the patent filer
-#
-#     3. **Determine Relevance**:
-#        - Set RELEVANT to true if both conditions 1 and 2 above are met
-#        - Otherwise set RELEVANT to false
-#
-#     4. **Response Format**:
-#        Your output should be structured as a JSON object with the following format:
-#        {{
-#          "RELEVANT": boolean,
-#          "explanation": "Brief explanation of why the text was classified as relevant or not relevant"
-#        }}
-#
-#
-#     Examples:
-#
-#     Input: "'Target Company' filed a patent application for their new AI technology."
-#     Output:
-#
-#     {{
-#       "RELEVANT": true,
-#       "explanation": "Text explicitly mentions 'Target Company' filing a new patent application"
-#     }}
-#
-#
-#     Input: "Patent filed by 'Target Company' was challenged in court by competitors."
-#     Output:
-#
-#     {{
-#       "RELEVANT": false,
-#       "explanation": "Text discusses patent litigation, not a new patent filing"
-#     }}
-# """
 
 def get_narrative_system_prompt(theme_labels: List[str]) -> str:
     """Generate a system prompt for labeling sentences with narrative labels."""
@@ -190,9 +134,12 @@ def get_narrative_system_prompt(theme_labels: List[str]) -> str:
     )
 
 
-def get_screener_system_prompt(main_theme: str, label_summaries: List[str]) -> str:
+def get_screener_system_prompt(
+    main_theme: str, label_summaries: List[str], unknown_label: str
+) -> str:
     """Generate a system prompt for labeling sentences with thematic labels."""
     return screener_system_prompt_template.format(
         main_theme=main_theme,
-        label_summaries=label_summaries
+        label_summaries=label_summaries,
+        unknown_label=unknown_label,
     )
