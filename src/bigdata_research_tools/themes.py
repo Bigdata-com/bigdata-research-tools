@@ -7,20 +7,16 @@ Author: Jelena Starovic (jstarovic@ravenpack.com)
 """
 
 import ast
-import json
 from dataclasses import dataclass
-from string import Template
 from typing import Any, Dict, List
 
 from pandas import DataFrame
 
 from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.themes import (
-    SourceType,
     compose_themes_system_prompt_base,
     compose_themes_system_prompt_focus,
     compose_themes_system_prompt_onestep,
-    theme_generation_default_prompts,
 )
 
 themes_default_llm_model_config: Dict[str, Any] = {
@@ -305,16 +301,14 @@ class ThemeTree:
 
 def generate_theme_tree(
     main_theme: str,
-    dataset: SourceType,
     focus: str = "",
     llm_model_config: Dict[str, Any] = None,
 ) -> ThemeTree:
     """
-    Generate a `ThemeTree` class from a main theme and a dataset.
+    Generate a `ThemeTree` class from a main theme and focus.
 
     Args:
         main_theme (str): The primary theme to analyze.
-        dataset (SourceType): The dataset type to filter by.
         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
             If provided, a two-step process is used to better integrate the focus.
         llm_model_config (dict): Configuration for the large language model used to generate themes.
@@ -338,15 +332,7 @@ def generate_theme_tree(
     # Handle focus using different strategies
     if not focus:
         # One-step process without focus
-        if dataset == SourceType.CORPORATE_DOCS:
-            # Use the one-step prompt for corporate docs
-            system_prompt = compose_themes_system_prompt_onestep(main_theme)
-        else:
-            # Use the default prompts for other datasets
-            system_prompt_template = theme_generation_default_prompts[dataset]
-            system_prompt = Template(system_prompt_template).safe_substitute(
-                main_theme=main_theme, focus=focus
-            )
+        system_prompt = compose_themes_system_prompt_onestep(main_theme)
 
         chat_history = [
             {"role": "system", "content": system_prompt},
