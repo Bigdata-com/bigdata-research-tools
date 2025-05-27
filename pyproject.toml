@@ -43,3 +43,10 @@ dev = [
     "isort>=6.0.0",
     "pre-commit>=4.1.0",
 ]
+
+# Build configuration to include resource files
+[tool.setuptools]
+packages = {find = {where = ["src"]}}
+
+[tool.setuptools.package-data]
+"bigdata_research_tools" = ["res/*.png", "res/*.jpg", "res/*"]
