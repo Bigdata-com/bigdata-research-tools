@@ -7,6 +7,15 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2025-05-29
+
+### Changed
+* Chunk number of each post-processed chunk to match with its number in VESPA (PX-464)
+* Add dependencies like bigdata logo and IPython to run 2 workflows seamlessly
+* Cleanup of Miners and Screeners logic (PX-373)
+* Update Miners docs to use newly refactored code (PX-399)
+* Remove any tech debt/unused code from library (PX-393)
+
 ## [0.13.0] - 2025-04-25
 
 ### Added
