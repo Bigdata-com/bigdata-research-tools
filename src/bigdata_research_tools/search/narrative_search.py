@@ -122,13 +122,13 @@ def process_narrative_search(
 
     rows = []
     for result in tqdm(results, desc="Processing screening results..."):
-        for chunk_index, chunk in enumerate(result.chunks):
+        for chunk in result.chunks:
             # Collect all necessary information in the row
             rows.append(
                 {
                     "timestamp_utc": result.timestamp,
                     "document_id": result.id,
-                    "sentence_id": f"{result.id}-{chunk_index}",
+                    "sentence_id": f"{result.id}-{chunk.chunk}",
                     "headline": result.headline,
                     "text": chunk.text,
                 }

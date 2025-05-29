@@ -323,7 +323,7 @@ def process_screener_search_results(
 
     rows = []
     for result in tqdm(results, desc=f"Processing {document_type} results..."):
-        for chunk_index, chunk in enumerate(result.chunks):
+        for chunk in result.chunks:
             # Build a list of entities present in the chunk
             chunk_entities = [
                 {
@@ -367,7 +367,7 @@ def process_screener_search_results(
                         {
                             "timestamp_utc": result.timestamp,
                             "document_id": result.id,
-                            "sentence_id": f"{result.id}-{chunk_index}",
+                            "sentence_id": f"{result.id}-{chunk.chunk}",
                             "headline": result.headline,
                             "entity_id": re_key,
                             "document_type": document_type.value,
@@ -406,7 +406,7 @@ def process_screener_search_results(
                         {
                             "timestamp_utc": result.timestamp,
                             "document_id": result.id,
-                            "sentence_id": f"{result.id}-{chunk_index}",
+                            "sentence_id": f"{result.id}-{chunk.chunk}",
                             "headline": result.headline,
                             "entity_id": chunk_entity["key"],
                             "document_type": document_type.value,
