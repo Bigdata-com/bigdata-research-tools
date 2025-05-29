@@ -1,6 +1,6 @@
 [project]
 name = "bigdata-research-tools"
-version = "0.13.0"
+version = "0.14.0"
 description = "Bigdata.com API High-Efficiency Tools at Scale"
 readme = "README.md"
 authors = [{ name = "Bigdata Solutions Engineering Team", email = "support@ravenpack.com" }]
