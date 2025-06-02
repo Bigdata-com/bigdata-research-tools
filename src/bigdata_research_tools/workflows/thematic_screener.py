@@ -3,7 +3,9 @@ from typing import Dict, List, Optional
 
 from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType
+from bigdata_research_tools.client import init_bigdata_client
 from pandas import DataFrame, merge
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
@@ -104,68 +106,93 @@ class ThematicScreener:
                 "Consider installing them to save the Thematic Screener result into the "
                 f"path `{export_path}`."
             )
-
-        theme_tree = generate_theme_tree(
-            main_theme=self.main_theme,
-            focus=self.focus,
-        )
-
-        theme_summaries = theme_tree.get_terminal_summaries()
-        terminal_labels = theme_tree.get_terminal_labels()
-
-        df_sentences = search_by_companies(
-            companies=self.companies,
-            sentences=theme_summaries,
+        bigdata_client = init_bigdata_client()
+        current_trace = Trace(
+            event_name=TraceEventNames.THEMATIC_SCREENER,
+            document_type=self.document_type,
             start_date=self.start_date,
             end_date=self.end_date,
-            scope=self.document_type,
-            fiscal_year=self.fiscal_year,
-            sources=self.sources,
             rerank_threshold=self.rerank_threshold,
-            freq=frequency,
-            document_limit=document_limit,
-            batch_size=batch_size,
+            llm_model=self.llm_model,
+            frequency=frequency,
+            workflow_start_date=Trace.get_time_now(),
         )
 
-        # Label the search results with our theme labels
-        labeler = ScreenerLabeler(llm_model=self.llm_model)
-        df_labels = labeler.get_labels(
-            main_theme=self.main_theme,
-            labels=terminal_labels,
-            texts=df_sentences["masked_text"].tolist(),
-        )
-
-        # Merge and process results
-        df = merge(df_sentences, df_labels, left_index=True, right_index=True)
-        df = labeler.post_process_dataframe(df)
-
-        df_company, df_industry = DataFrame(), DataFrame()
-        if df.empty:
-            logger.warning("Empty dataframe: no relevant content")
-            return {
-                "df_labeled": df,
-                "df_company": df_company,
-                "df_industry": df_industry,
-                "theme_tree": theme_tree,
-            }
-
-        df_company = get_scored_df(
-            df, index_columns=["Company", "Ticker", "Industry"], pivot_column="Theme"
-        )
-        df_industry = get_scored_df(
-            df, index_columns=["Industry"], pivot_column="Theme"
-        )
-
-        # Export to Excel if path provided
-        if export_path:
-            save_to_excel(
-                file_path=export_path,
-                tables={
-                    "Semantic Labels": (df, (0, 0)),
-                    "By Company": (df_company, (2, 4)),
-                    "By Industry": (df_industry, (2, 2)),
-                },
+        try:
+            theme_tree = generate_theme_tree(
+                main_theme=self.main_theme,
+                focus=self.focus,
             )
+
+            theme_summaries = theme_tree.get_terminal_summaries()
+            terminal_labels = theme_tree.get_terminal_labels()
+
+            df_sentences = search_by_companies(
+                companies=self.companies,
+                sentences=theme_summaries,
+                start_date=self.start_date,
+                end_date=self.end_date,
+                scope=self.document_type,
+                fiscal_year=self.fiscal_year,
+                sources=self.sources,
+                rerank_threshold=self.rerank_threshold,
+                freq=frequency,
+                document_limit=document_limit,
+                batch_size=batch_size,
+                current_trace=current_trace,
+                bigdata_client=bigdata_client,
+            )
+
+            # Label the search results with our theme labels
+            labeler = ScreenerLabeler(llm_model=self.llm_model)
+            df_labels = labeler.get_labels(
+                main_theme=self.main_theme,
+                labels=terminal_labels,
+                texts=df_sentences["masked_text"].tolist(),
+            )
+
+            # Merge and process results
+            df = merge(df_sentences, df_labels, left_index=True, right_index=True)
+            df = labeler.post_process_dataframe(df)
+
+            df_company, df_industry = DataFrame(), DataFrame()
+            if df.empty:
+                logger.warning("Empty dataframe: no relevant content")
+                return {
+                    "df_labeled": df,
+                    "df_company": df_company,
+                    "df_industry": df_industry,
+                    "theme_tree": theme_tree,
+                }
+
+            df_company = get_scored_df(
+                df,
+                index_columns=["Company", "Ticker", "Industry"],
+                pivot_column="Theme",
+            )
+            df_industry = get_scored_df(
+                df, index_columns=["Industry"], pivot_column="Theme"
+            )
+
+            # Export to Excel if path provided
+            if export_path:
+                save_to_excel(
+                    file_path=export_path,
+                    tables={
+                        "Semantic Labels": (df, (0, 0)),
+                        "By Company": (df_company, (2, 4)),
+                        "By Industry": (df_industry, (2, 2)),
+                    },
+                )
+        except Exception:
+            execution_result = "error"
+            raise
+        else:
+            execution_result = "success"
+        finally:
+            current_trace.workflow_end_date = Trace.get_time_now()
+            current_trace.result = execution_result  # noqa
+            send_trace(bigdata_client, current_trace)
 
         return {
             "df_labeled": df,

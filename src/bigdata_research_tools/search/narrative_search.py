@@ -30,6 +30,7 @@ def search_narratives(
     rerank_threshold: Optional[float] = None,
     document_limit: int = 50,
     batch_size: int = 10,
+    **kwargs,
 ) -> DataFrame:
     """
     Screen for documents based on the input sentences and other filters.
@@ -92,6 +93,7 @@ def search_narratives(
         scope=scope,
         sortby=sort_by,
         rerank_threshold=rerank_threshold,
+        **kwargs,
     )
 
     results = list(chain.from_iterable(results))
