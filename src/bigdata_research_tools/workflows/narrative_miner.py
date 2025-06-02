@@ -2,7 +2,9 @@ from logging import Logger, getLogger
 from typing import Dict, List, Optional
 
 from bigdata_client.models.search import DocumentType
+from bigdata_research_tools.client import init_bigdata_client
 from pandas import merge
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
@@ -78,38 +80,65 @@ class NarrativeMiner:
                 "Consider installing them to save the Narrative Miner result into the "
                 f"path `{export_path}`."
             )
-
-        # Run a search via BigData API with our mining parameters
-        df_sentences = search_narratives(
-            sentences=self.narrative_sentences,
-            sources=self.sources,
-            rerank_threshold=self.rerank_threshold,
+        bigdata_client = init_bigdata_client()
+        current_trace = Trace(
+            event_name=TraceEventNames.NARRATIVE_MINER,
+            document_type=self.document_type,
             start_date=self.start_date,
             end_date=self.end_date,
-            freq=freq,
-            document_limit=document_limit,
-            batch_size=batch_size,
-            scope=self.document_type,
+            rerank_threshold=self.rerank_threshold,
+            llm_model=self.llm_model,
+            frequency=freq,
+            workflow_start_date=Trace.get_time_now(),
         )
+        try:
+            # Run a search via BigData API with our mining parameters
+            df_sentences = search_narratives(
+                sentences=self.narrative_sentences,
+                sources=self.sources,
+                rerank_threshold=self.rerank_threshold,
+                start_date=self.start_date,
+                end_date=self.end_date,
+                freq=freq,
+                document_limit=document_limit,
+                batch_size=batch_size,
+                scope=self.document_type,
+                current_trace=current_trace,
+                bigdata_client=bigdata_client,
+            )
 
-        # Label the search results with our narrative sentences
-        labeler = NarrativeLabeler(llm_model=self.llm_model)
-        df_labels = labeler.get_labels(
-            self.narrative_sentences,
-            texts=df_sentences["text"].tolist(),
-        )
+            # Label the search results with our narrative sentences
+            labeler = NarrativeLabeler(llm_model=self.llm_model)
+            df_labels = labeler.get_labels(
+                self.narrative_sentences,
+                texts=df_sentences["text"].tolist(),
+            )
 
-        # Merge and process results
-        df_labeled = merge(df_sentences, df_labels, left_index=True, right_index=True)
-        df_labeled = labeler.post_process_dataframe(df_labeled)
+            # Merge and process results
+            df_labeled = merge(
+                df_sentences, df_labels, left_index=True, right_index=True
+            )
+            df_labeled = labeler.post_process_dataframe(df_labeled)
 
-        if df_labeled.empty:
-            logger.warning("Empty dataframe: no relevant content")
-            # Return an empty dictionary
-            return {}
+            if df_labeled.empty:
+                logger.warning("Empty dataframe: no relevant content")
+                # Return an empty dictionary
+                return {}
 
-        # Export to Excel if path provided
-        if export_path:
-            save_to_excel(export_path, tables={"Semantic Labels": (df_labeled, (0, 0))})
+            # Export to Excel if path provided
+            if export_path:
+                save_to_excel(
+                    export_path, tables={"Semantic Labels": (df_labeled, (0, 0))}
+                )
+
+        except Exception:
+            execution_result = "error"
+            raise
+        else:
+            execution_result = "success"
+        finally:
+            current_trace.workflow_end_date = Trace.get_time_now()
+            current_trace.result = execution_result  # noqa
+            send_trace(bigdata_client, current_trace)
 
         return {"df_labeled": df_labeled}

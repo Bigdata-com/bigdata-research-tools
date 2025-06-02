@@ -44,6 +44,7 @@ def search_by_companies(
     rerank_threshold: Optional[float] = None,
     document_limit: int = 50,
     batch_size: int = 10,
+    **kwargs,
 ) -> DataFrame:
     """
     Screen for documents based on the input sentences and other filters.
@@ -128,6 +129,7 @@ def search_by_companies(
         scope=scope,
         sortby=sort_by,
         rerank_threshold=rerank_threshold,
+        **kwargs,
     )
 
     results, entities = filter_search_results(results)

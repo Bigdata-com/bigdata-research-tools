@@ -50,6 +50,7 @@ class SearchManager:
         rpm: int = REQUESTS_PER_MINUTE_LIMIT,
         bucket_size: int = None,
         bigdata: Bigdata = None,
+        **kwargs,
     ):
         """
         Initialize the rate-limited search manager.
@@ -116,6 +117,7 @@ class SearchManager:
         limit: int = 10,
         timeout: float = None,
         rerank_threshold: float = None,
+        **kwargs,
     ) -> Optional[List[Document]]:
         """
         Execute a single search with rate limiting.
@@ -148,13 +150,16 @@ class SearchManager:
             date_range = AbsoluteDateRange(*date_range)
 
         try:
-            results = self.bigdata.search.new(
+            query = self.bigdata.search.new(
                 query=query,
                 date_range=date_range,
                 sortby=sortby,
                 scope=scope,
                 rerank_threshold=rerank_threshold,
-            ).run(limit=limit)
+            )
+            results = query.run(limit=limit)
+            if kwargs.get("current_trace"):
+                kwargs["current_trace"].add_query_units(query.get_usage())
             return results
         except Exception as e:
             logging.error(f"Search error: {e}")
@@ -170,6 +175,7 @@ class SearchManager:
         max_workers: int = MAX_WORKERS,
         timeout: float = None,
         rerank_threshold: float = None,
+        **kwargs,
     ) -> SEARCH_QUERY_RESULTS_TYPE:
         """
         Execute multiple searches concurrently while respecting rate limits.
@@ -212,6 +218,7 @@ class SearchManager:
                     limit=limit,
                     timeout=timeout,
                     rerank_threshold=rerank_threshold,
+                    **kwargs,
                 ): (query, date_range)
                 for query, date_range in itertools.product(queries, date_ranges)
             }
@@ -286,6 +293,7 @@ def run_search(
         scope=scope,
         limit=limit,
         rerank_threshold=rerank_threshold,
+        **kwargs,
     )
     if only_results:
         return list(query_results.values())
