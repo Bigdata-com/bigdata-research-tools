@@ -10,6 +10,7 @@ from tqdm import tqdm
 from bigdata_research_tools.search.query_builder import (
     build_batched_query,
     create_date_ranges,
+    EntitiesToSearch
 )
 from bigdata_research_tools.search.search import run_search
 
@@ -66,16 +67,23 @@ def search_narratives(
                 - headline: str
     """
 
+    # If control_entities are provided, create a control EntityConfig
+    # For this example, assuming control_entities are all company entities
+    control_entities_config = None
+    if control_entities:
+        control_entities_config = EntitiesToSearch(companies=control_entities)
+
     # Build batched queries
     batched_query = build_batched_query(
         sentences=sentences,
         keywords=keywords,
         sources=sources,
-        control_entities=control_entities,
+        control_entities=control_entities_config,
         batch_size=batch_size,
         scope=scope,
         fiscal_year=fiscal_year,
     )
+
     # Create list of date ranges
     date_ranges = create_date_ranges(start_date, end_date, freq)
 
