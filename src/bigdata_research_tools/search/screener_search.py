@@ -22,6 +22,7 @@ from bigdata_research_tools.prompts.labeler import (
 )
 from bigdata_research_tools.search.query_builder import (
     build_batched_query,
+    EntitiesToSearch,
     create_date_ranges,
 )
 from bigdata_research_tools.search.search import run_search
@@ -101,17 +102,27 @@ def search_by_companies(
     # Extract entities for search querying
     entity_keys = [entity.id for entity in companies]
 
+   # Create entity configs
+    entities_config = EntitiesToSearch(companies=entity_keys)
+    
+    # If control_entities are provided, create a control EntityConfig
+    # For this example, assuming control_entities are all company entities
+    control_entities_config = None
+    if control_entities:
+        control_entities_config = EntitiesToSearch(companies=control_entities)
+
     # Build batched queries
     batched_query = build_batched_query(
         sentences=sentences,
         keywords=keywords,
-        control_entities=control_entities,
+        entities=entities_config,
+        control_entities=control_entities_config,
         sources=sources,
-        entity_keys=entity_keys,
         batch_size=batch_size,
         fiscal_year=fiscal_year,
         scope=scope,
     )
+
     # Create list of date ranges
     date_ranges = create_date_ranges(start_date, end_date, freq)
 
