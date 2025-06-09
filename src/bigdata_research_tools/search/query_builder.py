@@ -83,7 +83,7 @@ def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
 def build_batched_query(
     sentences: List[str], 
     keywords: Optional[List[str]],
-    entities: EntitiesToSearch,
+    entities: Optional[EntitiesToSearch],
     control_entities: Optional[EntitiesToSearch],
     sources: Optional[List[str]],
     batch_size: int,
@@ -111,7 +111,7 @@ def build_batched_query(
             Fiscal year to filter queries.
         scope (DocumentType, optional):
             Document type scope (e.g., ALL, TRANSCRIPTS). Defaults to ALL.
-        custom_batches (EntityBatchConfig):
+        custom_batches (Optional[List[EntitiesToSearch]]):
             Config of custom entity batches of different types (people, companies, organisations..)
 
     Returns:
