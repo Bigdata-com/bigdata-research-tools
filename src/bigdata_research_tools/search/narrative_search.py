@@ -79,6 +79,8 @@ def search_narratives(
         keywords=keywords,
         sources=sources,
         control_entities=control_entities_config,
+        custom_batches=None, 
+        entities=None, 
         batch_size=batch_size,
         scope=scope,
         fiscal_year=fiscal_year,

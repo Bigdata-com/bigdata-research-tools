@@ -117,6 +117,7 @@ def search_by_companies(
         keywords=keywords,
         entities=entities_config,
         control_entities=control_entities_config,
+        custom_batches=None,
         sources=sources,
         batch_size=batch_size,
         fiscal_year=fiscal_year,
