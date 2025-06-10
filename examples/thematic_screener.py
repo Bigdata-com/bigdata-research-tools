@@ -5,8 +5,9 @@ from bigdata_client.models.search import DocumentType
 from bigdata_research_tools.client import bigdata_connection
 from bigdata_research_tools.workflows import ThematicScreener
 
-
 def thematic_screener_example(
+    theme_name: str, 
+    llm_model: str = "openai::gpt-4o-mini",
     export_path: str = "thematic_screener_results.xlsx",
 ) -> Dict:
 
@@ -19,14 +20,14 @@ def thematic_screener_example(
     companies = bigdata.knowledge_graph.get_entities(watchlist_grid.items)
 
     thematic_screener = ThematicScreener(
-        llm_model="openai::gpt-4o-mini",
-        main_theme="Chips manufacturers",
+        llm_model=llm_model,
+        main_theme=theme_name,
         companies=companies,
         start_date="2024-01-01",
         end_date="2024-11-15",
-        document_type=DocumentType.TRANSCRIPTS,
-        fiscal_year=2024,
+        document_type=DocumentType.NEWS,
     ).screen_companies(export_path=export_path)
+
     return thematic_screener
 
 
@@ -43,4 +44,4 @@ if __name__ == "__main__":
     logging.basicConfig()
     logging.getLogger("bigdata_research_tools").setLevel(logging.INFO)
 
-    thematic_screener_example()
+    thematic_screener_example("Chip Manufacturers")
