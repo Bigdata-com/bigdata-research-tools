@@ -1,10 +1,11 @@
 from logging import Logger, getLogger
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType
 from bigdata_research_tools.client import init_bigdata_client
 from pandas import DataFrame, merge
+from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 from bigdata_research_tools.excel import check_excel_dependencies
@@ -75,6 +76,7 @@ class ThematicScreener:
         document_limit: int = 10,
         batch_size: int = 10,
         frequency: str = "3M",
+        word_range: Tuple[int, int] = (50, 100),
         export_path: str = None,
     ) -> Dict:
         """
@@ -174,6 +176,13 @@ class ThematicScreener:
                 df, index_columns=["Industry"], pivot_column="Theme"
             )
 
+            motivation_generator = Motivation(model=self.llm_model)
+            motivation_df = motivation_generator.generate_company_motivations(
+                df=df,
+                theme_name=self.main_theme,
+                word_range=word_range
+            )
+
             # Export to Excel if path provided
             if export_path:
                 save_to_excel(
@@ -182,6 +191,7 @@ class ThematicScreener:
                         "Semantic Labels": (df, (0, 0)),
                         "By Company": (df_company, (2, 4)),
                         "By Industry": (df_industry, (2, 2)),
+                        "Motivations": (motivation_df, (0, 0))
                     },
                 )
         except Exception:
