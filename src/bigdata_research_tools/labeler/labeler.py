@@ -6,7 +6,7 @@ Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
 
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pandas import DataFrame
 
@@ -104,18 +104,27 @@ class Labeler:
 
 def get_prompts_for_labeler(
     texts: List[str],
+    textconfig: Optional[List[Dict[str, Any]]] = None,
 ) -> List[str]:
     """
-    Generate the prompts for the labeling system.
+    Generate a list of user messages for each text to be labelled by the labeling system.
+
+    Example of generated prompts: [{"sentence_id": 0, "text": "Chunk 0 text here"},
+    {"sentence_id": 1, "text": "Chunk 1 text here"}, ...]
 
     Args:
         texts: texts to get the labels from.
+        textconfig: Optional fields for the prompts in addition to the text.
 
     Returns:
         A list of prompts for the labeling system.
     """
-    return [dumps({"sentence_id": i, "text": text}) for i, text in enumerate(texts)]
-
+    n = len(texts)
+    # Validate that all kwargs lists are the same length as texts
+    if textconfig and len(textconfig) != n:
+        raise ValueError(f"Length of additional text config ({len(textconfig)}) does not match texts ({n})")
+            
+    return [dumps({"sentence_id": i, **config, "text": text}) for i, (config, text) in enumerate(zip(textconfig or [{}]*n, texts))]
 
 def parse_labeling_response(response: str) -> Dict:
     """
