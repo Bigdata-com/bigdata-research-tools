@@ -4,6 +4,7 @@ Module for managing labeling operations.
 Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
 """
 
+from itertools import zip_longest
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
 from typing import Any, Dict, List, Optional
@@ -104,7 +105,7 @@ class Labeler:
 
 def get_prompts_for_labeler(
     texts: List[str],
-    textconfig: Optional[List[Dict[str, Any]]] = None,
+    textsconfig: Optional[List[Dict[str, Any]]] = None,
 ) -> List[str]:
     """
     Generate a list of user messages for each text to be labelled by the labeling system.
@@ -114,17 +115,18 @@ def get_prompts_for_labeler(
 
     Args:
         texts: texts to get the labels from.
-        textconfig: Optional fields for the prompts in addition to the text.
+        textsconfig: Optional fields for the prompts in addition to the text.
 
     Returns:
         A list of prompts for the labeling system.
     """
     n = len(texts)
     # Validate that all kwargs lists are the same length as texts
-    if textconfig and len(textconfig) != n:
-        raise ValueError(f"Length of additional text config ({len(textconfig)}) does not match texts ({n})")
+    if textsconfig and len(textsconfig) != n:
+        raise ValueError(f"Length of additional text config ({len(textsconfig)}) does not match texts ({n})")
             
-    return [dumps({"sentence_id": i, **config, "text": text}) for i, (config, text) in enumerate(zip(textconfig or [{}]*n, texts))]
+    return [dumps({"sentence_id": i, **config, "text": text})
+        for i, (config, text) in enumerate(zip_longest(textsconfig, texts, fillvalue={}))]
 
 def parse_labeling_response(response: str) -> Dict:
     """
