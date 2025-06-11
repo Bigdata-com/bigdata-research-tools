@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logic to construct a portfolio of a certain size, with balancing (by sector/region/other) and 
   weighting (by thematic score/other score) capabilities
 - Logic to build queries with custom batching and non-company entities
-- Logic for tracking usage of workflows for customer.io 
+- Workflow usage metrics
 
 ### Changed
 - Generalise input params for labeler to work for Risk Scenario Analyzer
