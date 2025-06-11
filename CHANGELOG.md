@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logic to build queries with custom batching and non-company entities
 - Logic for tracking usage of workflows for customer.io 
 
+### Changed
+- Generalise input params for labeler to work for Risk Scenario Analyzer
+
 ## [0.14.0] - 2025-05-30
 
 ### Changed
