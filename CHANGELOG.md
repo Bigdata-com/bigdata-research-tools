@@ -7,6 +7,18 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2025-06-11
+
+### Added 
+- Logic to add a LLM generated motivation explaining why a company exposed to a theme
+- Logic to construct a portfolio of a certain size, with balancing (by sector/region/other) and 
+  weighting (by thematic score/other score) capabilities
+- Logic to build queries with custom batching and non-company entities
+- Workflow usage metrics
+
+### Changed
+- Generalise input params for labeler to work for Risk Scenario Analyzer
+
 ## [0.14.0] - 2025-05-30
 
 ### Changed
