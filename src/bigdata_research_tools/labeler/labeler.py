@@ -105,7 +105,7 @@ class Labeler:
 
 def get_prompts_for_labeler(
     texts: List[str],
-    textsconfig: Optional[List[Dict[str, Any]]] = None,
+    textsconfig: Optional[List[Dict[str, Any]]] = [],
 ) -> List[str]:
     """
     Generate a list of user messages for each text to be labelled by the labeling system.
@@ -119,14 +119,9 @@ def get_prompts_for_labeler(
 
     Returns:
         A list of prompts for the labeling system.
-    """
-    n = len(texts)
-    # Validate that all kwargs lists are the same length as texts
-    if textsconfig and len(textsconfig) != n:
-        raise ValueError(f"Length of additional text config ({len(textsconfig)}) does not match texts ({n})")
-            
+    """      
     return [dumps({"sentence_id": i, **config, "text": text})
-        for i, (config, text) in enumerate(zip_longest(textsconfig, texts, fillvalue={}))]
+            for i, (config, text) in enumerate(zip_longest(textsconfig, texts, fillvalue={}))]
 
 def parse_labeling_response(response: str) -> Dict:
     """
