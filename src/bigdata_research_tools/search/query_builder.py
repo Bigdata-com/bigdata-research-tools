@@ -49,8 +49,8 @@ class EntitiesToSearch:
             'org': Organization,
             'place': Place,
             'topic': Topic,
-            'concept': Concept, 
-            'company': Entity
+            'concepts': Concept, 
+            'companies': Entity
         }
 
 
