@@ -8,9 +8,9 @@ from pandas import DataFrame
 from tqdm import tqdm
 
 from bigdata_research_tools.search.query_builder import (
+    EntitiesToSearch,
     build_batched_query,
     create_date_ranges,
-    EntitiesToSearch
 )
 from bigdata_research_tools.search.search import run_search
 
@@ -79,8 +79,8 @@ def search_narratives(
         keywords=keywords,
         sources=sources,
         control_entities=control_entities_config,
-        custom_batches=None, 
-        entities=None, 
+        custom_batches=None,
+        entities=None,
         batch_size=batch_size,
         scope=scope,
         fiscal_year=fiscal_year,
@@ -107,12 +107,12 @@ def search_narratives(
     )
 
     results = list(chain.from_iterable(results))
-    results = process_narrative_search(results)
+    results = _process_narrative_search(results)
 
     return results
 
 
-def process_narrative_search(
+def _process_narrative_search(
     results: List[Document],
 ) -> DataFrame:
     """
