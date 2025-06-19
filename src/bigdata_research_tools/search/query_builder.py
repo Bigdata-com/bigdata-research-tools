@@ -162,7 +162,7 @@ def _build_base_queries(
 def _get_entity_ids(
         entity_names: List[str],
         entity_type: Type,  
-) -> list[str]:
+) -> list[Type]:
     bigdata = bigdata_connection()
     entity_ids = []
 
@@ -184,6 +184,9 @@ def _get_entity_ids(
     for name in entity_names:
         entity = next(iter(lookup_func(name)), None)
         if entity is not None:
+            if entity_type in (Entity, ReportingEntity):
+                entity = entity_type(entity.id)
+
             entity_ids.append(entity)
 
     return entity_ids

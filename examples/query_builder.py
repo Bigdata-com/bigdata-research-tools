@@ -159,8 +159,8 @@ def test_mixed_configuration():
         control_entities=control_entities,
         sources=["Bloomberg", "Variety", "Hollywood Reporter"],
         batch_size=2,
-        fiscal_year=2024,
         scope=DocumentType.NEWS,
+        fiscal_year=None,
         custom_batches=None      
     )
     
@@ -236,6 +236,39 @@ def test_edge_cases():
     logger.info("")
 
 
+def test_reporting_entities():
+    """Show reporting entities are set for companies."""
+    logger.info("=" * 60)
+    logger.info("TEST 6: Reporting Entities")
+    logger.info("=" * 60)
+    
+    entities = EntitiesToSearch(
+        companies=["Netflix", "Disney", "Warner Bros"],
+        people=["Reed Hastings", "Bob Chapek"],
+        concepts=["streaming", "entertainment", "content creation"],
+        place=["Hollywood", "Los Angeles", "New York"]
+    )
+    
+    queries = build_batched_query(
+        sentences=[
+            "Streaming wars and content competition",
+            "Entertainment industry consolidation"
+        ],
+        keywords=["streaming", "content", "subscription", "audience"],
+        entities=entities,
+        control_entities=None,
+        batch_size=2,
+        fiscal_year=2024,
+        sources=None,
+        scope=DocumentType.TRANSCRIPTS,
+        custom_batches=None      
+    )
+    
+    logger.info("Query results: %s", queries)
+    logger.info("Generated %d comprehensive query components", len(queries))
+    logger.info("Includes: sentences, keywords, entities, fiscal year")
+    logger.info("")
+
 def main():
     """Run all tests."""
     logger.info("Testing Refactored build_batched_query Function")
@@ -247,6 +280,7 @@ def main():
         test_custom_batches()
         test_mixed_configuration()
         test_edge_cases()
+        test_reporting_entities()
         
         logger.info("=" * 60)
         logger.info("All tests completed successfully")
