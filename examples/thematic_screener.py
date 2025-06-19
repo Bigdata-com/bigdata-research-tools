@@ -25,7 +25,8 @@ def thematic_screener_example(
         companies=companies,
         start_date="2024-01-01",
         end_date="2024-11-15",
-        document_type=DocumentType.NEWS,
+        document_type=DocumentType.TRANSCRIPTS,
+        fiscal_year=2024
     ).screen_companies(export_path=export_path)
 
     return thematic_screener
