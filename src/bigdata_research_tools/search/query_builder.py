@@ -122,6 +122,8 @@ def build_batched_query(
     if entities and custom_batches:
         raise ValueError("Only one of `entities` or `custom_batches` should be provided, not both.")
 
+    _validate_parameters(document_scope=scope, fiscal_year=fiscal_year)
+
     # Step 1: Build base queries (similarity, keyword, source)
     base_queries, keyword_query, source_query = _build_base_queries(sentences, keywords, sources)
     
@@ -142,6 +144,30 @@ def build_batched_query(
     
     return queries_expanded
 
+def _validate_parameters(
+    document_scope: DocumentType = None, fiscal_year: int = None
+) -> None:
+    """
+    Validates parameters based on predefined rules.
+    Will raise a ValueError if any of the rules are violated.
+    Will return None otherwise.
+    """
+    # Skip validation if document_scope is not provided
+    if document_scope is None:
+        return
+
+    if document_scope in [DocumentType.FILINGS, DocumentType.TRANSCRIPTS]:
+        if fiscal_year is None:
+            raise ValueError(
+                f"`fiscal_year` is required when `document_scope` is `{document_scope.value}`"
+            )
+
+    if document_scope == DocumentType.NEWS:
+        if fiscal_year is not None:
+            raise ValueError(
+                f"`fiscal_year` must be None when `document_scope` is `{document_scope.value}`"
+            )
+        
 def _build_base_queries(
     sentences: Optional[List[str]], 
     keywords: Optional[List[str]],
