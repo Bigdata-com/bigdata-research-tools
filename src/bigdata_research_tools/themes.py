@@ -320,30 +320,6 @@ class ThemeTree:
 
         traverse(self)
         return mapping
-    
-    def _to_dict(self) -> dict:
-        """
-        Recursively convert the ThemeTree to a dictionary suitable for JSON serialization.
-        """
-        return {
-            "label": self.label,
-            "node": self.node,
-            "summary": self.summary,
-            "children": [child._to_dict() for child in self.children] if self.children else [],
-            "keywords": self.keywords,
-        }
-
-    def save_json(self, filepath: str, **kwargs) -> None:
-        """
-        Save the ThemeTree as a JSON dictionary to the specified file.
-
-        Args:
-            filepath (str): Path to the output JSON file.
-            **kwargs: Additional keyword arguments passed to json.dump.
-        """
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(self._to_dict(), f, ensure_ascii=False, indent=2, **kwargs)
-
 
 def generate_theme_tree(
     main_theme: str,

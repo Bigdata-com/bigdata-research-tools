@@ -11,10 +11,11 @@ from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.themes import ThemeTree
 
-from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_category
+from bigdata_research_tools.labeler.risk_labeler import RiskLabeler
 from bigdata_research_tools.workflows.utils import (
     get_scored_df,
     save_to_excel,
+    map_risk_category
 )
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.themes import generate_risk_tree
@@ -161,7 +162,6 @@ class RiskAnalyzer:
         """
 
         prompt_fields = self._add_prompt_fields(df_sentences, additional_prompt_fields)
-
         # Label the search results with our theme labels
         ## To Do: generalize the labeler or pass it as an argument
         # to allow for different labelers to be used.
@@ -204,7 +204,7 @@ class RiskAnalyzer:
             return df_company, df_industry
 
         df_company = get_scored_df(
-            df_labeled, index_columns=["Company", "Ticker", "Sector", "Industry"], pivot_column="Sub-Scenario"
+            df_labeled, index_columns=["Company", "Ticker", "Industry"], pivot_column="Sub-Scenario"
         )
         df_industry = get_scored_df(
             df_labeled, index_columns=["Industry"], pivot_column="Sub-Scenario"
@@ -218,30 +218,34 @@ class RiskAnalyzer:
 
         return df_company, df_industry, motivation_df
     
-    def save_results(self, df_labeled: DataFrame, df_company: DataFrame, df_industry: DataFrame, motivation_df: DataFrame, risk_tree: ThemeTree, export_path: str):
+    def save_results(self, df: DataFrame, df_labeled: DataFrame, df_company: DataFrame, df_industry: DataFrame, df_motivation: DataFrame, export_path: str):
+        
+        ## TO DO: Change to Save to Excel
         """
         Save the results to Excel files if export_path is provided.
 
         Args:
+            df (DataFrame): The DataFrame with the search results.
             df_labeled (DataFrame): The DataFrame with the labeled search results.
             df_company (DataFrame): The DataFrame with the output by company.
             df_industry (DataFrame): The DataFrame with the output by industry.
             export_path (str): The path to export the results to.
         """
-        if export_path:
-            save_to_excel(
-                file_path=export_path,
-                tables={
-                    "Semantic Labels": (df_labeled, (0, 0)),
-                    "By Company": (df_company, (2, 5)),
-                    "By Industry": (df_industry, (2, 2)),
-                    "Motivations": (motivation_df, (0, 0))
-                },
+        if export_path and not check_excel_dependencies():
+            logger.error(
+                "`excel` optional dependencies are not installed. "
+                "You can run `pip install bigdata_research_tools[excel]` to install them. "
+                "Consider installing them to save the Thematic Screener result into the "
+                f"path `{export_path}`."
             )
-            ## Save risk tree to json
-            risk_tree.save_json(export_path.replace('.xlsx', '_mindmap.json'))
-        else:
-            logger.warning("No export path provided. Results will not be saved.")
+        df.to_csv(export_path+'_df.csv', index=False)
+        df_labeled.to_csv(export_path+'_df_labeled.csv', index=False)
+        df_company.to_csv(export_path+'_df_company.csv', index=False)
+        df_industry.to_csv(export_path+'_df_industry.csv', index=False)
+        df_motivation.to_csv(export_path+'_df_motivation.csv', index=False)
+
+        #print(f"Full results have been exported to: {export_path}")
+
 
     def screen_companies(
         self,
@@ -312,14 +316,15 @@ class RiskAnalyzer:
                             'headline']
             )
 
-            df_company, df_industry, df_motivation = self.generate_results(df_labeled, word_range)
+            df_company, df_industry, df_motivation = self.generate_results(df_labeled)
 
             # Export to Excel if path provided
             if export_path:
-                self.save_results(df_labeled, df_company, df_industry, df_motivation, risk_tree, export_path = export_path)
+                self.save_results(df, df_labeled, df_company, df_industry, df_motivation, export_path = export_path)
 
-        except Exception as e:
+        except Exception:
             execution_result = "error"
+            raise
         else:
             execution_result = "success"
         finally:

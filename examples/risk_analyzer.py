@@ -3,17 +3,16 @@ from typing import Dict
 from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.client import bigdata_connection
-from bigdata_research_tools.visuals import create_risk_exposure_dashboard
 from bigdata_research_tools.workflows.risk_analyzer import RiskAnalyzer
-
+from bigdata_research_tools.visuals import create_thematic_exposure_dashboard
 
 def risk_analyzer_example(
-    risk_scenario: str,
+    risk_scenario: str, 
     llm_model: str = "openai::gpt-4o-mini",
-    keywords: list = ["Tariffs"],
-    control_entities: dict = {"place": ["Canada", "Mexico"]},
-    focus: str = "",
-    export_path: str = "risk_analyzer_results.xlsx",
+    keywords: list = ['Tariffs'],
+    control_entities: dict = {'place':['Canada', 'Mexico']},
+    focus: str = '',
+    export_path: str = "risk_analyzer",
 ) -> Dict:
 
     GRID_watchlist_ID = "44118802-9104-4265-b97a-2e6d88d74893"
@@ -28,8 +27,8 @@ def risk_analyzer_example(
         llm_model=llm_model,
         main_theme=risk_scenario,
         companies=companies,
-        start_date="2025-01-01",
-        end_date="2025-01-31",
+        start_date='2025-01-01',
+        end_date='2025-01-31',
         keywords=keywords,
         document_type=DocumentType.NEWS,
         control_entities=control_entities,
@@ -52,13 +51,16 @@ if __name__ == "__main__":
     logging.basicConfig()
     logging.getLogger("bigdata_research_tools").setLevel(logging.INFO)
 
-    x = risk_analyzer_example(
-        "US Import Tariffs against Canada and Mexico",
-        focus="Provide a detailed taxonomy of risks describing how new American import tariffs against Canada and Mexico will impact US companies, their operations and strategy. Cover trade-relations risks, foreign market access risks, supply chain risks, US market sales and revenue risks (including price impacts), and intellectual property risks, provide at least 4 sub-scenarios for each risk factor.",
-    )
-
+    x = risk_analyzer_example("US Import Tariffs against Canada and Mexico", focus="Provide a detailed taxonomy of risks describing how new American import tariffs against Canada and Mexico will impact US companies, their operations and strategy. Cover trade-relations risks, foreign market access risks, supply chain risks, US market sales and revenue risks (including price impacts), and intellectual property risks, provide at least 4 sub-scenarios for each risk factor.")
+    # custom_config = {
+    #     'company_column': 'Company',
+    #     'heatmap_colorscale': 'Plasma',
+    #     'dashboard_height': 1800,
+    #     'top_themes_count': 5,
+    #     'main_title': 'Custom Thematic Analysis Dashboard'
+    # }
     df = x["df_company"]
-    fig, industry_fig = create_risk_exposure_dashboard(df, n_companies=15)
-    fig.show(renderer="browser")  # Shows the main dashboard
-    industry_fig.show(renderer="browser")  # Shows the industry analysis
+    # fig, industry_fig = create_thematic_exposure_dashboard(df, n_companies=15, config=custom_config)
+    # fig.show(renderer="browser")           # Shows the main dashboard
+    # industry_fig.show(renderer="browser")  # Shows the industry analysis
     print(df.head(10))  # Display the first 10 rows of the DataFrame

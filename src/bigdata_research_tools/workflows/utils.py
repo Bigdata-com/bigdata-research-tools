@@ -90,4 +90,12 @@ def save_to_excel(
         (df, sheet_name, position) for sheet_name, (df, position) in tables.items()
     ]
 
+<<<<<<< HEAD
     excel_manager.save_workbook(excel_args, file_path)
+=======
+    excel_manager.save_workbook(excel_args, file_path)
+
+# Function to map risk_factor to risk_category
+def map_risk_category(risk_factor, mapping):
+    return mapping.get(risk_factor, 'Not Applicable')
+>>>>>>> 2358ddc (risk analyzer scripts and changes required)
