@@ -12,7 +12,7 @@ def risk_analyzer_example(
     keywords: list = ['Tariffs'],
     control_entities: dict = {'place':['Canada', 'Mexico']},
     focus: str = '',
-    export_path: str = "risk_analyzer",
+    export_path: str = "risk_analyzer_results.xlsx",
 ) -> Dict:
 
     GRID_watchlist_ID = "44118802-9104-4265-b97a-2e6d88d74893"

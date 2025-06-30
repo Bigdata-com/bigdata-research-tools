@@ -229,3 +229,7 @@ def replace_company_placeholders(row: Series, col_name: str = 'motivation') -> s
                 text = [t.replace(f"{get_other_entity_placeholder()}_{entity_id}", entity_name) for t in text]
 
     return text
+
+# Function to map risk_factor to risk_category
+def map_risk_category(risk_factor, mapping):
+    return mapping.get(risk_factor, 'Not Applicable')
