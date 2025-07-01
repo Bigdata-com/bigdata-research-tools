@@ -9,7 +9,7 @@ from typing import List, Tuple
 
 import pandas as pd
 
-from bigdata_research_tools.settings import (
+from bigdata_research_tools.utils import (
     check_libraries_installed,
     get_resources_path,
 )
