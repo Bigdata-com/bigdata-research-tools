@@ -1,8 +1,3 @@
-"""
-Copyright (C) 2025 RavenPack | Bigdata.com. All rights reserved.
-Author: Alessandro Bouchs (abouchs@ravenpack.com), Jelena Starovic (jstarovic@ravenpack.com)
-"""
-
 from dataclasses import dataclass
 from itertools import chain,zip_longest
 from typing import List, Optional, Tuple, Type, Dict  

@@ -1,11 +1,3 @@
-"""
-Module that includes all functions to create or extract
-information related to the sub-theme tree structure.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-Author: Jelena Starovic (jstarovic@ravenpack.com)
-"""
-
 import ast
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional

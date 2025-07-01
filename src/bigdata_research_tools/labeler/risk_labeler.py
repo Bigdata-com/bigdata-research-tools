@@ -1,8 +1,3 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
 
 from logging import Logger, getLogger
 from typing import List, Optional, Any, Dict

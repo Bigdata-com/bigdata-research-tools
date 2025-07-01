@@ -1,9 +1,3 @@
-"""
-Module for managing Excel workbook operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 from logging import Logger, getLogger
 from typing import List, Tuple
 
