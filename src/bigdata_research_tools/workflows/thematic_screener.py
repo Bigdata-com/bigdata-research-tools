@@ -8,14 +8,11 @@ from pandas import DataFrame, merge
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
-from bigdata_research_tools.excel import check_excel_dependencies
+from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.themes import generate_theme_tree
-from bigdata_research_tools.workflows.utils import (
-    get_scored_df,
-    save_to_excel
-)
+from bigdata_research_tools.workflows.utils import get_scored_df
 
 logger: Logger = getLogger(__name__)
 

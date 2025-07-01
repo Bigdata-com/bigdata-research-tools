@@ -4,10 +4,7 @@ Script with any common helper functions used across the workflows.
 
 from typing import List
 
-from bigdata_client.models.search import DocumentType
 from pandas import DataFrame
-
-from bigdata_research_tools.excel import ExcelManager, check_excel_dependencies
 
 from IPython.display import display, HTML
 
@@ -65,33 +62,3 @@ def get_scored_df(
         drop=True
     )
     return df_pivot
-
-
-def save_to_excel(
-    file_path: str,
-    tables: dict[str, tuple[DataFrame, tuple[int, int]]],
-) -> None:
-    """
-    Save multiple DataFrames to an Excel file using ExcelManager.
-
-    Args:
-        file_path: Destination path for the Excel file.
-        tables: A dict mapping sheet names to (DataFrame, position) tuples.
-
-    Returns:
-        None.
-    """
-    if not file_path or not check_excel_dependencies():
-        return
-
-    excel_manager = ExcelManager()
-
-    excel_args = [
-        (df, sheet_name, position) for sheet_name, (df, position) in tables.items()
-    ]
-
-    excel_manager.save_workbook(excel_args, file_path)
-
-# Function to map risk_factor to risk_category
-def map_risk_category(risk_factor, mapping):
-    return mapping.get(risk_factor, 'Not Applicable')

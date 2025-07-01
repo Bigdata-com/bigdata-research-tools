@@ -187,3 +187,29 @@ class ExcelManager:
         for cell in sheet[last_col_letter][self.row_offset - 2 :]:
             cell.font = Font(size=12, bold=True)
             cell.border = self.thick_border
+
+
+def save_to_excel(
+    file_path: str,
+    tables: dict[str, tuple[pd.DataFrame, tuple[int, int]]],
+) -> None:
+    """
+    Save multiple DataFrames to an Excel file using ExcelManager.
+
+    Args:
+        file_path: Destination path for the Excel file.
+        tables: A dict mapping sheet names to (DataFrame, position) tuples.
+
+    Returns:
+        None.
+    """
+    if not file_path or not check_excel_dependencies():
+        return
+
+    excel_manager = ExcelManager()
+
+    excel_args = [
+        (df, sheet_name, position) for sheet_name, (df, position) in tables.items()
+    ]
+
+    excel_manager.save_workbook(excel_args, file_path)

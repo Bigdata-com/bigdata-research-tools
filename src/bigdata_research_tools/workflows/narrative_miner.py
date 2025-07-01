@@ -6,10 +6,9 @@ from bigdata_research_tools.client import init_bigdata_client
 from pandas import merge
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
-from bigdata_research_tools.excel import check_excel_dependencies
+from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
 from bigdata_research_tools.search import search_narratives
-from bigdata_research_tools.workflows.utils import save_to_excel
 
 logger: Logger = getLogger(__name__)
 

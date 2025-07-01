@@ -6,6 +6,12 @@ from bigdata_research_tools.search.query_builder import (
     build_batched_query,
 )
 from bigdata_client import Bigdata
+
+from dotenv import load_dotenv
+
+# Load environment variables for authentication
+print(f"Environment variables loaded: {load_dotenv()}")
+
 bigdata = Bigdata()
 # Configure logging
 logging.basicConfig(
