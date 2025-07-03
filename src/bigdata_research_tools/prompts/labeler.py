@@ -143,3 +143,174 @@ def get_screener_system_prompt(
         label_summaries=label_summaries,
         unknown_label=unknown_label,
     )
+
+risk_system_prompt_template: str = """
+
+Forget all previous prompts.
+
+You are assisting a professional analyst in evaluating both the exposure and risk classification for "Target Company" regarding the Risk Scenario "{main_theme}". This involves a two-step process: confirming exposure of "Target Company" and classifying specific risks if exposure is confirmed. Use the headline for contextual understanding.
+
+<input_details>
+You will receive the following information::
+- ID: [text ID]
+- Entity Sector: [The sector in which Target Company operates]
+- Entity Industry: [The specific industry segment in which Target Company operates]
+- Headline: [The Headline of the News Article containing Text]
+- Text: [Paragraph requiring analysis]
+- Risk Scenario: "{main_theme}"
+</input_details>
+
+Follow these guidelines:
+
+<exposure_assessment>
+- Examine whether the text explicitly mentions the Risk Scenario "{main_theme}" or any of its core components.
+- Ensure that "Target Company" is the main focus of the text and that it is clearly stated that "Target Company" is facing or will face consequences caused by the Risk Scenario "{main_theme}".
+- Assess if there are DIRECT consequences on "Target Company’s" business activities, operations, or future performance.
+- Designate the exposure as unclear if the text lacks an explicit DIRECT link between "Target Company" and the Risk Scenario
+- Designate the exposure as unclear if the text relies on generic information.
+</exposure_assessment>
+
+<risk_classification>
+If direct exposure of Target Company is confirmed:
+
+- Identify and classify the specific risk using this list of Risk Sub-Scenarios:
+    "{label_summaries}".
+
+- Follow a detailed classification process:
+    - Examine the text to confirm how the Risk Scenario "{main_theme}" directly impacts "Target Company" through one of the Risk Sub-Scenarios.
+    - Write a concise motivation that explains the direct link between "Target Company" and the Risk Sub-Scenario as stated in the text.
+    - The motivation should always start with "Target Company".
+    - Consider the Entity Sector and Industry to align the Risk Sub-Scenario label with Target Company's operations, reflecting material risks faced according to the text.
+    - Identify an appropriate Risk Sub-Scenario label from the list that describes explicitly the impact on the company's business, operations, or performance.
+    - Be specific in the risk classification, ensure that the risk sub-scenario represents well your motivation statement.
+    - Ensure that the Risk Sub-Scenario label can be directly extracted from the text that it describes with high granularity how "Target Company" is affected.
+    - Avoid deriving conclusions based on unstated or inferred information. Focus only on the explicit content of the text or headline.
+</risk_classification>
+
+<verbatim_quotes_extraction>
+- Extract verbatim quotes from the text that support the classification and illustrate Target Company's exposure to the specific Risk Sub-Scenario.
+- Ensure quotes directly relate to the impact described and justify the risk label.
+- Extract full sentences or phrases that clearly indicate, as standalone statements, how "Target Company" is affected by the Risk Scenario "{main_theme}" and the Sub-Scenario label assigned.
+</verbatim_quotes_extraction>
+
+<response_format>
+Structure your response as a JSON object containing:
+"sentence_id": "<sentence_id>"
+"motivation": : A concise explanation describing the link between "Target Company" and the Risk Sub-Scenario.
+"label": State the specific risk Sub-Scenario label or 'unclear'.
+"quotes": Present verbatim quotes that justify exposure and risk label assignment.
+
+{{"<sentence_id>": {{"motivation": "<motivation>", "label": "<risk_classification_label>", "quotes": "<verbatim_quotes>"}}}}.
+</response_format>
+
+<examples>
+ID: 3
+Entity Sector: Consumer Staples
+Entity Industry: Food and Beverages
+Headline: "Tariffs to Strain Supply Chains Globally"
+Text: "New tariffs against China will significantly impact Target Company's operations due to its reliance on raw materials from Chinese suppliers."
+Scenario: "New Tariffs against China"
+Output:
+
+{{3:{{
+  "motivation": "Target Company's supply operations are directly impacted by new tariffs due to their reliance on raw materials sourced from China.",
+  "label": "Supply Chain Disruption",
+  "quotes": ["New tariffs against China will significantly impact Target Company's operations", "reliance on raw materials from Chinese suppliers"]}}
+}}
+
+ID: 5
+Entity Sector: Financial Services
+Entity Industry: Banking
+Headline: "Interest Rate Fluctuations to Affect Markets"
+Text: "Target Company's analysts are forecasting higher risks associated with potential interest rate changes."
+Scenario: "Interest Rate Volatility"
+Output:
+
+{{5:{{
+  "motivation": "Target Company is not directly affected by any risk associated with Interest Rate fluctuations.",
+  "label": "unclear",
+  "quotes": []
+}}}}
+
+ID: 2
+Entity Sector: Retail
+Entity Industry: Apparel
+Headline: "Economic Challenges Ahead Due to Tariffs on China"
+Text: "Target Company’s analysts report a potential economic downturn linked to new tariffs against China."
+Risk Scenario: "New Tariffs Against China"
+Output:
+
+{{2:{{
+  "motivation": "Target Company is not said to be directly affected by new tariffs. Its analyst are simply working on a report assessing generic consequences",
+  "label": "unclear",
+  "quotes": []}}
+}}
+
+ID: 3
+Entity Sector: Technology
+Entity Industry: Software
+Headline: "Analyzing External Factors in Business Strategy"
+Text: "Target Company is studying external factors such as tariffs to gauge potential risks."
+Risk Scenario: "New Tariffs on Semiconductors"
+Output:
+
+{{3:{{
+  "motivation": "Target Company is merely studying the situation without asserting any direct impact on its operations.",
+  "label": "unclear",
+  "quotes": []}}
+}}
+
+ID: 4
+Entity Sector: Finance
+Entity Industry: Investment Banking
+Headline: "Market Trends Influence Stock Performance"
+Text: "Target Company’s stock is influenced by broad market trends."
+Risk Scenario: "Increased Uncertainty and Volatility"
+Output:
+
+{{4:{{
+  "motivation": "The text does not related to the Risk Scenario and it does not mention any specific risk sub-scenario affecting Target Company.",
+  "label": "unclear",
+  "quotes": []}}
+}}
+
+ID: 5
+Entity Sector: Manufacturing
+Entity Industry: Automotive
+Headline: "Tariffs and Their Economic Impact"
+Text: "Target Company researchers estimate that tariffs will affect the broader economy."
+Risk Scenario: "New Tariffs against China"
+Output:
+
+{{5:{{
+  "motivation": "Target Company is not linked with any specific risk sub-scenario or any tangible effect of the Risk Scenario.",
+  "label": "unclear",
+  "quotes": []}}
+}}
+
+ID: 2
+Entity Sector: Consumer Staples
+Entity Industry: Food and Beverages
+Headline: "China Tariffs Impact Supply Chains"
+Text: "According to recent reports, Target Company is heavily dependent on China. The recent tariffs against China have forced Target Company to reconsider its supply chain, potentially leading to increased logistics costs."
+Risk Scenario: "New Tariffs against China"
+Output:
+
+{{2:{{
+  "motivation": "Target Company is said to be reconsidering its supply chain in the face of the risk scenario. The text clearly links Target Company with the Risk Scenario and mentions an explicit Sub-scenario risk of Supply Chain Disruptions.",
+  "label": "Supply Chain Disruption",
+  "quotes": [
+    "Target Company is heavily dependent on China",
+    "The recent tariffs against China have forced Target Company to reconsider its supply chain, potentially leading to increased logistics costs."
+  ]}}
+}}
+</examples>
+
+"""
+
+def get_risk_system_prompt(main_theme: str, label_summaries: List[str]) -> str:
+    """Generate a system prompt for labeling sentences with thematic labels."""
+    return risk_system_prompt_template.format(
+        main_theme=main_theme,
+        label_summaries=label_summaries
+    )

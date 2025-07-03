@@ -69,6 +69,9 @@ class Labeler:
                         "motivation": v.get("motivation", ""),
                         "label": v.get("label", self.unknown_label),
                     }
+                    # Add any extra keys present in v
+                    extra_keys = {key: value for key, value in v.items() if key not in ["motivation", "label"]}
+                    response_mapping[k].update(extra_keys)
                 except (KeyError, AttributeError):
                     response_mapping[k] = {
                         "motivation": "",
