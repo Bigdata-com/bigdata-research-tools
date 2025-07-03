@@ -3,7 +3,7 @@ from json import JSONDecodeError
 from logging import Logger, getLogger
 from re import findall
 from time import sleep
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 from bigdata_client.connection import RequestMaxLimitExceeds
 from bigdata_client.document import Document
@@ -39,7 +39,7 @@ def search_by_companies(
     fiscal_year: Optional[int] = None,
     sources: Optional[List[str]] = None,
     keywords: Optional[List[str]] = None,
-    control_entities: Optional[List[str]] = None,
+    control_entities: Optional[Dict] = None,
     freq: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
     rerank_threshold: Optional[float] = None,
@@ -62,8 +62,7 @@ def search_by_companies(
         sources (Optional[List[str]]): List of sources to filter on. If none, we search across all sources.
         keywords (List[str]): A list of keywords for constructing keyword queries.
             If None, no keyword queries are created.
-        control_entities (List[str]): A list of control entity IDs for creating co-mentions queries.
-            If None, no control queries are created.
+        control_entities (Dict): A dictionary of control entities of different types for creating co-mentions queries.
         freq (str): The frequency of the date ranges. Defaults to '3M'.
         sort_by (SortBy): The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
@@ -109,7 +108,7 @@ def search_by_companies(
     # For this example, assuming control_entities are all company entities
     control_entities_config = None
     if control_entities:
-        control_entities_config = EntitiesToSearch(companies=control_entities)
+        control_entities_config = EntitiesToSearch(**control_entities)
 
     # Build batched queries
     batched_query = build_batched_query(
@@ -294,7 +293,6 @@ def look_up_entities_binary_search(
 
     return entities
 
-
 def process_screener_search_results(
     results: List[Document],
     entities: List[ListQueryComponent],
@@ -405,8 +403,8 @@ def process_screener_search_results(
 
                     if not entity_key:
                         continue  # Skip if entity is not found
-
-                    # if entity isn't in our original watchlist, skip
+                    
+                    # # if entity isn't in our original watchlist, skip
                     if companies and entity_key not in companies:
                         continue
 
