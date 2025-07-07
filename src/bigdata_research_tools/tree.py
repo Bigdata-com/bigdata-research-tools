@@ -6,12 +6,12 @@ from pandas import DataFrame
 import json
 
 from bigdata_research_tools.llm import LLMEngine
+from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
 from bigdata_research_tools.prompts.themes import (
     compose_themes_system_prompt_base,
     compose_themes_system_prompt_focus,
     compose_themes_system_prompt_onestep,
 )
-from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
 
 themes_default_llm_model_config: Dict[str, Any] = {
     "provider": "openai",
@@ -28,28 +28,28 @@ themes_default_llm_model_config: Dict[str, Any] = {
 
 
 @dataclass
-class ThemeTree:
+class SemanticTree:
     """
-    A hierarchical tree structure rooted in a main theme, branching into distinct sub-themes
-    that guide the analyst's research process.
+    A hierarchical tree structure where each node represents a semantically meaningful unit, or node, that guide the analyst's research process.
 
-    Each node in the tree provides a unique identifier, a descriptive label, and a summary
-    explaining its relevance.
+    Each node in the tree provides a unique identifier, a descriptive label, and a summary (and optionally keywords)
+    explaining its relevance. Nodes can have child nodes, allowing the tree
+    to represent nested or related concepts, categories, or classifications.
 
     Args:
-        label (str): The name of the theme or sub-theme.
+        label (str): The name of the current node.
         node (int): A unique identifier for the node.
-        summary (str): A brief explanation of the node’s relevance. For the root node
-            (main theme), this describes the overall theme; for sub-nodes, it explains their
-            connection to the parent theme.
-        children (Optional[List[ThemeTree]]): A list of child nodes representing sub-themes.
-        keywords (Optional[List[str]]): A list of keywords summarizing the main theme. Currently used by RiskAnalyzer to ensure branches are relevant.
+        summary (str): A brief explanation of the node's relevance. For the root node,
+            this describes the overall relevance of the tree; for sub-nodes, it explains their
+            connection to the parent node.
+        children (Optional[List[SemanticTree]]): A list of child nodes representing sub-units.
+        keywords (Optional[List[str]]): A list of keywords summarizing the current node.
     """
 
     label: str
     node: int
     summary: str = None
-    children: List["ThemeTree"] = None
+    children: List["SemanticTree"] = None
     keywords: Optional[List[str]] = None
 
     def __post_init__(self):
@@ -59,24 +59,24 @@ class ThemeTree:
         return self.as_string()
 
     @staticmethod
-    def from_dict(tree_dict: dict) -> "ThemeTree":
+    def from_dict(tree_dict: dict) -> "SemanticTree":
         """
-        Create a ThemeTree object from a dictionary.
+        Create a SemanticTree object from a dictionary.
 
         Args:
-            tree_dict (dict): A dictionary representing the ThemeTree structure.
+            tree_dict (dict): A dictionary representing the SemanticTree structure.
 
         Returns:
-            ThemeTree: The ThemeTree object generated from the dictionary.
+            SemanticTree: The SemanticTree object generated from the dictionary.
         """
         # Handle case sensitivity in keys
         tree_dict = dict_keys_to_lowercase(tree_dict)
 
-        theme_tree = ThemeTree(**tree_dict)
-        theme_tree.children = [
-            ThemeTree.from_dict(child) for child in tree_dict.get("children", [])
+        tree = SemanticTree(**tree_dict)
+        tree.children = [
+            SemanticTree.from_dict(child) for child in tree_dict.get("children", [])
         ]
-        return theme_tree
+        return tree
 
     def as_string(self, prefix: str = "") -> str:
         """
@@ -111,7 +111,7 @@ class ThemeTree:
         Extract the label summaries from the tree.
 
         Returns:
-            dict[str, str]: Dictionary with all the labels of the ThemeTree as keys and their associated summaries as values.
+            dict[str, str]: Dictionary with all the labels of the SemanticTree as keys and their associated summaries as values.
         """
         label_summary = {self.label: self.summary}
         for child in self.children:
@@ -120,7 +120,7 @@ class ThemeTree:
 
     def get_summaries(self) -> List[str]:
         """
-        Extract the node summaries from a ThemeTree.
+        Extract the node summaries from a SemanticTree.
 
         Returns:
             list[str]: List of all 'summary' values in the tree, including its children.
@@ -135,7 +135,7 @@ class ThemeTree:
         Extract the items (labels, summaries) from terminal nodes of the tree.
 
         Returns:
-            dict[str, str]: Dictionary with the labels of the ThemeTree as keys and
+            dict[str, str]: Dictionary with the labels of the SemanticTree as keys and
             their associated summaries as values, only using terminal nodes.
         """
         label_summary = {}
@@ -210,7 +210,7 @@ class ThemeTree:
             import graphviz
         except ImportError:
             raise ImportError(
-                "Missing optional dependency for theme visualization, "
+                "Missing optional dependency for tree visualization, "
                 "please install `bigdata_research_tools[graphviz]` to enable them."
             )
 
@@ -223,7 +223,7 @@ class ThemeTree:
             splines="curved",
         )
 
-        def add_nodes(node):
+        def add_nodes(node: SemanticTree):
             # Determine if the node is a terminal (leaf) node
             is_terminal = not node.children
 
@@ -276,11 +276,11 @@ class ThemeTree:
             import plotly.express as px
         except ImportError:
             raise ImportError(
-                "Missing optional dependency for theme visualization, "
+                "Missing optional dependency for tree visualization, "
                 "please install `bigdata_research_tools[plotly]` to enable them."
             )
 
-        def extract_labels(node: ThemeTree, parent_label=""):
+        def extract_labels(node: SemanticTree, parent_label=""):
             labels.append(node.label)
             parents.append(parent_label)
             for child in node.children:
@@ -293,7 +293,7 @@ class ThemeTree:
         df = DataFrame({"labels": labels, "parents": parents})
         fig = px.treemap(df, names="labels", parents="parents")
         fig.show()
-    
+
     def get_label_to_parent_mapping(self) -> dict:
         """
         Returns a mapping from each leaf node label to its parent node label.
@@ -317,9 +317,9 @@ def generate_theme_tree(
     main_theme: str,
     focus: str = "",
     llm_model_config: Dict[str, Any] = None,
-) -> ThemeTree:
+) -> SemanticTree:
     """
-    Generate a `ThemeTree` class from a main theme and focus.
+    Generate a `SemanticTree` class from a main theme and focus.
 
     Args:
         main_theme (str): The primary theme to analyze.
@@ -337,7 +337,7 @@ def generate_theme_tree(
             - `seed` (int)
 
     Returns:
-        ThemeTree: The generated theme tree.
+        SemanticTree: The generated theme tree.
     """
     ll_model_config = llm_model_config or themes_default_llm_model_config
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
@@ -380,7 +380,7 @@ def generate_theme_tree(
 
     tree_dict = ast.literal_eval(tree_str)
 
-    return ThemeTree.from_dict(tree_dict)
+    return SemanticTree.from_dict(tree_dict)
 
 
 def dict_keys_to_lowercase(d: Dict[str, Any]) -> Dict[str, Any]:
@@ -404,10 +404,10 @@ def dict_keys_to_lowercase(d: Dict[str, Any]) -> Dict[str, Any]:
 
 def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
     """
-    Convert the label summaries of a ThemeTree into a list of strings.
+    Convert the label summaries of a SemanticTree into a list of strings.
 
     Args:
-        label_summaries (dict[str, str]): A dictionary of label summaries of ThemeTree.
+        label_summaries (dict[str, str]): A dictionary of label summaries of SemanticTree.
             Expected format: {label: summary}.
     Returns:
         List[str]: A list of strings, each one containing a label and its summary, i.e.
@@ -415,13 +415,14 @@ def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
     """
     return [f"{label}: {summary}" for label, summary in label_summaries.items()]
 
+
 def generate_risk_tree(
     main_theme: str,
     focus: str = "",
     llm_model_config: Dict[str, Any] = None,
-) -> ThemeTree:
+) -> SemanticTree:
     """
-    Generate a `ThemeTree` class from a main theme and analyst focus.
+    Generate a `SemanticTree` class from a main theme and analyst focus.
 
     Args:
         main_theme (str): The primary theme to analyze.
@@ -439,7 +440,7 @@ def generate_risk_tree(
             - `seed` (int)
 
     Returns:
-        ThemeTree: The generated theme tree.
+        SemanticTree: The generated theme tree.
     """
     ll_model_config = llm_model_config or themes_default_llm_model_config
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
@@ -447,8 +448,10 @@ def generate_risk_tree(
 
     system_prompt = compose_risk_system_prompt_focus(main_theme, focus)
 
-    tree_str = llm.get_response([{"role": "system", "content": system_prompt}], **ll_model_config["kwargs"])
+    tree_str = llm.get_response(
+        [{"role": "system", "content": system_prompt}], **ll_model_config["kwargs"]
+    )
 
     tree_dict = ast.literal_eval(tree_str)
 
-    return ThemeTree.from_dict(tree_dict)
+    return SemanticTree.from_dict(tree_dict)

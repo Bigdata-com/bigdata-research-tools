@@ -2,13 +2,13 @@ from logging import Logger, getLogger
 from typing import Dict, List, Optional
 
 from bigdata_client.models.search import DocumentType
-from bigdata_research_tools.client import init_bigdata_client
 from pandas import merge
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
+from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
 from bigdata_research_tools.search import search_narratives
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 logger: Logger = getLogger(__name__)
 
@@ -41,7 +41,7 @@ class NarrativeMiner:
                                If not provided, the search is run across all available sources.
             rerank_threshold:  Enable the cross-encoder by setting the value between [0, 1].
         """
-        
+
         self.llm_model = llm_model
         self.narrative_sentences = narrative_sentences
         self.sources = sources
@@ -102,6 +102,7 @@ class NarrativeMiner:
                 batch_size=batch_size,
                 scope=self.document_type,
                 current_trace=current_trace,
+                fiscal_year=self.fiscal_year,
                 bigdata_client=bigdata_client,
             )
 

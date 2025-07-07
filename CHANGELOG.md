@@ -7,6 +7,17 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.0] - 2025-07-03
+Preparation for a first stable release.
+
+### Changed
+- Refactor the `themes` submodule to `tree`, allowing for a more generic tree structure
+  that can be re-used accross different workflows.
+- Moved `workflows.utils.save_to_excel` to `excel.save_to_excel`, grouping all optional
+  features related to Excel in one place.
+- Renamed `settings` to `utils` to better reflect its purpose as a utility module and free
+  the name for future use.
+
 ## [0.15.1] - 2025-06-12
 
 ### Changed
