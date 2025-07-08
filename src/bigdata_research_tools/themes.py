@@ -15,9 +15,7 @@ import json
 
 from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.themes import (
-    compose_themes_system_prompt_base,
-    compose_themes_system_prompt_focus,
-    compose_themes_system_prompt_onestep,
+    compose_themes_system_prompt,
 )
 from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
 
@@ -356,7 +354,6 @@ def generate_theme_tree(
     Args:
         main_theme (str): The primary theme to analyze.
         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
-            If provided, a two-step process is used to better integrate the focus.
         llm_model_config (dict): Configuration for the large language model used to generate themes.
             Expected keys:
             - `provider` (str): The model provider (e.g., 'openai').
@@ -375,41 +372,15 @@ def generate_theme_tree(
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
     llm = LLMEngine(model=model_str)
 
-    # Handle focus using different strategies
-    if not focus:
-        # One-step process without focus
-        system_prompt = compose_themes_system_prompt_onestep(main_theme)
+    
+    system_prompt = compose_themes_system_prompt(main_theme, analyst_focus=focus)
 
-        chat_history = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": main_theme},
-        ]
+    chat_history = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": main_theme},
+    ]
 
-        tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
-    else:
-        # Two-step process with focus
-        # Step 1: Generate base tree
-        base_prompt = compose_themes_system_prompt_base(main_theme)
-        base_chat_history = [
-            {"role": "system", "content": base_prompt},
-            {"role": "user", "content": main_theme},
-        ]
-
-        initial_tree_str = llm.get_response(
-            base_chat_history, **ll_model_config["kwargs"]
-        )
-
-        # Step 2: Refine with focus
-        focus_prompt = compose_themes_system_prompt_focus(main_theme, focus)
-        focus_chat_history = [
-            {"role": "system", "content": focus_prompt},
-            {"role": "user", "content": main_theme},
-            {"role": "user", "content": focus},
-            {"role": "user", "content": initial_tree_str},
-        ]
-
-        tree_str = llm.get_response(focus_chat_history, **ll_model_config["kwargs"])
-
+    tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
     tree_dict = ast.literal_eval(tree_str)
 
     return ThemeTree.from_dict(tree_dict)
