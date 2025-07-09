@@ -233,16 +233,17 @@ class ThemeTree:
             # Determine if the node is a terminal (leaf) node
             is_terminal = not node.children
 
-            # For terminal nodes, use summary if available, otherwise use label
-            # For middle nodes, use the label
-            node_text = (
-                node.summary if is_terminal and hasattr(node, "summary") else node.label
-            )
+            # For terminal nodes, use "<B>label</B>: summary" format
+            if is_terminal and hasattr(node, "summary"):
+                node_text = f"<B>{node.label}</B>: {node.summary}"
+            # For middle nodes, use "<B>label</B>"
+            else:
+                node_text = f"<B>{node.label}</B>"
 
             # Add a node to the mind map with a box shape
             mindmap.node(
                 str(node),
-                node_text,
+                f"<{node_text}>",  # Use HTML-like label format
                 shape="box",
                 style="filled",
                 # Make terminal nodes lighter than middle nodes
@@ -269,6 +270,7 @@ class ThemeTree:
 
         # Return the Graphviz dot object for rendering
         return mindmap
+
 
     def _visualize_plotly(self) -> None:
         """
