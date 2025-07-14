@@ -19,4 +19,4 @@ def get_library_root() -> str:
 
 
 def get_resources_path() -> str:
-    return str(Path(get_library_root()).resolve().parent.parent / "static")
+    return str(Path(get_library_root()).resolve() / "res")
