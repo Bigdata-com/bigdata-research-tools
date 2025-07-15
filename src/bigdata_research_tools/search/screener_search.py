@@ -26,6 +26,7 @@ from bigdata_research_tools.search.query_builder import (
     create_date_ranges,
 )
 from bigdata_research_tools.search.search import run_search
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 logger: Logger = getLogger(__name__)
 
@@ -98,68 +99,96 @@ def search_by_companies(
             - masked_text: str
             - other_entities_map: List[Tuple[int, str]]
     """
-    # Extract entities for search querying
-    entity_keys = [entity.id for entity in companies]
 
-   # Create entity configs
-    entities_config = EntitiesToSearch(companies=entity_keys)
-    
-    # If control_entities are provided, create a control EntityConfig
-    # For this example, assuming control_entities are all company entities
-    control_entities_config = None
-    if control_entities:
-        control_entities_config = EntitiesToSearch(**control_entities)
+    if not kwargs.get("current_trace"):
+        current_trace = Trace(
+            event_name=TraceEventNames.COMPANY_SEARCH,
+            document_type=scope,
+            start_date=start_date,
+            end_date=end_date,
+            rerank_threshold=rerank_threshold,
+            llm_model=None,
+            frequency=freq,
+            workflow_start_date=Trace.get_time_now(),
+        )
 
-    # Build batched queries
-    batched_query = build_batched_query(
-        sentences=sentences,
-        keywords=keywords,
-        entities=entities_config,
-        control_entities=control_entities_config,
-        custom_batches=None,
-        sources=sources,
-        batch_size=batch_size,
-        fiscal_year=fiscal_year,
-        scope=scope,
-    )
+        kwargs["current_trace"] = current_trace
 
-    # Create list of date ranges
-    date_ranges = create_date_ranges(start_date, end_date, freq)
+    try:
+        # Extract entities for search querying
+        entity_keys = [entity.id for entity in companies]
 
-    no_queries = len(batched_query)
-    no_dates = len(date_ranges)
-    total_no = no_dates * no_queries
+    # Create entity configs
+        entities_config = EntitiesToSearch(companies=entity_keys)
+        
+        # If control_entities are provided, create a control EntityConfig
+        # For this example, assuming control_entities are all company entities
+        control_entities_config = None
+        if control_entities:
+            control_entities_config = EntitiesToSearch(**control_entities)
 
-    logger.info(f"About to run {total_no} queries")
-    logger.debug("Example Query:", batched_query[0])
-    # Run concurrent search
-    results = run_search(
-        batched_query,
-        date_ranges=date_ranges,
-        limit=document_limit,
-        scope=scope,
-        sortby=sort_by,
-        rerank_threshold=rerank_threshold,
-        **kwargs,
-    )
+        # Build batched queries
+        batched_query = build_batched_query(
+            sentences=sentences,
+            keywords=keywords,
+            entities=entities_config,
+            control_entities=control_entities_config,
+            custom_batches=None,
+            sources=sources,
+            batch_size=batch_size,
+            fiscal_year=fiscal_year,
+            scope=scope,
+        )
 
-    results, entities = filter_search_results(results)
+        # Create list of date ranges
+        date_ranges = create_date_ranges(start_date, end_date, freq)
 
-    # Determine whether to filter by companies based on document type
-    # For filings and transcripts, we don't need to filter as we use reporting entities
-    # For news, we need to check against our original universe of companies as a news article
-    # may mention other companies we're not interested in
-    needs_company_filtering = scope not in (
-        DocumentType.FILINGS,
-        DocumentType.TRANSCRIPTS,
-    )
+        no_queries = len(batched_query)
+        no_dates = len(date_ranges)
+        total_no = no_dates * no_queries
 
-    df_sentences = process_screener_search_results(
-        results=results,
-        entities=entities,
-        companies=companies if needs_company_filtering else None,
-        document_type=scope,
-    )
+        logger.info(f"About to run {total_no} queries")
+        logger.debug("Example Query:", batched_query[0])
+        # Run concurrent search
+        results = run_search(
+            batched_query,
+            date_ranges=date_ranges,
+            limit=document_limit,
+            scope=scope,
+            sortby=sort_by,
+            rerank_threshold=rerank_threshold,
+            **kwargs,
+        )
+
+        results, entities = filter_search_results(results)
+
+        # Determine whether to filter by companies based on document type
+        # For filings and transcripts, we don't need to filter as we use reporting entities
+        # For news, we need to check against our original universe of companies as a news article
+        # may mention other companies we're not interested in
+        needs_company_filtering = scope not in (
+            DocumentType.FILINGS,
+            DocumentType.TRANSCRIPTS,
+        )
+
+        df_sentences = process_screener_search_results(
+            results=results,
+            entities=entities,
+            companies=companies if needs_company_filtering else None,
+            document_type=scope,
+        )
+    except Exception:
+        execution_result = "error"
+        raise
+    else:
+        execution_result = "success"
+    finally:
+        current_trace = kwargs.get("current_trace")
+        if current_trace and current_trace.event_name == TraceEventNames.COMPANY_SEARCH:
+            current_trace.workflow_end_date = Trace.get_time_now()
+            current_trace.result = execution_result  # noqa
+            send_trace(bigdata_connection(), current_trace)
+
     return df_sentences
 
 

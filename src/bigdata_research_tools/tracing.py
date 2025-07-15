@@ -16,7 +16,7 @@ class TraceEventNames(Enum):
     NARRATIVE_MINER = "NarrativeMinersRun"
     THEMATIC_SCREENER = "ThematicScreenerRun"
     RISK_ANALYZER = "RiskAnalyzerRun"
-
+    COMPANY_SEARCH = "CompanySearchRun"
 
 @dataclasses.dataclass
 class Trace:
