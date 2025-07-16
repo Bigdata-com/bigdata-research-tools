@@ -99,9 +99,12 @@ class NarrativeLabeler(Labeler):
                 - Date
                 - Document ID
                 - Headline
-                - Quote
+                - Chunk Text
                 - Motivation
                 - Label
+                - Entity
+                - Country Code
+                - Entity Type
         """
         # Filter unlabeled sentences
         df = df.loc[df["label"] != self.unknown_label].copy()
@@ -123,25 +126,35 @@ class NarrativeLabeler(Labeler):
         df = df.rename(
             columns={
                 "document_id": "Document ID",
+                "sentence_id": "Sentence ID",
                 "headline": "Headline",
-                "text": "Quote",
+                "text": "Chunk Text",
                 "motivation": "Motivation",
                 "label": "Label",
+                "entity": "Entity",
+                "country_code": "Country Code",
+                "entity_type": "Entity Type",
             }
         )
+
+        df = df.explode(["Entity", "Entity Type", "Country Code"], ignore_index=True)
 
         # Select and order columns
         export_columns = [
             "Time Period",
             "Date",
             "Document ID",
+            "Sentence ID",
             "Headline",
-            "Quote",
+            "Chunk Text",
             "Motivation",
             "Label",
+            "Entity",
+            "Country Code",
+            "Entity Type",
         ]
 
-        sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Quote"]
+        sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Chunk Text"]
         df = df[export_columns].sort_values(sort_columns).reset_index(drop=True) 
         
         return df

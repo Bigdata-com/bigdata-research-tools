@@ -104,6 +104,7 @@ class NarrativeMiner:
                 scope=self.document_type,
                 current_trace=current_trace,
                 bigdata_client=bigdata_client,
+                fiscal_year=self.fiscal_year,
             )
 
             # Label the search results with our narrative sentences
