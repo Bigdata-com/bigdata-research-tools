@@ -140,7 +140,7 @@ class SearchManager:
         :param rerank_threshold:
             Enable the cross-encoder by setting value between [0,1]
         :return:
-            A list of search results, or None if a rate limit timeout occurred.
+            A list of search results.
         """
         if not self._acquire_token(timeout):
             logging.warning("Timed out attempting to acquire rate limit token")
@@ -150,16 +150,16 @@ class SearchManager:
             date_range = AbsoluteDateRange(*date_range)
 
         try:
-            query = self.bigdata.search.new(
+            query_obj = self.bigdata.search.new(
                 query=query,
                 date_range=date_range,
                 sortby=sortby,
                 scope=scope,
                 rerank_threshold=rerank_threshold,
             )
-            results = query.run(limit=limit)
+            results = query_obj.run(limit=limit)
             if kwargs.get("current_trace"):
-                kwargs["current_trace"].add_query_units(query.get_usage())
+                kwargs["current_trace"].add_query_units(query_obj.get_usage())
             return results
         except Exception as e:
             logging.error(f"Search error: {e}")
@@ -228,8 +228,6 @@ class SearchManager:
             ):
                 query, date_range = futures[future]
                 try:
-                    # Store the search results in the dictionary,
-                    # Even if the search result is empty.
                     results[(query, date_range)] = future.result()
                 except Exception as e:
                     logging.error(f"Error in search {query, date_range}: {e}")
@@ -274,16 +272,12 @@ def run_search(
         rerank_threshold (Optional[float]): The threshold for reranking the search results.
             See https://sdk.bigdata.com/en/latest/how_to_guides/rerank_search.html.
     Returns:
-        Union[Dict[Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]], list[list[Document]]]:
+        Union[Dict[Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]], list[list[Document]], list[dict]]:
         If `only_results` is True, returns the list of search results.
 
         If `only_results` is False, returns a mapping of the tuple of search query and date range to
         the list of the corresponding search results.
     """
-    # TODO (cpinto, 2025-03-21): We can add type hints for the `kwargs` parameter, but that would mean
-    #   also exposing the `SearchManager` class:
-    # kwargs (Optional[dict]): Additional keyword arguments to pass to initialize the `SearchManager`
-    #   that will be used.
     manager = SearchManager(**kwargs)
     date_ranges = normalize_date_range(date_ranges)
     query_results = manager.concurrent_search(
