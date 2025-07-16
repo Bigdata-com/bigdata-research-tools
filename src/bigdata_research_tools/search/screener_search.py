@@ -8,6 +8,7 @@ from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
 
+from bigdata_research_tools.client import bigdata_connection
 from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
     get_target_entity_placeholder,
@@ -155,7 +156,9 @@ def search_by_companies(
         )
 
         results, entities = filter_search_results(results)
-
+        # Filter entities to only include COMPANY entities
+        entities = filter_company_entities(entities)
+        
         # Determine whether to filter by companies based on document type
         # For filings and transcripts, we don't need to filter as we use reporting entities
         # For news, we need to check against our original universe of companies as a news article
