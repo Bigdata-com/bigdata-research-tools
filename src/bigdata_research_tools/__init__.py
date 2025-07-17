@@ -2,4 +2,4 @@
 Bigdata.com Research Tools
 """
 
-__version__: str = "0.17.1"
+__version__: str = "0.17.2"
