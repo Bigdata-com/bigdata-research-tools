@@ -21,7 +21,8 @@ from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
 from tqdm import tqdm
 
-from bigdata_research_tools.client import init_bigdata_client
+from bigdata_research_tools.client import bigdata_connection, init_bigdata_client
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 DATE_RANGE_TYPE = Union[
     AbsoluteDateRange,
@@ -278,17 +279,50 @@ def run_search(
         If `only_results` is False, returns a mapping of the tuple of search query and date range to
         the list of the corresponding search results.
     """
-    manager = SearchManager(**kwargs)
     date_ranges = normalize_date_range(date_ranges)
-    query_results = manager.concurrent_search(
-        queries=queries,
-        date_ranges=date_ranges,
-        sortby=sortby,
-        scope=scope,
-        limit=limit,
-        rerank_threshold=rerank_threshold,
-        **kwargs,
-    )
+    date_ranges.sort(key=lambda x: x[0])
+
+    if not kwargs.get("current_trace"):
+        start_date = date_ranges[0][0] if date_ranges else None
+        end_date = date_ranges[-1][1] if date_ranges else None     
+
+        current_trace = Trace(
+            event_name=TraceEventNames.RUN_SEARCH,
+            document_type=scope,
+            start_date=start_date,
+            end_date=end_date,
+            rerank_threshold=rerank_threshold,
+            llm_model=None,
+            frequency=None,
+            workflow_start_date=Trace.get_time_now(),
+        )
+
+        kwargs["current_trace"] = current_trace
+
+    try: 
+        manager = SearchManager(**kwargs)
+        query_results = manager.concurrent_search(
+            queries=queries,
+            date_ranges=date_ranges,
+            sortby=sortby,
+            scope=scope,
+            limit=limit,
+            rerank_threshold=rerank_threshold,
+            **kwargs,
+        )
+    except Exception:
+        execution_result = "error"
+        raise
+    else:
+        execution_result = "success"
+    finally:
+        current_trace = kwargs.get("current_trace")
+        if current_trace and current_trace.event_name == TraceEventNames.RUN_SEARCH:
+            current_trace.workflow_end_date = Trace.get_time_now()
+            current_trace.result = execution_result  # noqa
+            send_trace(bigdata_connection(), current_trace)
+
+
     if only_results:
         return list(query_results.values())
     return query_results
