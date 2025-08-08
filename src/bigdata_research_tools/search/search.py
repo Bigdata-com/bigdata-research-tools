@@ -243,7 +243,7 @@ def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
     # Convert mutable AbsoluteDateRange into hashable objects
     for i, dr in enumerate(date_ranges):
         if isinstance(dr, AbsoluteDateRange):
-            date_ranges[i] = (dr.start_dt, dr.end_dt)
+            date_ranges[i] = (dr.start_dt.strftime("%Y-%m-%d %H:%M:%S"), dr.end_dt.strftime("%Y-%m-%d %H:%M:%S"))
     return date_ranges
 
 
