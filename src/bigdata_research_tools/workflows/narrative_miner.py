@@ -9,7 +9,7 @@ from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
 from bigdata_research_tools.search import search_narratives
-from bigdata_research_tools.workflows.utils import save_to_excel, validate_parameters
+from bigdata_research_tools.workflows.utils import save_to_excel
 
 logger: Logger = getLogger(__name__)
 
@@ -42,8 +42,7 @@ class NarrativeMiner:
                                If not provided, the search is run across all available sources.
             rerank_threshold:  Enable the cross-encoder by setting the value between [0, 1].
         """
-        validate_parameters(document_scope=document_type, fiscal_year=fiscal_year)
-
+        
         self.llm_model = llm_model
         self.narrative_sentences = narrative_sentences
         self.sources = sources
@@ -105,6 +104,7 @@ class NarrativeMiner:
                 scope=self.document_type,
                 current_trace=current_trace,
                 bigdata_client=bigdata_client,
+                fiscal_year=self.fiscal_year,
             )
 
             # Label the search results with our narrative sentences

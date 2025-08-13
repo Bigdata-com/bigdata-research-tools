@@ -7,6 +7,40 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.3] - 2025-08-08
+
+### Changed
+- Improve logging and tracing
+
+## [0.17.2] - 2025-07-17
+
+### Changed
+- Improve logging and tracing
+
+## [0.17.1] - 2025-07-16
+
+### Changed 
+- Reinstate filter for company entities in screener
+
+## [0.17.0] - 2025-07-16
+
+### Changed 
+- Fix logic to add logo to excel spreadsheets
+- Add post-processing fields to narrative miner
+- Add tracing when calling search_by_companies
+
+## [0.16.0] - 2025-07-10
+
+### Added 
+- Add thematic screener visuals code
+- Add risk scenario workflow, which includes prompts, labeler, visuals, risk theme tree
+
+### Changed 
+- Moved over input validation to query builder
+- Parse Reporting Entity correctly in query builder
+- Show summaries in leaf nodes of theme tree
+- Simplify prompt logic for thematic mindmapper
+
 ## [0.15.1] - 2025-06-12
 
 ### Changed

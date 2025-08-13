@@ -4,6 +4,7 @@ from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.client import bigdata_connection
 from bigdata_research_tools.workflows import ThematicScreener
+from bigdata_research_tools.visuals import create_thematic_exposure_dashboard
 
 def thematic_screener_example(
     theme_name: str, 
@@ -25,7 +26,8 @@ def thematic_screener_example(
         companies=companies,
         start_date="2024-01-01",
         end_date="2024-11-15",
-        document_type=DocumentType.NEWS,
+        document_type=DocumentType.TRANSCRIPTS,
+        fiscal_year=2024
     ).screen_companies(export_path=export_path)
 
     return thematic_screener
@@ -44,4 +46,15 @@ if __name__ == "__main__":
     logging.basicConfig()
     logging.getLogger("bigdata_research_tools").setLevel(logging.INFO)
 
-    thematic_screener_example("Chip Manufacturers")
+    x = thematic_screener_example("Chip Manufacturers")
+    custom_config = {
+        'company_column': 'Company',
+        'heatmap_colorscale': 'Plasma',
+        'dashboard_height': 1800,
+        'top_themes_count': 5,
+        'main_title': 'Custom Thematic Analysis Dashboard'
+    }
+    df = x["df_company"]
+    fig, industry_fig = create_thematic_exposure_dashboard(df, n_companies=15, config=custom_config)
+    fig.show(renderer="browser")           # Shows the main dashboard
+    industry_fig.show(renderer="browser")  # Shows the industry analysis

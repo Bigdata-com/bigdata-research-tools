@@ -5,7 +5,8 @@ from bigdata_research_tools.search.query_builder import (
     EntitiesToSearch,
     build_batched_query,
 )
-
+from bigdata_client import Bigdata
+bigdata = Bigdata()
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -47,6 +48,12 @@ def test_basic_entity_config():
     logger.info("Sample query structure: %s", queries)
     if queries:
         logger.info("First query type: %s", type(queries[0]))
+        results = bigdata.search.new(
+            queries[0],
+            scope=DocumentType.TRANSCRIPTS,
+            ).run(limit=2
+        )
+        logger.info("Sample results: %s", results)
     logger.info("")
 
 
@@ -82,6 +89,13 @@ def test_control_entities():
     )
     
     logger.info("Generated %d query components with control entities", len(queries))
+    logger.info("Sample query structure: %s", queries)
+    results = bigdata.search.new(
+            queries[0],
+            scope=DocumentType.TRANSCRIPTS,
+            ).run(limit=2
+        )
+    logger.info("Sample results: %s", results)
     logger.info("")
 
 
@@ -127,6 +141,12 @@ def test_custom_batches():
     
     logger.info("Query results: %s", queries)
     logger.info("Generated %d query components from custom batches", len(queries))
+    results = bigdata.search.new(
+            queries[0],
+            scope=DocumentType.FILINGS,
+            ).run(limit=2
+        )
+    logger.info("Sample results: %s", results)
     logger.info("")
 
 
@@ -159,14 +179,20 @@ def test_mixed_configuration():
         control_entities=control_entities,
         sources=["Bloomberg", "Variety", "Hollywood Reporter"],
         batch_size=2,
-        fiscal_year=2024,
         scope=DocumentType.NEWS,
+        fiscal_year=None,
         custom_batches=None      
     )
     
     logger.info("Query results: %s", queries)
     logger.info("Generated %d comprehensive query components", len(queries))
     logger.info("Includes: sentences, keywords, entities, control entities, sources, fiscal year")
+    results = bigdata.search.new(
+            queries[0],
+            scope=DocumentType.NEWS,
+            ).run(limit=2
+        )
+    logger.info("Sample results: %s", results)
     logger.info("")
 
 
@@ -189,6 +215,12 @@ def test_edge_cases():
         custom_batches=None      
     )
     logger.info("Sentences only: %d queries", len(queries1))
+    results1 = bigdata.search.new(
+            queries1[0],
+            scope=DocumentType.ALL,
+            ).run(limit=2
+        )
+    logger.info("Sample results: %s", results1)
     
     # Test 2: Only keywords
     queries2 = build_batched_query(
@@ -203,6 +235,12 @@ def test_edge_cases():
         custom_batches=None      
     )
     logger.info("Keywords only: %d queries", len(queries2))
+    results2 = bigdata.search.new(
+            queries2[0],
+            scope=DocumentType.ALL,
+            ).run(limit=2
+        )
+    logger.info("Sample results: %s", results2)
     
     # Test 3: Empty EntityConfig
     empty_entities = EntitiesToSearch()
@@ -218,6 +256,12 @@ def test_edge_cases():
         custom_batches=None      
     )
     logger.info("Empty entities: %d queries", len(queries3))
+    results3 = bigdata.search.new(
+            queries3[0],
+            scope=DocumentType.ALL,
+            ).run(limit=2
+        )
+    logger.info("Sample results: %s", results3)
     
     # Test 4: Single entity type
     single_type = EntitiesToSearch(companies=["Apple Inc"])
@@ -233,8 +277,53 @@ def test_edge_cases():
         custom_batches=None      
     )
     logger.info("Single entity type: %d queries", len(queries4))
+    results4 = bigdata.search.new(
+            queries4[0],
+            scope=DocumentType.ALL,
+            ).run(limit=2
+        )
+    logger.info("Sample results: %s", results4)
     logger.info("")
 
+
+def test_reporting_entities():
+    """Show reporting entities are set for companies."""
+    logger.info("=" * 60)
+    logger.info("TEST 6: Reporting Entities")
+    logger.info("=" * 60)
+    
+    entities = EntitiesToSearch(
+        companies=["Netflix", "Disney", "Warner Bros"],
+        people=["Reed Hastings", "Bob Chapek"],
+        concepts=["streaming", "entertainment", "content creation"],
+        place=["Hollywood", "Los Angeles", "New York"]
+    )
+    
+    queries = build_batched_query(
+        sentences=[
+            "Streaming wars and content competition",
+            "Entertainment industry consolidation"
+        ],
+        keywords=["streaming", "content", "subscription", "audience"],
+        entities=entities,
+        control_entities=None,
+        batch_size=2,
+        fiscal_year=2024,
+        sources=None,
+        scope=DocumentType.TRANSCRIPTS,
+        custom_batches=None      
+    )
+    
+    logger.info("Query results: %s", queries)
+    logger.info("Generated %d comprehensive query components", len(queries))
+    logger.info("Includes: sentences, keywords, entities, fiscal year")
+    results = bigdata.search.new(
+            queries[0],
+            scope=DocumentType.TRANSCRIPTS,
+            ).run(limit=2
+        )
+    logger.info("Sample results: %s", results)
+    logger.info("")
 
 def main():
     """Run all tests."""
@@ -247,6 +336,7 @@ def main():
         test_custom_batches()
         test_mixed_configuration()
         test_edge_cases()
+        test_reporting_entities()
         
         logger.info("=" * 60)
         logger.info("All tests completed successfully")

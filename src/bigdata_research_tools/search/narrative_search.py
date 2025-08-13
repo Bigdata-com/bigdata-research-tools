@@ -1,18 +1,22 @@
-from itertools import chain
 from logging import Logger, getLogger
 from typing import List, Optional
 
 from bigdata_client.document import Document
+from bigdata_client.models.advanced_search_query import ListQueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
 
 from bigdata_research_tools.search.query_builder import (
+    EntitiesToSearch,
     build_batched_query,
     create_date_ranges,
-    EntitiesToSearch
 )
 from bigdata_research_tools.search.search import run_search
+from bigdata_research_tools.search.search_utils import (
+    build_chunk_entities, 
+    filter_search_results,
+)
 
 logger: Logger = getLogger(__name__)
 
@@ -79,8 +83,8 @@ def search_narratives(
         keywords=keywords,
         sources=sources,
         control_entities=control_entities_config,
-        custom_batches=None, 
-        entities=None, 
+        custom_batches=None,
+        entities=None,
         batch_size=batch_size,
         scope=scope,
         fiscal_year=fiscal_year,
@@ -106,21 +110,22 @@ def search_narratives(
         **kwargs,
     )
 
-    results = list(chain.from_iterable(results))
-    results = process_narrative_search(results)
+    results, entities = filter_search_results(results)
+    results = _process_narrative_search(results, entities)
 
     return results
 
 
-def process_narrative_search(
+def _process_narrative_search(
     results: List[Document],
+    entities: List[ListQueryComponent],
 ) -> DataFrame:
     """
     Build a dataframe for when no companies are specified.
 
     Args:
         results (List[Document]): A list of Bigdata search results.
-
+        entities (List[ListQueryComponent]): A list of entities found in the search results.
     Returns:
         DataFrame: Screening DataFrame. Schema:
         - Index: int
@@ -130,11 +135,19 @@ def process_narrative_search(
             - sentence_id: str
             - headline: str
             - text: str
+            - entity: str
+            - country_code: str
+            - entity_type: str
     """
-
     rows = []
     for result in tqdm(results, desc="Processing screening results..."):
         for chunk in result.chunks:
+            # Build a list of entities present in the chunk
+            chunk_entities = build_chunk_entities(chunk, entities)
+
+            if not chunk_entities:
+                continue 
+
             # Collect all necessary information in the row
             rows.append(
                 {
@@ -143,16 +156,16 @@ def process_narrative_search(
                     "sentence_id": f"{result.id}-{chunk.chunk}",
                     "headline": result.headline,
                     "text": chunk.text,
+                    "entity": [entity["name"] for entity in chunk_entities], 
+                    "country_code": [entity["country"] for entity in chunk_entities],
+                    "entity_type": [entity["entity_type"] for entity in chunk_entities], 
                 }
-            )
+            ) 
 
     if not rows:
         raise ValueError("No rows to process")
 
     df = DataFrame(rows).sort_values("timestamp_utc").reset_index(drop=True)
-
-    # Deduplicate by quote text as well
-    df = df.drop_duplicates(subset=["timestamp_utc", "document_id", "text"])
 
     df = df.reset_index(drop=True)
     return df

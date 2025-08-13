@@ -15,7 +15,9 @@ logger: Logger = getLogger(__name__)
 class TraceEventNames(Enum):
     NARRATIVE_MINER = "NarrativeMinersRun"
     THEMATIC_SCREENER = "ThematicScreenerRun"
-
+    RISK_ANALYZER = "RiskAnalyzerRun"
+    COMPANY_SEARCH = "CompanySearchRun"
+    RUN_SEARCH = "SearchRun"
 
 @dataclasses.dataclass
 class Trace:

@@ -14,8 +14,7 @@ from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.themes import generate_theme_tree
 from bigdata_research_tools.workflows.utils import (
     get_scored_df,
-    save_to_excel,
-    validate_parameters,
+    save_to_excel
 )
 
 logger: Logger = getLogger(__name__)
@@ -58,7 +57,6 @@ class ThematicScreener:
             focus (Optional[str]): The focus of the analysis. No value by default.
                 If used, generated sub-themes will be based on this.
         """
-        validate_parameters(document_scope=document_type, fiscal_year=fiscal_year)
 
         self.llm_model = llm_model
         self.main_theme = main_theme

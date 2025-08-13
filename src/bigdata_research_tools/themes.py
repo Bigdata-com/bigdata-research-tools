@@ -8,16 +8,16 @@ Author: Jelena Starovic (jstarovic@ravenpack.com)
 
 import ast
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pandas import DataFrame
+import json
 
 from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.themes import (
-    compose_themes_system_prompt_base,
-    compose_themes_system_prompt_focus,
-    compose_themes_system_prompt_onestep,
+    compose_themes_system_prompt,
 )
+from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
 
 themes_default_llm_model_config: Dict[str, Any] = {
     "provider": "openai",
@@ -49,12 +49,14 @@ class ThemeTree:
             (main theme), this describes the overall theme; for sub-nodes, it explains their
             connection to the parent theme.
         children (Optional[List[ThemeTree]]): A list of child nodes representing sub-themes.
+        keywords (Optional[List[str]]): A list of keywords summarizing the main theme. Currently used by RiskAnalyzer to ensure branches are relevant.
     """
 
     label: str
     node: int
-    summary: str
+    summary: str = None
     children: List["ThemeTree"] = None
+    keywords: Optional[List[str]] = None
 
     def __post_init__(self):
         self.children = self.children or []
@@ -231,16 +233,17 @@ class ThemeTree:
             # Determine if the node is a terminal (leaf) node
             is_terminal = not node.children
 
-            # For terminal nodes, use summary if available, otherwise use label
-            # For middle nodes, use the label
-            node_text = (
-                node.summary if is_terminal and hasattr(node, "summary") else node.label
-            )
+            # For terminal nodes, use "<B>label</B>: summary" format
+            if is_terminal and hasattr(node, "summary"):
+                node_text = f"<B>{node.label}</B>: {node.summary}"
+            # For middle nodes, use "<B>label</B>"
+            else:
+                node_text = f"<B>{node.label}</B>"
 
             # Add a node to the mind map with a box shape
             mindmap.node(
                 str(node),
-                node_text,
+                f"<{node_text}>",  # Use HTML-like label format
                 shape="box",
                 style="filled",
                 # Make terminal nodes lighter than middle nodes
@@ -267,6 +270,7 @@ class ThemeTree:
 
         # Return the Graphviz dot object for rendering
         return mindmap
+
 
     def _visualize_plotly(self) -> None:
         """
@@ -297,6 +301,48 @@ class ThemeTree:
         df = DataFrame({"labels": labels, "parents": parents})
         fig = px.treemap(df, names="labels", parents="parents")
         fig.show()
+    
+    def get_label_to_parent_mapping(self) -> dict:
+        """
+        Returns a mapping from each leaf node label to its parent node label.
+        """
+        mapping = {}
+
+        def traverse(node, parent_label=None):
+            current_label = node.label
+            children = node.children or []
+
+            if parent_label and not children:
+                mapping[current_label] = parent_label
+
+            for child in children:
+                traverse(child, current_label)
+
+        traverse(self)
+        return mapping
+    
+    def _to_dict(self) -> dict:
+        """
+        Recursively convert the ThemeTree to a dictionary suitable for JSON serialization.
+        """
+        return {
+            "label": self.label,
+            "node": self.node,
+            "summary": self.summary,
+            "children": [child._to_dict() for child in self.children] if self.children else [],
+            "keywords": self.keywords,
+        }
+
+    def save_json(self, filepath: str, **kwargs) -> None:
+        """
+        Save the ThemeTree as a JSON dictionary to the specified file.
+
+        Args:
+            filepath (str): Path to the output JSON file.
+            **kwargs: Additional keyword arguments passed to json.dump.
+        """
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(self._to_dict(), f, ensure_ascii=False, indent=2, **kwargs)
 
 
 def generate_theme_tree(
@@ -310,7 +356,6 @@ def generate_theme_tree(
     Args:
         main_theme (str): The primary theme to analyze.
         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
-            If provided, a two-step process is used to better integrate the focus.
         llm_model_config (dict): Configuration for the large language model used to generate themes.
             Expected keys:
             - `provider` (str): The model provider (e.g., 'openai').
@@ -329,41 +374,15 @@ def generate_theme_tree(
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
     llm = LLMEngine(model=model_str)
 
-    # Handle focus using different strategies
-    if not focus:
-        # One-step process without focus
-        system_prompt = compose_themes_system_prompt_onestep(main_theme)
+    
+    system_prompt = compose_themes_system_prompt(main_theme, analyst_focus=focus)
 
-        chat_history = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": main_theme},
-        ]
+    chat_history = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": main_theme},
+    ]
 
-        tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
-    else:
-        # Two-step process with focus
-        # Step 1: Generate base tree
-        base_prompt = compose_themes_system_prompt_base(main_theme)
-        base_chat_history = [
-            {"role": "system", "content": base_prompt},
-            {"role": "user", "content": main_theme},
-        ]
-
-        initial_tree_str = llm.get_response(
-            base_chat_history, **ll_model_config["kwargs"]
-        )
-
-        # Step 2: Refine with focus
-        focus_prompt = compose_themes_system_prompt_focus(main_theme, focus)
-        focus_chat_history = [
-            {"role": "system", "content": focus_prompt},
-            {"role": "user", "content": main_theme},
-            {"role": "user", "content": focus},
-            {"role": "user", "content": initial_tree_str},
-        ]
-
-        tree_str = llm.get_response(focus_chat_history, **ll_model_config["kwargs"])
-
+    tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
     tree_dict = ast.literal_eval(tree_str)
 
     return ThemeTree.from_dict(tree_dict)
@@ -400,3 +419,41 @@ def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
             ["{label}: {summary}", ...].
     """
     return [f"{label}: {summary}" for label, summary in label_summaries.items()]
+
+def generate_risk_tree(
+    main_theme: str,
+    focus: str = "",
+    llm_model_config: Dict[str, Any] = None,
+) -> ThemeTree:
+    """
+    Generate a `ThemeTree` class from a main theme and analyst focus.
+
+    Args:
+        main_theme (str): The primary theme to analyze.
+        focus (str, optional): Specific aspect(s) to guide sub-theme generation.
+            If provided, a two-step process is used to better integrate the focus.
+        llm_model_config (dict): Configuration for the large language model used to generate themes.
+            Expected keys:
+            - `provider` (str): The model provider (e.g., 'openai').
+            - `model` (str): The model name (e.g., 'gpt-4o-mini').
+            - `kwargs` (dict): Additional parameters for model execution, such as:
+            - `temperature` (float)
+            - `top_p` (float)
+            - `frequency_penalty` (float)
+            - `presence_penalty` (float)
+            - `seed` (int)
+
+    Returns:
+        ThemeTree: The generated theme tree.
+    """
+    ll_model_config = llm_model_config or themes_default_llm_model_config
+    model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
+    llm = LLMEngine(model=model_str)
+
+    system_prompt = compose_risk_system_prompt_focus(main_theme, focus)
+
+    tree_str = llm.get_response([{"role": "system", "content": system_prompt}], **ll_model_config["kwargs"])
+
+    tree_dict = ast.literal_eval(tree_str)
+
+    return ThemeTree.from_dict(tree_dict)

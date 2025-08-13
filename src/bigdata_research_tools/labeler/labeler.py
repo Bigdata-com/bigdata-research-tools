@@ -57,10 +57,8 @@ class Labeler:
         """
         response_mapping = {}
         for response in responses:
-            if not response:
-                continue
-
-            if not isinstance(response, dict):
+    
+            if not response or not isinstance(response, dict):
                 continue
 
             for k, v in response.items():
@@ -68,7 +66,12 @@ class Labeler:
                     response_mapping[k] = {
                         "motivation": v.get("motivation", ""),
                         "label": v.get("label", self.unknown_label),
+                        **{key: value for key, value in v.items() 
+                           if key not in ["motivation", "label"]}
                     }
+                    # Add any extra keys present in v
+                    extra_keys = {key: value for key, value in v.items() if key not in ["motivation", "label"]}
+                    response_mapping[k].update(extra_keys)
                 except (KeyError, AttributeError):
                     response_mapping[k] = {
                         "motivation": "",

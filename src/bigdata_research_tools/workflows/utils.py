@@ -35,33 +35,6 @@ def display_output_chunks_dataframe(final_df):
     # Join all lines into a single string and display it
     display(HTML(''.join(output_lines)))
 
-
-
-def validate_parameters(
-    document_scope: DocumentType = None, fiscal_year: int = None
-) -> None:
-    """
-    Validates parameters based on predefined rules.
-    Will raise a ValueError if any of the rules are violated.
-    Will return None otherwise.
-    """
-    # Skip validation if document_scope is not provided
-    if document_scope is None:
-        return
-
-    if document_scope in [DocumentType.FILINGS, DocumentType.TRANSCRIPTS]:
-        if fiscal_year is None:
-            raise ValueError(
-                f"`fiscal_year` is required when `document_scope` is `{document_scope.value}`"
-            )
-
-    if document_scope == DocumentType.NEWS:
-        if fiscal_year is not None:
-            raise ValueError(
-                f"`fiscal_year` must be None when `document_scope` is `{document_scope.value}`"
-            )
-
-
 def get_scored_df(
     df: DataFrame, index_columns: List[str], pivot_column: str
 ) -> DataFrame:
