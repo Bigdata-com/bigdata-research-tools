@@ -96,6 +96,7 @@ class ThematicScreener:
             - df_labeled: The DataFrame with the labeled search results.
             - df_company: The DataFrame with the output by company.
             - df_industry: The DataFrame with the output by industry.
+            - df_motivation: The DataFrame with the motivation by company
             - theme_tree: The ThemeTree created for the screening.
         """
 
@@ -155,13 +156,13 @@ class ThematicScreener:
             df = merge(df_sentences, df_labels, left_index=True, right_index=True)
             df = labeler.post_process_dataframe(df)
 
-            df_company, df_industry = DataFrame(), DataFrame()
             if df.empty:
                 logger.warning("Empty dataframe: no relevant content")
                 return {
                     "df_labeled": df,
-                    "df_company": df_company,
-                    "df_industry": df_industry,
+                    "df_company": DataFrame(),
+                    "df_industry": DataFrame(),
+                    "df_motivation": DataFrame(),
                     "theme_tree": theme_tree,
                 }
 
@@ -206,5 +207,6 @@ class ThematicScreener:
             "df_labeled": df,
             "df_company": df_company,
             "df_industry": df_industry,
+            "df_motivation": motivation_df,
             "theme_tree": theme_tree,
         }
