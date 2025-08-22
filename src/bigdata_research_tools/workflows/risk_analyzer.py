@@ -320,6 +320,7 @@ class RiskAnalyzer:
 
         except Exception as e:
             execution_result = "error"
+            raise e
         else:
             execution_result = "success"
         finally:

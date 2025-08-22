@@ -86,10 +86,9 @@ class AsyncLLMEngine:
             return AsyncOpenAIProvider(model=self.model)
 
         elif provider == "bedrock":
-            raise NotImplementedError
-            # from bigdata_research_tools.llm.bedrock import BedrockProvider
-            #
-            # return BedrockProvider(model=self.model)
+            from bigdata_research_tools.llm.bedrock import AsyncBedrockProvider
+            
+            return AsyncBedrockProvider(model=self.model)
         else:
             logger.error(f"Invalid provider: `{self.provider}`")
 

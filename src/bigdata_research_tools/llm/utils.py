@@ -88,7 +88,7 @@ async def _run_with_progress_bar(tasks) -> List:
     """Run asyncio tasks with a tqdm progress bar."""
     # Pre-allocate a list for results to preserve order
     results = [None] * len(tasks)
-    with tqdm(total=len(tasks), desc="Querying OpenAI...") as pbar:
+    with tqdm(total=len(tasks), desc="Querying an LLM...") as pbar:
         for coro in asyncio.as_completed(tasks):
             idx, result = await coro
             results[idx] = result

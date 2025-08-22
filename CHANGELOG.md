@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fix
 - Entity-level motivation was not being returned in the `screen_companies` function
+### Added
+- First version of the async bedrock llm provider
 
 
 ## [0.17.3] - 2025-08-08
