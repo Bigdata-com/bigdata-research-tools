@@ -1083,7 +1083,7 @@ pip install uv
 
 ```bash
 git clone https://github.com/your-org/bigdata-research-tools.git
-cd bigdata-research-tools
+cd bigdata-research-tools/examples
 ```
 
 #### Step 3: Create Virtual Environment with Dependencies
@@ -1097,12 +1097,9 @@ source .venv/bin/activate  # Linux/Mac
 # or
 .venv\Scripts\activate     # Windows
 
-# Install the library and dependencies
-uv pip install -e .
-uv pip install bigdata-client
-
-# For full functionality, install optional dependencies
+# Install the library and dependencies for full functionality in the examples
 uv pip install -e ".[excel,plotly,openai]"
+uv pip install bigdata-client
 ```
 
 #### Step 4: Set Up Authentication
@@ -1223,6 +1220,50 @@ INFO:__main__:======================================
 INFO:__main__:EXAMPLE 1: Basic Equal-Weighted Portfolio (Sector Balanced)
 INFO:__main__:Portfolio Size: 20 companies
 INFO:__main__:Sectors Represented: 5
+```
+
+#### 6. Search by Companies Example
+
+**File**: `examples/search_by_companies.py`
+
+**What it does**: Shows how to search for documents mentioning specific companies and topics
+
+```bash
+# Run the search by companies example
+python search_by_companies.py
+```
+
+**Expected output**:
+```
+Environment variables loaded: True
+INFO:__main__:Found: Apple Inc (ID: D8442C)
+INFO:__main__:Found: Microsoft Corporation (ID: D4A6CC)
+INFO:__main__:Found 24 relevant documents
+INFO:__main__:  Apple Inc: 15 documents
+INFO:__main__:  Microsoft Corporation: 9 documents
+# Results exported to search_by_companies_results.xlsx
+```
+
+#### 7. Run Search Example
+
+**File**: `examples/run_search.py`
+
+**What it does**: Demonstrates custom query building and search execution
+
+```bash
+# Run the run_search example
+python run_search.py
+```
+
+**Expected output**:
+```
+Environment variables loaded: True
+INFO:__main__:Generated 4 search queries
+INFO:__main__:Searching across 3 time periods
+INFO:__main__:Found 32 documents total
+INFO:__main__:  Reuters: 12 documents
+INFO:__main__:  Bloomberg: 8 documents
+# Results exported to run_search_results.xlsx
 ```
 
 ### Customizing Examples
