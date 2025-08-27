@@ -1,11 +1,4 @@
-# Bigdata Research Tools - Comprehensive User Guide
-
-<p align="center">
-  <picture>
-    <source srcset="https://sdk.bigdata.com/en/latest/_static/bigdata_dark.svg" media="(prefers-color-scheme: dark)">
-    <img src="https://sdk.bigdata.com/en/latest/_static/bigdata_light.svg" alt="Bigdata Logo" width="250">
-  </picture>
-</p>
+# Bigdata Research Tools - User Guide
 
 ## Table of Contents
 
@@ -23,8 +16,18 @@
    - [Visualization Tools](#visualization-tools)
 6. [Advanced Features](#advanced-features)
 7. [Configuration Options](#configuration-options)
-8. [Examples and Tutorials](#examples-and-tutorials)
-9. [Troubleshooting](#troubleshooting)
+8. [Parameter Deep Dive](#parameter-deep-dive)
+   - [Fiscal Year Guide](#fiscal-year-guide)
+   - [Focus Parameter Guide](#focus-parameter-guide)
+9. [Running the Examples](#running-the-examples)
+   - [Environment Setup](#environment-setup)
+   - [Available Examples](#available-examples)
+   - [Customizing Examples](#customizing-examples)
+   - [Troubleshooting Examples](#troubleshooting-examples)
+10. [Advanced Examples and Tutorials](#advanced-examples-and-tutorials)
+    - [Custom Analysis Workflows](#custom-analysis-workflows)
+11. [Troubleshooting](#troubleshooting)
+12. [Support and Resources](#support-and-resources)
 
 ---
 
@@ -271,12 +274,12 @@ from bigdata_research_tools.client import bigdata_connection
 bigdata = bigdata_connection()
 
 # Get companies from a specific watchlist
-watchlist_id = "a60c351a-1822-4a88-8c45-a4e78abd979a"  # Example GRID watchlist
+watchlist_id = "a3915138-bba9-437e-a813-aa1620a822cc"  # Example GRID watchlist
 watchlist = bigdata.watchlists.get(watchlist_id)
 companies = bigdata.knowledge_graph.get_entities(watchlist.items)
 
 print(f"Found {len(companies)} companies in watchlist")
-# Output: Found 50 companies in watchlist
+# Output: Found 7 companies in watchlist
 ```
 
 #### Method 2: Search by Company Names
@@ -1051,128 +1054,403 @@ focus = "Examine risk factor disclosures, business segment performance, and regu
 
 ---
 
-## Examples and Tutorials
+## Running the Examples
 
-### Complete Workflow Example
+The library includes several complete examples in the `examples/` directory. Here's how to set up your environment and run them.
+
+### Prerequisites
+
+You'll need the following tools and packages:
+
+1. **Python 3.9+** 
+2. **uv** (modern Python package manager)
+3. **bigdata_client** (Bigdata API client)
+4. **bigdata_research_tools** (this library)
+
+### Environment Setup
+
+#### Step 1: Install uv
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or via pip
+pip install uv
+```
+
+#### Step 2: Clone the Repository
+
+```bash
+git clone https://github.com/your-org/bigdata-research-tools.git
+cd bigdata-research-tools
+```
+
+#### Step 3: Create Virtual Environment with Dependencies
+
+```bash
+# Create and activate virtual environment with uv
+uv venv
+
+# Activate the environment
+source .venv/bin/activate  # Linux/Mac
+# or
+.venv\Scripts\activate     # Windows
+
+# Install the library and dependencies
+uv pip install -e .
+uv pip install bigdata-client
+
+# For full functionality, install optional dependencies
+uv pip install -e ".[excel,plotly,openai]"
+```
+
+#### Step 4: Set Up Authentication
+
+Create a `.env` file in the project root:
+
+```bash
+# Create .env file
+touch .env
+
+# Add your credentials
+echo "BIGDATA_USERNAME=your_username" >> .env
+echo "BIGDATA_PASSWORD=your_password" >> .env
+```
+
+Or set environment variables directly:
+
+```bash
+export BIGDATA_USERNAME="your_username"
+export BIGDATA_PASSWORD="your_password"
+```
+
+### Available Examples
+
+#### 1. Narrative Miner Example
+
+**File**: `examples/narrative_miner.py`
+
+**What it does**: Tracks AI-related narratives across transcripts
+
+```bash
+# Run the narrative miner example
+cd examples
+python narrative_miner.py
+```
+
+**Expected output**:
+```
+Environment variables loaded: True
+INFO:bigdata_research_tools:Starting narrative mining...
+INFO:bigdata_research_tools:Processing 15 narrative sentences...
+INFO:bigdata_research_tools:Analysis complete. Results saved to narrative_miner_sample.xlsx
+```
+
+#### 2. Thematic Screener Example
+
+**File**: `examples/thematic_screener.py`
+
+**What it does**: Analyzes companies' exposure to "Chip Manufacturers" theme
+
+```bash
+# Run the thematic screener example
+python thematic_screener.py
+```
+
+**Expected output**:
+```
+Environment variables loaded: True
+INFO:bigdata_research_tools:Generating theme tree for: Chip Manufacturers
+INFO:bigdata_research_tools:Screening 50 companies...
+INFO:bigdata_research_tools:Creating visualizations...
+# Browser opens with interactive dashboard
+```
+
+#### 3. Risk Analyzer Example
+
+**File**: `examples/risk_analyzer.py`
+
+**What it does**: Assesses risk exposure to US import tariffs
+
+```bash
+# Run the risk analyzer example
+python risk_analyzer.py
+```
+
+**Expected output**:
+```
+Environment variables loaded: True
+INFO:bigdata_research_tools:Creating risk taxonomy...
+INFO:bigdata_research_tools:Analyzing risk exposure...
+INFO:bigdata_research_tools:Risk analysis complete. Results saved to risk_analyzer_results.xlsx
+# Browser opens with risk dashboard
+```
+
+#### 4. Query Builder Example
+
+**File**: `examples/query_builder.py`
+
+**What it does**: Demonstrates advanced query construction techniques
+
+```bash
+# Run the query builder example
+python query_builder.py
+```
+
+**Expected output**:
+```
+INFO:__main__:======================================
+INFO:__main__:TEST 1: Basic EntityConfig with Auto-batching
+INFO:__main__:Generated 2 query components
+INFO:__main__:Sample query structure: [QueryComponent(...)]
+```
+
+#### 5. Portfolio Constructor Example
+
+**File**: `examples/portfolio_example.py`
+
+**What it does**: Shows different portfolio construction methods
+
+```bash
+# Run the portfolio constructor example
+python portfolio_example.py
+```
+
+**Expected output**:
+```
+INFO:__main__:======================================
+INFO:__main__:EXAMPLE 1: Basic Equal-Weighted Portfolio (Sector Balanced)
+INFO:__main__:Portfolio Size: 20 companies
+INFO:__main__:Sectors Represented: 5
+```
+
+### Customizing Examples
+
+#### Modify Company Universe
+
+Edit the watchlist ID in the examples:
 
 ```python
+# In thematic_screener.py or risk_analyzer.py
+GRID_watchlist_ID = "your-watchlist-id-here"
+
+# Or use your own company list
+from bigdata_research_tools.client import bigdata_connection
+
+bigdata = bigdata_connection()
+company_names = ["Apple Inc", "Microsoft Corp", "Tesla Inc"]
+companies = []
+
+for name in company_names:
+    results = bigdata.knowledge_graph.find_companies(name)
+    if results:
+        companies.append(next(iter(results)))
+```
+
+#### Modify Analysis Parameters
+
+```python
+# Change the theme or time period
+screener = ThematicScreener(
+    main_theme="Your Custom Theme",        # Change this
+    start_date="2024-06-01",              # Change dates
+    end_date="2024-12-31",
+    document_type=DocumentType.NEWS,       # Change document type
+    fiscal_year=None,                      # Adjust for document type
+)
+```
+
+#### Modify Output Paths
+
+```python
+# Change export paths
+results = screener.screen_companies(
+    export_path="custom_analysis_results.xlsx"  # Your custom path
+)
+```
+
+### Troubleshooting Examples
+
+#### Common Issues
+
+**1. Authentication Errors**
+```bash
+# Check if credentials are loaded
+python -c "import os; print('Username:', os.environ.get('BIGDATA_USERNAME', 'NOT SET'))"
+```
+
+**2. Missing Dependencies**
+```bash
+# Install missing packages
+uv pip install plotly openpyxl openai
+
+# Or install all optional dependencies
+uv pip install -e ".[excel,plotly,openai]"
+```
+
+**3. Watchlist Access Issues**
+```bash
+# Test watchlist access
+python -c "
+from bigdata_research_tools.client import bigdata_connection
+bigdata = bigdata_connection()
+watchlists = bigdata.watchlists.list()
+print(f'Available watchlists: {len(watchlists)}')
+for w in watchlists[:5]:
+    print(f'  {w.id}: {w.name}')
+"
+```
+
+**4. Performance Issues**
+```python
+# For large datasets, reduce batch sizes
+results = screener.screen_companies(
+    document_limit=5,    # Reduce from default 10
+    batch_size=5,        # Reduce from default 10
+    frequency="6M"       # Use longer intervals
+)
+```
+
+### Running Examples in Different Environments
+
+#### Using Docker
+
+```dockerfile
+# Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY . .
+
+RUN pip install uv
+RUN uv pip install -e ".[excel,plotly,openai]"
+RUN uv pip install bigdata-client
+
+ENV BIGDATA_USERNAME=""
+ENV BIGDATA_PASSWORD=""
+
+CMD ["python", "examples/narrative_miner.py"]
+```
+
+```bash
+# Build and run
+docker build -t bigdata-examples .
+docker run -e BIGDATA_USERNAME="your_user" -e BIGDATA_PASSWORD="your_pass" bigdata-examples
+```
+
+#### Using GitHub Codespaces
+
+```json
+// .devcontainer/devcontainer.json
+{
+    "name": "Bigdata Research Tools",
+    "image": "mcr.microsoft.com/devcontainers/python:3.11",
+    "postCreateCommand": "pip install uv && uv pip install -e '.[excel,plotly,openai]' && uv pip install bigdata-client",
+    "customizations": {
+        "vscode": {
+            "extensions": ["ms-python.python"]
+        }
+    }
+}
+```
+
+#### Using Jupyter Notebooks
+
+```python
+# In a Jupyter cell
+import os
 import logging
 from dotenv import load_dotenv
-from bigdata_research_tools.workflows import ThematicScreener
-from bigdata_research_tools.client import bigdata_connection
-from bigdata_research_tools.visuals import create_thematic_exposure_dashboard
-from bigdata_client.models.search import DocumentType
 
-# Setup
+# Load credentials
 load_dotenv()
+
+# Set up logging for interactive use
 logging.basicConfig(level=logging.INFO)
 
-# Get companies
-bigdata = bigdata_connection()
-watchlist = bigdata.watchlists.get("your_watchlist_id")
-companies = bigdata.knowledge_graph.get_entities(watchlist.items)
-
-# Run thematic screening
-screener = ThematicScreener(
-    llm_model="openai::gpt-4o-mini",
-    main_theme="Renewable Energy Transition",
-    companies=companies,
-    start_date="2024-01-01",
-    end_date="2024-12-31",
-    document_type=DocumentType.TRANSCRIPTS,
-    fiscal_year=2024,
-    focus="Focus on solar, wind, and battery technologies"
-)
-
-results = screener.screen_companies(
-    document_limit=15,
-    frequency="M",
-    export_path="renewable_energy_analysis.xlsx"
-)
-
-# Create visualizations
-fig, industry_fig = create_thematic_exposure_dashboard(
-    df_company=results["df_company"],
-    n_companies=20
-)
-
-fig.show(renderer="browser")
-print(f"Analysis complete. {len(results['df_company'])} companies analyzed.")
+# Run example code directly in cells
+from bigdata_research_tools.workflows import ThematicScreener
+# ... rest of example code
 ```
 
-### Risk Scenario Analysis
+---
+
+## Advanced Examples and Tutorials
+
+For complete, runnable examples with environment setup instructions, see the [Running the Examples](#running-the-examples) section above.
+
+### Custom Analysis Workflows
+
+Beyond the provided examples, here are advanced patterns for custom research workflows:
+
+#### Multi-Theme Comparative Analysis
 
 ```python
-from bigdata_research_tools.workflows.risk_analyzer import RiskAnalyzer
+# Compare multiple themes across the same company universe
+themes = ["AI Adoption", "ESG Initiatives", "Supply Chain Resilience"]
+results = {}
 
-# Define risk scenario
-analyzer = RiskAnalyzer(
-    llm_model="openai::gpt-4o-mini",
-    main_theme="Cybersecurity Threats",
-    companies=tech_companies,
-    start_date="2024-01-01",
-    end_date="2024-12-31",
-    document_type=DocumentType.NEWS,
-    keywords=["cybersecurity", "data breach", "ransomware"],
-    control_entities={
-        "concepts": ["artificial intelligence", "cloud computing"],
-        "place": ["United States", "Europe"]
-    },
-    focus="Analyze risks from AI-powered cyber attacks on cloud infrastructure"
-)
+for theme in themes:
+    screener = ThematicScreener(
+        main_theme=theme,
+        companies=companies,
+        # ... other parameters
+    )
+    results[theme] = screener.screen_companies()
 
-risk_results = analyzer.screen_companies(
-    document_limit=25,
-    frequency="M",
-    export_path="cybersecurity_risk_assessment.xlsx"
-)
-
-# Generate risk dashboard
-from bigdata_research_tools.visuals import create_risk_exposure_dashboard
-
-risk_fig, risk_industry_fig = create_risk_exposure_dashboard(
-    df_company=risk_results["df_company"],
-    n_companies=15
-)
-
-risk_fig.show(renderer="browser")
+# Combine results for comparative analysis
+combined_df = pd.concat([
+    results[theme]["df_company"].assign(Analysis_Theme=theme) 
+    for theme in themes
+])
 ```
 
-### Portfolio Construction Workflow
+#### Time Series Analysis
 
 ```python
-import pandas as pd
-from bigdata_research_tools.portfolio.portfolio_constructor import (
-    PortfolioConstructor, WeightMethod
-)
+# Analyze theme evolution over multiple time periods
+periods = [
+    ("2023-01-01", "2023-06-30", "H1 2023"),
+    ("2023-07-01", "2023-12-31", "H2 2023"),
+    ("2024-01-01", "2024-06-30", "H1 2024"),
+]
 
-# Load screening results
-df_scores = pd.read_excel("thematic_screening_results.xlsx", sheet_name="By Company")
+timeline_results = []
+for start, end, label in periods:
+    screener = ThematicScreener(
+        main_theme="Digital Transformation",
+        start_date=start,
+        end_date=end,
+        # ... other parameters
+    )
+    result = screener.screen_companies()
+    result["df_company"]["Period"] = label
+    timeline_results.append(result["df_company"])
 
-# Construct portfolio
-constructor = PortfolioConstructor(
-    max_iterations=2000,
-    tolerance=1e-8
-)
+# Analyze trends over time
+trend_df = pd.concat(timeline_results)
+```
 
-portfolio = constructor.construct_portfolio(
-    df=df_scores,
-    score_col="Composite Score",
-    balance_col="Sector",
-    weight_col="Market Cap",
-    size=30,
-    max_position_weight=0.06,    # 6% max position
-    max_category_weight=0.20,    # 20% max sector
-    weight_method=WeightMethod.COLUMN
-)
+#### Cross-Document Type Analysis
 
-print("Portfolio Construction Results:")
-print(f"Total companies: {len(portfolio)}")
-print(f"Total weight: {portfolio['weight'].sum():.1%}")
-print(f"Weight range: {portfolio['weight'].min():.1%} - {portfolio['weight'].max():.1%}")
+```python
+# Analyze the same theme across different document types
+document_types = [
+    (DocumentType.NEWS, None, "Market Sentiment"),
+    (DocumentType.TRANSCRIPTS, 2024, "Management Commentary"),
+    (DocumentType.FILINGS, 2024, "Formal Disclosures")
+]
 
-# Export portfolio
-portfolio.to_excel("balanced_portfolio.xlsx", index=False)
+cross_doc_results = {}
+for doc_type, fiscal_year, label in document_types:
+    screener = ThematicScreener(
+        main_theme="Sustainability Initiatives",
+        document_type=doc_type,
+        fiscal_year=fiscal_year,
+        # ... other parameters
+    )
+    cross_doc_results[label] = screener.screen_companies()
 ```
 
 ---
