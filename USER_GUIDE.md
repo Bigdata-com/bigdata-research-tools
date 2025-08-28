@@ -24,15 +24,18 @@
 8. [Parameter Deep Dive](#parameter-deep-dive)
    - [Fiscal Year Guide](#fiscal-year-guide)
    - [Focus Parameter Guide](#focus-parameter-guide)
-9. [Running the Examples](#running-the-examples)
+9. [Interactive Tutorial](#interactive-tutorial)
+   - [Quick Start with uv](#quick-start-with-uv)
+   - [Tutorial Overview](#tutorial-overview)
+10. [Running the Examples](#running-the-examples)
    - [Environment Setup](#environment-setup)
    - [Available Examples](#available-examples)
    - [Customizing Examples](#customizing-examples)
    - [Troubleshooting Examples](#troubleshooting-examples)
-10. [Advanced Examples and Tutorials](#advanced-examples-and-tutorials)
+11. [Advanced Examples and Tutorials](#advanced-examples-and-tutorials)
     - [Custom Analysis Workflows](#custom-analysis-workflows)
-11. [Troubleshooting](#troubleshooting)
-12. [Support and Resources](#support-and-resources)
+12. [Troubleshooting](#troubleshooting)
+13. [Support and Resources](#support-and-resources)
 
 ---
 
@@ -949,6 +952,105 @@ focus = "Analyze market sentiment, analyst opinions, and competitive positioning
 
 # For filings - focus on formal disclosures
 focus = "Examine risk factor disclosures, business segment performance, and regulatory compliance discussions in official filings"
+```
+
+---
+
+## Interactive Tutorial
+
+The library includes an interactive Jupyter notebook tutorial that demonstrates all key functionality with practical, working examples. This is the best way to get started with the library.
+
+### Quick Start with uv
+
+The fastest way to get up and running with the tutorial is using `uv` (the modern Python package manager):
+
+#### Step 1: Clone and Navigate to Tutorial
+
+```bash
+# Clone the repository (if you haven't already)
+git clone https://github.com/bigdata-com/bigdata-research-tools.git
+cd bigdata-research-tools/tutorial
+```
+
+#### Step 2: Set Up Environment with uv
+
+```bash
+# Install uv if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create a virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install tutorial dependencies
+uv pip install -r requirements.txt
+
+# Install the main package in development mode
+uv pip install -e ../.
+```
+
+#### Step 3: Set Up Authentication
+
+Create a `.env` file in the tutorial directory:
+
+```bash
+# Create .env file with your credentials
+echo "BIGDATA_API_KEY=your_api_key_here" > .env
+echo "BIGDATA_API_BASE_URL=your_base_url_here" >> .env
+```
+
+#### Step 4: Launch Jupyter Notebook
+
+```bash
+# Install Jupyter if not included in requirements
+uv pip install jupyter
+
+# Start Jupyter notebook
+jupyter notebook tutorial_notebook.ipynb
+```
+
+### Tutorial Overview
+
+The interactive tutorial covers:
+
+**📚 Fundamentals**
+- Setting up authentication and connections
+- Basic search functionality with `search_by_companies()`
+- Custom query building with `run_search()`
+
+**🔍 Key Features Demonstrated**
+- Company-specific document searches
+- Custom query construction and execution
+- Result processing and analysis
+- DataFrame export and manipulation
+
+**💡 Learning Outcomes**
+- Understand core library concepts
+- See practical, working examples
+- Learn best practices for search configuration
+- Get hands-on experience with real data
+
+**🚀 Next Steps**
+After completing the tutorial, you'll be ready to:
+- Explore the advanced workflows (NarrativeMiner, ThematicScreener, RiskAnalyzer)
+- Run the complete examples in the `examples/` directory
+- Build custom analysis workflows for your specific use cases and explore our [Bigdata Cookbook](https://github.com/Bigdata-com/bigdata-cookbook), which features a collection of ready-to-use notebooks for a variety of finance-related guided workflows.
+
+### Alternative Installation Methods
+
+If you prefer not to use `uv`, you can also use traditional pip:
+
+```bash
+# Create virtual environment
+python -m venv tutorial_env
+source tutorial_env/bin/activate  # On Windows: tutorial_env\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+pip install -e ..
+
+# Launch notebook
+jupyter notebook tutorial_notebook.ipynb
 ```
 
 ---
