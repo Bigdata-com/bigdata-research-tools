@@ -1,4 +1,5 @@
 import asyncio
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger, getLogger
 from typing import List, Tuple
@@ -72,7 +73,7 @@ async def _fetch_with_semaphore(
     ]
     async with semaphore:
         retry_delay = 1  # Initial delay in seconds
-        max_retries = 20
+        max_retries = 5
         for attempt in range(max_retries):
             try:
                 response = await llm_engine.get_response(chat_history, **kwargs)
@@ -127,14 +128,12 @@ def run_parallel_prompts(
             {"role": "user", "content": prompt},
         ]
         retry_delay = 1
-        max_retries = 20
+        max_retries = 5
         for attempt in range(max_retries):
             try:
                 response = llm_engine.get_response(chat_history, **kwargs)
                 return idx, response
             except (APITimeoutError, RateLimitError):
-                import time
-
                 time.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, 60)
         logger.error(f"Failed to get response for prompt: {prompt}")
