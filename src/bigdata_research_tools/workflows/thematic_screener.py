@@ -3,19 +3,16 @@ from typing import Dict, List, Optional, Tuple
 
 from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType
-from bigdata_research_tools.client import init_bigdata_client
 from pandas import DataFrame, merge
-from bigdata_research_tools.portfolio.motivation import Motivation
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
+from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
+from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.themes import generate_theme_tree
-from bigdata_research_tools.workflows.utils import (
-    get_scored_df,
-    save_to_excel
-)
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
+from bigdata_research_tools.workflows.utils import get_scored_df, save_to_excel
 
 logger: Logger = getLogger(__name__)
 
@@ -120,9 +117,11 @@ class ThematicScreener:
         )
 
         try:
+            self.provider, self.model = self.llm_model.split("::")
             theme_tree = generate_theme_tree(
                 main_theme=self.main_theme,
                 focus=self.focus,
+                llm_model_config={"provider": self.provider, "model": self.model},
             )
 
             theme_summaries = theme_tree.get_terminal_summaries()
@@ -177,9 +176,7 @@ class ThematicScreener:
 
             motivation_generator = Motivation(model=self.llm_model)
             motivation_df = motivation_generator.generate_company_motivations(
-                df=df,
-                theme_name=self.main_theme,
-                word_range=word_range
+                df=df, theme_name=self.main_theme, word_range=word_range
             )
 
             # Export to Excel if path provided
@@ -190,7 +187,7 @@ class ThematicScreener:
                         "Semantic Labels": (df, (0, 0)),
                         "By Company": (df_company, (2, 4)),
                         "By Industry": (df_industry, (2, 2)),
-                        "Motivations": (motivation_df, (0, 0))
+                        "Motivations": (motivation_df, (0, 0)),
                     },
                 )
         except Exception:
