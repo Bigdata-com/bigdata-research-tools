@@ -1,5 +1,11 @@
 # Bigdata Research Tools - User Guide
 
+**Building with Bigdata.com**
+
+[![Python version support](https://img.shields.io/badge/Python-3.9%20|%203.10%20|%203.11%20|%203.12%20|%203.13-blue?logo=python)](https://pypi.org/project/bigdata-research-tools)
+[![PyPI version](https://badge.fury.io/py/bigdata-research-tools.svg)](https://badge.fury.io/py/bigdata-research-tools)
+
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -11,7 +17,6 @@
    - [Risk Analyzer](#risk-analyzer)
 5. [Utility Modules](#utility-modules)
    - [Query Builder](#query-builder)
-   - [Portfolio Constructor](#portfolio-constructor)
    - [Search Manager](#search-manager)
    - [Visualization Tools](#visualization-tools)
 6. [Advanced Features](#advanced-features)
@@ -40,10 +45,9 @@
 - **🔍 Narrative Mining**: Track narrative evolution across news, transcripts, and filings
 - **📊 Thematic Screening**: Analyze company exposure to specific themes
 - **⚠️ Risk Analysis**: Assess company risk exposure to various scenarios
-- **📈 Portfolio Construction**: Build balanced and weighted portfolios with constraints
-- **🎨 Interactive Visualizations**: Create comprehensive dashboards and charts
 - **⚡ Concurrent Processing**: Execute multiple searches efficiently with rate limiting
 - **🛡️ Thread-Safe Operations**: Built-in safety for concurrent processing
+- **🎨 Interactive Visualizations**: Create comprehensive dashboards and charts
 
 ### Library Architecture
 
@@ -51,7 +55,6 @@
 bigdata_research_tools/
 ├── workflows/          # High-level research workflows
 ├── search/            # Search utilities and query builders
-├── portfolio/         # Portfolio construction tools
 ├── visuals/           # Visualization and dashboard tools
 ├── labeler/           # AI-powered content labeling
 ├── llm/               # LLM integration (OpenAI, Bedrock)
@@ -547,110 +550,6 @@ queries = build_batched_query(
     custom_batches=custom_batches,
     batch_size=10,
     scope=DocumentType.ALL
-)
-```
-
----
-
-## Portfolio Constructor
-
-Build balanced and weighted portfolios with sophisticated constraint management.
-
-### Basic Usage
-
-```python
-from bigdata_research_tools.portfolio.portfolio_constructor import (
-    PortfolioConstructor, 
-    WeightMethod
-)
-import pandas as pd
-
-# Sample data
-df = pd.DataFrame({
-    'Company': ['Apple', 'Microsoft', 'Google', 'Tesla'],
-    'Sector': ['Technology', 'Technology', 'Technology', 'Auto'],
-    'Market_Cap': [2800, 2500, 1800, 800],
-    'ESG_Score': [85, 82, 78, 72],
-    'Composite_Score': [92, 89, 85, 78]
-})
-
-constructor = PortfolioConstructor(
-    max_iterations=1000,
-    tolerance=1e-6
-)
-
-portfolio = constructor.construct_portfolio(
-    df=df,
-    score_col="Composite_Score",
-    balance_col="Sector",
-    weight_col="Market_Cap",
-    size=20,
-    max_position_weight=0.08,    # 8% max per position
-    max_category_weight=0.25,    # 25% max per sector
-    weight_method=WeightMethod.COLUMN
-)
-```
-
-### Weight Methods
-
-```python
-class WeightMethod(Enum):
-    EQUAL = auto()    # Equal weights for all positions
-    COLUMN = auto()   # Weight by column values (e.g., market cap)
-    SCORE = auto()    # Weight by scores (softmax normalized)
-```
-
-### Constructor Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `max_iterations` | `int` | `1000` | Max constraint iterations |
-| `tolerance` | `float` | `1e-6` | Convergence tolerance |
-
-### Method Parameters - `construct_portfolio()`
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `df` | `DataFrame` | ✅ | Input company data |
-| `score_col` | `str` | ✅ | Column for ranking companies |
-| `balance_col` | `str` | ✅ | Column for balancing (sector/industry) |
-| `weight_col` | `str` | ❌ | Column for weighting (if applicable) |
-| `size` | `int` | ❌ | Target portfolio size |
-| `max_position_weight` | `float` | `0.05` | Max weight per position (5%) |
-| `max_category_weight` | `float` | `0.15` | Max weight per category (15%) |
-| `weight_method` | `WeightMethod` | `EQUAL` | Weighting methodology |
-
-### Examples by Weight Method
-
-#### Equal Weighting
-```python
-portfolio = constructor.construct_portfolio(
-    df=df,
-    score_col="Composite_Score",
-    balance_col="Sector",
-    weight_method=WeightMethod.EQUAL
-)
-```
-
-#### Market Cap Weighting
-```python
-portfolio = constructor.construct_portfolio(
-    df=df,
-    score_col="Composite_Score",
-    balance_col="Sector",
-    weight_col="Market_Cap",
-    weight_method=WeightMethod.COLUMN
-)
-```
-
-#### Score-Based Weighting (Softmax)
-```python
-portfolio = constructor.construct_portfolio(
-    df=df,
-    score_col="Composite_Score",
-    balance_col="Sector",
-    weight_col="ESG_Score",
-    weight_method=WeightMethod.SCORE
 )
 ```
 
@@ -1612,12 +1511,25 @@ assert validate_llm_model(llm_model), f"Invalid LLM model format: {llm_model}"
 
 ## Support and Resources
 
-- **Documentation**: [https://sdk.bigdata.com](https://sdk.bigdata.com)
+- **Documentation**: [https://docs.bigdata.com](https://docs.bigdata.com)
 - **API Reference**: Check the `docs/` directory for detailed API documentation
 - **Examples**: See the `examples/` directory for complete working examples
-- **Issues**: Report issues through your organization's support channels
+- **Issues**: Report issues through [support@bigdata.com](mailto:support@bigdata.com)
 
 ---
 
-*Last updated: January 2025*
-*Version: 0.17.3*
+## License
+
+This software is licensed for use solely under the terms agreed upon in the
+applicable Master Agreement and Order Schedule between the parties.
+For trials, the applicable legal documents are the Mutual Non-Disclosure
+Agreement, or if applicable the Trial Agreement.
+No other rights or licenses are granted by implication, estoppel, or otherwise.
+For further details, please refer to your specific Master Agreement and Order
+Schedule or contact us at legal@ravenpack.com.
+
+---
+
+**RavenPack** | **Bigdata.com** \
+All rights reserved © 2025
+
