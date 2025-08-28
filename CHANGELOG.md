@@ -7,6 +7,15 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1] - 2025-08-28
+
+### Fix
+- Labeler class now choses a parallel call if Bedrock provider is used and concurrent async loop if any other is selected
+- Functions `generate_theme_tree` and `generate_risk_tree` are called passing down the llm_model provided.
+
+### Changed
+- Improved validation of json responses from llms.
+
 ## [0.18.0] - 2025-08-25
 
 ### Added
