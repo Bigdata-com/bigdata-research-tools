@@ -45,7 +45,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
                     "https://cognitiveservices.azure.com/.default",
                 )
 
-                self._client = AzureOpenAI(
+                self._client = AsyncAzureOpenAI(
                     azure_ad_token_provider=token_provider,
                 )
 
