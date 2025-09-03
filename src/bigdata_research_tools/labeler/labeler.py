@@ -173,7 +173,7 @@ def parse_labeling_response(response: str) -> Dict:
         # to extract the json object from the response.
         # If that fails, we use the json_repair library to try to fix common
         # json formatting issues.
-        match = re.search('\{\s*"\d*":.*?\}\s*\}', response, re.DOTALL)
+        match = re.search(r'\{\s*"\d*":.*?\}\s*\}', response, re.DOTALL)
 
         if match:
             response = match.group(0)

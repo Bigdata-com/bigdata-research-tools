@@ -38,6 +38,10 @@ docs = [
     "sphinx-reredirects>=0.1.5",
     "sphinx-togglebutton>=0.3.2",
 ]
+azure = [
+    "azure-identity>=1.24.0",
+    "openai>=1.61.1,<2.0.0",
+]
 
 [dependency-groups]
 dev = [

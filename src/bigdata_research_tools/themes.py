@@ -382,6 +382,7 @@ def generate_theme_tree(
     ]
 
     tree_str = llm.get_response(chat_history, **ll_model_config.get("kwargs", {}))
+    tree_str = repair_json(tree_str)
     tree_dict = ast.literal_eval(tree_str)
 
     return ThemeTree.from_dict(tree_dict)
