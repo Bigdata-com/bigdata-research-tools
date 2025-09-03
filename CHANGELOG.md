@@ -7,6 +7,14 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2025-09-03
+
+### Added
+- First version of Azure provider included in the LLMEngine
+
+### Changed
+- Now LLM response in the function `generate_theme_tree` uses `repair_json` to clean the response.
+
 ## [0.18.1] - 2025-08-28
 
 ### Fix
