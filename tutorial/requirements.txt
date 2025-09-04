@@ -20,6 +20,8 @@ jupyterlab>=4.0.0  # Modern Jupyter interface
 
 # Visualization dependencies
 matplotlib>=3.7.0  # For basic plotting
+plotly>=5.0.0
+
 
 # The main bigdata-research-tools package (install from source)
 # Install with: pip install -e ..

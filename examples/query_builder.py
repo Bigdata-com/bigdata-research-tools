@@ -6,6 +6,12 @@ from bigdata_research_tools.search.query_builder import (
     build_batched_query,
 )
 from bigdata_client import Bigdata
+
+from dotenv import load_dotenv
+
+# Load environment variables for authentication
+print(f"Environment variables loaded: {load_dotenv()}")
+
 bigdata = Bigdata()
 # Configure logging
 logging.basicConfig(
@@ -83,7 +89,7 @@ def test_control_entities():
         control_entities=control_entities,
         sources=None,            
         batch_size=5,
-        fiscal_year=None,        
+        fiscal_year=2024,        
         scope=DocumentType.TRANSCRIPTS,
         custom_batches=None      
     )

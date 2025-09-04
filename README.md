@@ -104,6 +104,7 @@ Set up your credentials using environment variables:
 ```bash
 export BIGDATA_USERNAME="your_username"
 export BIGDATA_PASSWORD="your_password"
+export OPENAI_API_KEY= "your_openai_api_key"
 ```
 
 ### Using .env File
@@ -111,8 +112,9 @@ export BIGDATA_PASSWORD="your_password"
 Create a `.env` file in your project directory:
 
 ```bash
-BIGDATA_USERNAME=your_username
-BIGDATA_PASSWORD=your_password
+BIGDATA_USERNAME="your_username"
+BIGDATA_PASSWORD="your_password"
+OPENAI_API_KEY="your_openai_api_key"
 ```
 
 Load the environment variables in your Python script:
@@ -125,6 +127,16 @@ load_dotenv()
 ---
 
 ## Core Workflows
+
+### Jupyter Notebook Setup
+
+If you're running these workflows in a Notebook, you'll need to set up asyncio properly to avoid event loop conflicts:
+
+```python
+import asyncio
+asyncio.get_running_loop()
+import nest_asyncio; nest_asyncio.apply()
+```
 
 ## Narrative Miner
 
@@ -145,6 +157,8 @@ narrative_miner = NarrativeMiner(
     llm_model="openai::gpt-4o-mini",
     start_date="2024-01-01",
     end_date="2024-12-31",
+    fiscal_year=2024,
+
     document_type=DocumentType.NEWS
 )
 
@@ -164,7 +178,7 @@ results = narrative_miner.mine_narratives(
 | `end_date` | `str` | ✅ | End date in YYYY-MM-DD format |
 | `llm_model` | `str` | ✅ | LLM model in format "provider::model" |
 | `document_type` | `DocumentType` | ✅ | Type of documents to search |
-| `fiscal_year` | `int` | ❌ | Fiscal year for transcripts/filings |
+| `fiscal_year` | `int` | ❌ | Fiscal year for transcripts/filings. Set to `None` for news |
 | `sources` | `List[str]` | ❌ | Filter by specific news sources |
 | `rerank_threshold` | `float` | ❌ | Cross-encoder threshold (0-1) |
 
@@ -186,7 +200,7 @@ from bigdata_client.models.search import DocumentType
 DocumentType.NEWS          # News articles
 DocumentType.TRANSCRIPTS   # Earnings call transcripts
 DocumentType.FILINGS       # SEC filings
-DocumentType.ALL           # All document types
+DocumentType.ALL           # All document types. fiscal_year must not be None
 ```
 
 ### Return Values
@@ -208,6 +222,8 @@ Analyzes company exposure to specific themes by generating sub-themes and scorin
 ```python
 from bigdata_research_tools.workflows import ThematicScreener
 from bigdata_research_tools.client import bigdata_connection
+from bigdata_client.models.search import DocumentType
+
 
 # Get companies from a watchlist
 bigdata = bigdata_connection()
@@ -241,10 +257,10 @@ results = screener.screen_companies(
 | `start_date` | `str` | ✅ | Start date (YYYY-MM-DD) |
 | `end_date` | `str` | ✅ | End date (YYYY-MM-DD) |
 | `document_type` | `DocumentType` | ✅ | Document scope |
-| `fiscal_year` | `int` | ❌ | Required for transcripts/filings (see [Fiscal Year Guide](#fiscal-year-guide)) |
+| `fiscal_year` | `int` | ❌ | Required for transcripts/filings. Set to `None` for news (see [Fiscal Year Guide](#fiscal-year-guide))  |
 | `sources` | `List[str]` | ❌ | Source filters |
 | `rerank_threshold` | `float` | ❌ | Reranking threshold |
-| `focus` | `str` | `""` | Additional focus description (see [Focus Parameter Guide](#focus-parameter-guide)) |
+| `focus` | `str` | ❌ | Additional focus description (see [Focus Parameter Guide](#focus-parameter-guide)) |
 
 #### Method Parameters - `screen_companies()`
 
@@ -267,8 +283,8 @@ results = {
     "theme_tree": ThemeTree     # Generated theme hierarchy
 }
 ```
-
-### Company Objects
+---
+## Company Objects
 
 Company objects are `bigdata_client.models.entities.Company` instances that represent companies in the Bigdata knowledge graph. Here's how to obtain them:
 
@@ -321,11 +337,6 @@ tech_companies = [
     if hasattr(company, 'sector') and 'Technology' in company.sector
 ]
 
-# Filter by market cap (if available in metadata)
-large_cap_companies = [
-    company for company in all_companies
-    if hasattr(company, 'market_cap') and company.market_cap > 10_000_000_000
-]
 ```
 
 #### Company Object Properties
@@ -353,6 +364,8 @@ Assesses company exposure to risk scenarios with detailed risk taxonomy generati
 
 ```python
 from bigdata_research_tools.workflows.risk_analyzer import RiskAnalyzer
+from bigdata_client.models.search import DocumentType
+
 
 analyzer = RiskAnalyzer(
     llm_model="openai::gpt-4o-mini",
@@ -384,78 +397,20 @@ results = analyzer.screen_companies(
 | `document_type` | `DocumentType` | ✅ | Document scope |
 | `keywords` | `List[str]` | ❌ | Keyword filters |
 | `control_entities` | `Dict[str, List[str]]` | ❌ | Entity co-mention filters (see [Control Entities](#control-entities)) |
-| `fiscal_year` | `int` | ❌ | Fiscal year filter (see [Fiscal Year Guide](#fiscal-year-guide)) |
+| `fiscal_year` | `int` | ❌ |  Required for transcripts/filings. Set to `None` for news (see [Fiscal Year Guide](#fiscal-year-guide))  |
 | `sources` | `List[str]` | ❌ | Source filters |
 | `rerank_threshold` | `float` | ❌ | Reranking threshold |
-| `focus` | `str` | `""` | Additional focus description (see [Focus Parameter Guide](#focus-parameter-guide)) |
+| `focus` | `str` | ❌ | Additional focus description (see [Focus Parameter Guide](#focus-parameter-guide)) |
 
-### Control Entities
+#### Method Parameters - `screen_companies()`
 
-Control entities allow you to filter results based on **co-mentions** - documents must mention both your target companies AND the control entities to be included in results.
-
-#### How Control Entities Work
-
-```python
-# Example: Find documents about Tesla that also mention China or Taiwan
-analyzer = RiskAnalyzer(
-    main_theme="Supply Chain Risk",
-    companies=[tesla_company],  # Target companies
-    control_entities={
-        "place": ["China", "Taiwan"]  # Must also mention these places
-    }
-)
-# Results will only include documents that mention Tesla AND (China OR Taiwan)
-```
-
-#### Control Entity Types
-
-```python
-control_entities = {
-    # Geographic filters
-    "place": ["United States", "China", "Taiwan", "Germany"],
-    
-    # People filters  
-    "people": ["Elon Musk", "Tim Cook", "Satya Nadella"],
-    
-    # Company filters
-    "companies": ["Apple Inc", "Microsoft Corp", "Tesla Inc"],
-    
-    # Topic/concept filters
-    "topics": ["regulation", "trade policy", "cybersecurity"],
-    
-    # Product filters  
-    "product": ["iPhone", "Model S", "Azure"]
-}
-```
-
-#### Real-World Use Cases
-
-```python
-# Geopolitical Risk Analysis
-control_entities = {
-    "place": ["Russia", "Ukraine", "China"],
-    "topics": ["sanctions", "trade war", "geopolitical tension"]
-}
-
-# Regulatory Risk Analysis  
-control_entities = {
-    "topics": ["FDA approval", "regulatory compliance", "SEC investigation"],
-    "people": ["Federal Reserve Chair", "SEC Commissioner"]
-}
-
-# Competitive Analysis
-control_entities = {
-    "companies": ["Amazon", "Google", "Meta"],
-    "topics": ["market share", "competition", "antitrust"]
-}
-```
-
-#### Important Notes
-
-- **AND Logic**: Documents must mention target companies AND control entities
-- **OR Logic**: Within each control entity type, documents can mention ANY of the listed entities
-- **Performance**: More control entities = fewer but more targeted results
-- **Optional**: Control entities are completely optional - omit for broader analysis
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `document_limit` | `int` | `10` | Documents per query |
+| `batch_size` | `int` | `10` | Batch size for processing |
+| `frequency` | `str` | `"3M"` | Date range frequency |
+| `word_range` | `Tuple[int, int]` | `(50, 100)` | Word range for motivations |
+| `export_path` | `str` | `None` | Excel export path |
 
 ### Return Values
 
@@ -468,6 +423,59 @@ results = {
     "risk_tree": ThemeTree      # Risk taxonomy tree
 }
 ```
+
+### Control Entities
+
+Control entities allow you to filter results based on **co-mentions** - documents must mention both your target companies AND the control entities to be included in results.
+
+#### How Control Entities Work
+
+```python
+# Example: Find documents about Tesla that also mention China or Taiwan
+tesla_company_search = bigdata.knowledge_graph.autosuggest("Tesla Inc.")
+tesla_company = tesla_company_search[0]
+
+analyzer = RiskAnalyzer(
+    llm_model="openai::gpt-4o-mini",
+    main_theme="Supply Chain Risk",
+    companies=[tesla],
+    start_date="2024-01-01",
+    end_date="2024-12-31",
+    document_type=DocumentType.NEWS,
+    control_entities={
+        "place": ["China", "Taiwan"],  # Must also mention these places
+        "people": ["Elon Musk", "Tim Cook"],
+        "product": ["iPhone", "Model S", "Azure"]
+    }
+)
+```
+
+#### Control Entity Types
+
+```python
+control_entities = {
+    # Geographic filters
+    "place": ["United States", "China", "Taiwan", "Germany"],
+    
+    # People filters  
+    "people": ["Elon Musk", "Tim Cook", "Satya Nadella"],
+    
+    # Topic/concept filters
+    "topic": ["regulation", "trade policy", "cybersecurity"],
+    
+    # Product filters  
+    "product": ["iPhone", "Model S", "Azure"]
+}
+```
+
+#### Important Notes
+
+- **AND Logic**: Documents must mention target companies AND control entities
+- **OR Logic**: Within each control entity type, documents can mention ANY of the listed entities
+- **Performance**: More control entities = fewer but more targeted results
+- **Optional**: Control entities are completely optional - omit for broader analysis
+
+
 
 ---
 
@@ -485,22 +493,41 @@ from bigdata_research_tools.search.query_builder import (
     build_batched_query
 )
 from bigdata_client.models.search import DocumentType
+from bigdata_research_tools.client import bigdata_connection
 
-# Define entities to search for
-entities = EntitiesToSearch(
-    companies=["Apple Inc", "Microsoft Corp"],
-    people=["Tim Cook", "Satya Nadella"],
-    concepts=["artificial intelligence"]
-)
+bigdata = bigdata_connection()
+company_names = ["Apple Inc", "Microsoft Corp", "Tesla Inc"]
+companies = []
+
+for name in company_names:
+    results = bigdata.knowledge_graph.find_companies(name)
+    if results:
+        companies.append(next(iter(results)))
+
+control_entities = {
+    "people": ["Tim Cook", "Satya Nadella"],
+    "concepts": ["artificial intelligence"]
+}
+
+entity_keys = [entity.id for entity in companies]
+entities_config = EntitiesToSearch(companies=entity_keys)
+
+control_entities_config = None
+if control_entities:
+    control_entities_config = EntitiesToSearch(**control_entities)
 
 # Build queries
 queries = build_batched_query(
     sentences=["Technology innovation strategies"],
     keywords=["innovation", "technology"],
-    entities=entities,
+    entities=entities_config,
+    control_entities= control_entities_config,
+
     batch_size=5,
     fiscal_year=2024,
-    scope=DocumentType.TRANSCRIPTS
+    scope=DocumentType.TRANSCRIPTS,
+    custom_batches = None,
+    sources = None,
 )
 ```
 
@@ -532,31 +559,6 @@ class EntitiesToSearch:
 | `scope` | `DocumentType` | ✅ | Document scope |
 | `custom_batches` | `List[EntitiesToSearch]` | ❌ | Custom entity batches |
 
-### Custom Batching
-
-```python
-custom_batches = [
-    # Tech companies
-    EntitiesToSearch(
-        companies=["Apple Inc", "Microsoft Corp"],
-        concepts=["innovation", "technology"]
-    ),
-    # Auto companies
-    EntitiesToSearch(
-        companies=["Tesla", "Ford"],
-        concepts=["electric vehicles"]
-    )
-]
-
-queries = build_batched_query(
-    sentences=["Industry trends"],
-    entities=None,
-    custom_batches=custom_batches,
-    batch_size=10,
-    scope=DocumentType.ALL
-)
-```
-
 ---
 
 ## Search Manager
@@ -567,19 +569,26 @@ High-performance concurrent search execution with rate limiting.
 
 ```python
 from bigdata_research_tools.search.search import run_search
+from bigdata_client.models.search import DocumentType, SortBy
+from bigdata_research_tools.search.query_builder import create_date_ranges
 
-# Simple search execution (uses internal bigdata_connection())
+date_ranges = create_date_ranges("2024-11-01", "2025-03-15", "M")
+
 results = run_search(
-    queries=query_list,
-    limit=1000
-)
+        queries,
+        date_ranges=date_ranges,
+        limit= 50,
+        scope=DocumentType.ALL,
+        sortby=SortBy.RELEVANCE,
+        rerank_threshold=None,
+    )
 ```
 
 ### Function Parameters - `run_search()`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `queries` | `List[QueryComponent]` | ✅ | List of search queries |
+| `queries` | `List[QueryComponent]` |  | List of search queries |
 | `date_ranges` | `DATE_RANGE_TYPE` | `None` | Date range specifications |
 | `limit` | `int` | `10` | Results per query |
 | `only_results` | `bool` | `True` | Return format control |
@@ -592,7 +601,7 @@ results = run_search(
 ### Rate Limiting Configuration
 
 ```python
-from bigdata_research_tools.search.search import SearchManager
+from bigdata_research_tools.search.search import SearchManager, normalize_date_range
 from bigdata_research_tools.client import bigdata_connection
 
 bigdata = bigdata_connection()
@@ -603,6 +612,11 @@ manager = SearchManager(
     bigdata=bigdata                  # Optional: uses default if None
 )
 
+date_ranges = create_date_ranges("2024-11-01", "2025-03-15", "M")
+date_ranges = normalize_date_range(date_ranges)
+date_ranges.sort(key=lambda x: x[0])
+
+
 # Use the manager for concurrent searches
 results = manager.concurrent_search(
     queries=queries,
@@ -610,66 +624,6 @@ results = manager.concurrent_search(
     limit=1000,
     scope=DocumentType.ALL
 )
-```
-
----
-
-## Visualization Tools
-
-Create interactive dashboards and visualizations for analysis results.
-
-### Thematic Exposure Dashboard
-
-```python
-from bigdata_research_tools.visuals import create_thematic_exposure_dashboard
-
-# Create dashboard from screening results
-fig, industry_fig = create_thematic_exposure_dashboard(
-    df_company=results["df_company"],
-    n_companies=15,
-    config={
-        'heatmap_colorscale': 'Plasma',
-        'dashboard_height': 1800,
-        'main_title': 'Custom Thematic Analysis'
-    }
-)
-
-# Display dashboards
-fig.show(renderer="browser")
-industry_fig.show(renderer="browser")
-```
-
-### Risk Exposure Dashboard
-
-```python
-from bigdata_research_tools.visuals import create_risk_exposure_dashboard
-
-fig, industry_fig = create_risk_exposure_dashboard(
-    df_company=risk_results["df_company"],
-    n_companies=20
-)
-
-fig.show(renderer="browser")
-industry_fig.show(renderer="browser")
-```
-
-### Dashboard Configuration
-
-```python
-custom_config = {
-    # Visual styling
-    'heatmap_colorscale': 'Viridis',      # Color scheme
-    'dashboard_height': 2000,              # Dashboard height
-    'company_column': 'Company',           # Company column name
-    
-    # Content configuration
-    'top_themes_count': 8,                 # Themes to display
-    'main_title': 'Custom Analysis',       # Dashboard title
-    
-    # Layout settings
-    'subplot_spacing': 0.05,               # Space between plots
-    'margin': {'l': 50, 'r': 50, 't': 100, 'b': 50}
-}
 ```
 
 ---
@@ -781,21 +735,6 @@ logging.basicConfig(
 logging.getLogger("bigdata_research_tools").setLevel(logging.DEBUG)
 ```
 
-### Resource Management
-
-```python
-# Configure concurrent processing
-from bigdata_research_tools.search.search import SearchManager
-
-manager = SearchManager(
-    max_workers=8,              # Adjust based on your system
-    requests_per_minute=300,    # Respect API limits
-    token_bucket_size=50       # Buffer for burst requests
-)
-```
-
----
-
 ## Parameter Deep Dive
 
 ### Fiscal Year Guide
@@ -896,31 +835,6 @@ screener = ThematicScreener(
 #   Corporate AI Strategy, AI Vendor Selection, etc.
 ```
 
-#### Real-World Focus Examples
-
-```python
-# Climate Risk Analysis
-analyzer = RiskAnalyzer(
-    main_theme="Climate Change Impact",
-    focus="Assess physical climate risks including extreme weather events, sea level rise, and temperature changes affecting operations, supply chains, and asset values",
-    # ... other parameters
-)
-
-# Supply Chain Resilience
-screener = ThematicScreener(
-    main_theme="Supply Chain Management",
-    focus="Examine supply chain diversification strategies, nearshoring trends, and supplier relationship management in response to recent disruptions",
-    # ... other parameters
-)
-
-# ESG Investment Trends
-screener = ThematicScreener(
-    main_theme="ESG Investing",
-    focus="Analyze how companies are integrating environmental, social, and governance factors into capital allocation decisions and stakeholder communications",
-    # ... other parameters
-)
-```
-
 #### Best Practices for Focus
 
 1. **Be Specific**: Include concrete aspects you want to explore
@@ -997,7 +911,7 @@ Create a `.env` file in the tutorial directory:
 ```bash
 # Create .env file with your credentials
 echo "BIGDATA_API_KEY=your_api_key_here" > .env
-echo "BIGDATA_API_BASE_URL=your_base_url_here" >> .env
+echo "OPENAI_API_KEY=your_openai_api_key_here" >> .env   # Required to run the Advanced Workflows
 ```
 
 #### Step 4: Launch Jupyter Notebook
@@ -1028,7 +942,6 @@ The interactive tutorial covers:
 **💡 Learning Outcomes**
 - Understand core library concepts
 - See practical, working examples
-- Learn best practices for search configuration
 - Get hands-on experience with real data
 
 **🚀 Next Steps**
@@ -1056,75 +969,9 @@ jupyter notebook tutorial_notebook.ipynb
 
 ---
 
-## Running the Examples
 
-The library includes several complete examples in the `examples/` directory. Here's how to set up your environment and run them.
-
-### Prerequisites
-
-You'll need the following tools and packages:
-
-1. **Python 3.9+** 
-2. **uv** (modern Python package manager)
-3. **bigdata_client** (Bigdata API client)
-4. **bigdata_research_tools** (this library)
-
-### Environment Setup
-
-#### Step 1: Install uv
-
-```bash
-# Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Or via pip
-pip install uv
-```
-
-#### Step 2: Clone the Repository
-
-```bash
-git clone https://github.com/your-org/bigdata-research-tools.git
-cd bigdata-research-tools/examples
-```
-
-#### Step 3: Create Virtual Environment with Dependencies
-
-```bash
-# Create and activate virtual environment with uv
-uv venv
-
-# Activate the environment
-source .venv/bin/activate  # Linux/Mac
-# or
-.venv\Scripts\activate     # Windows
-
-# Install the library and dependencies for full functionality in the examples
-uv pip install -e ".[excel,plotly,openai]"
-uv pip install bigdata-client
-```
-
-#### Step 4: Set Up Authentication
-
-Create a `.env` file in the project root:
-
-```bash
-# Create .env file
-touch .env
-
-# Add your credentials
-echo "BIGDATA_USERNAME=your_username" >> .env
-echo "BIGDATA_PASSWORD=your_password" >> .env
-```
-
-Or set environment variables directly:
-
-```bash
-export BIGDATA_USERNAME="your_username"
-export BIGDATA_PASSWORD="your_password"
-```
-
-### Available Examples
+## Examples
+The library includes several complete examples in the `examples/` directory. 
 
 #### 1. Narrative Miner Example
 
@@ -1268,287 +1115,6 @@ INFO:__main__:  Bloomberg: 8 documents
 # Results exported to run_search_results.xlsx
 ```
 
-### Customizing Examples
-
-#### Modify Company Universe
-
-Edit the watchlist ID in the examples:
-
-```python
-# In thematic_screener.py or risk_analyzer.py
-GRID_watchlist_ID = "your-watchlist-id-here"
-
-# Or use your own company list
-from bigdata_research_tools.client import bigdata_connection
-
-bigdata = bigdata_connection()
-company_names = ["Apple Inc", "Microsoft Corp", "Tesla Inc"]
-companies = []
-
-for name in company_names:
-    results = bigdata.knowledge_graph.find_companies(name)
-    if results:
-        companies.append(next(iter(results)))
-```
-
-#### Modify Analysis Parameters
-
-```python
-# Change the theme or time period
-screener = ThematicScreener(
-    main_theme="Your Custom Theme",        # Change this
-    start_date="2024-06-01",              # Change dates
-    end_date="2024-12-31",
-    document_type=DocumentType.NEWS,       # Change document type
-    fiscal_year=None,                      # Adjust for document type
-)
-```
-
-#### Modify Output Paths
-
-```python
-# Change export paths
-results = screener.screen_companies(
-    export_path="custom_analysis_results.xlsx"  # Your custom path
-)
-```
-
-### Troubleshooting Examples
-
-#### Common Issues
-
-**1. Authentication Errors**
-```bash
-# Check if credentials are loaded
-python -c "import os; print('Username:', os.environ.get('BIGDATA_USERNAME', 'NOT SET'))"
-```
-
-**2. Missing Dependencies**
-```bash
-# Install missing packages
-uv pip install plotly openpyxl openai
-
-# Or install all optional dependencies
-uv pip install -e ".[excel,plotly,openai]"
-```
-
-**3. Watchlist Access Issues**
-```bash
-# Test watchlist access
-python -c "
-from bigdata_research_tools.client import bigdata_connection
-bigdata = bigdata_connection()
-watchlists = bigdata.watchlists.list()
-print(f'Available watchlists: {len(watchlists)}')
-for w in watchlists[:5]:
-    print(f'  {w.id}: {w.name}')
-"
-```
-
-**4. Performance Issues**
-```python
-# For large datasets, reduce batch sizes
-results = screener.screen_companies(
-    document_limit=5,    # Reduce from default 10
-    batch_size=5,        # Reduce from default 10
-    frequency="6M"       # Use longer intervals
-)
-```
-
----
-
-## Advanced Examples and Tutorials
-
-For complete, runnable examples with environment setup instructions, see the [Running the Examples](#running-the-examples) section above.
-
-### Custom Analysis Workflows
-
-Beyond the provided examples, here are advanced patterns for custom research workflows:
-
-#### Multi-Theme Comparative Analysis
-
-```python
-# Compare multiple themes across the same company universe
-themes = ["AI Adoption", "ESG Initiatives", "Supply Chain Resilience"]
-results = {}
-
-for theme in themes:
-    screener = ThematicScreener(
-        main_theme=theme,
-        companies=companies,
-        # ... other parameters
-    )
-    results[theme] = screener.screen_companies()
-
-# Combine results for comparative analysis
-combined_df = pd.concat([
-    results[theme]["df_company"].assign(Analysis_Theme=theme) 
-    for theme in themes
-])
-```
-
-#### Time Series Analysis
-
-```python
-# Analyze theme evolution over multiple time periods
-periods = [
-    ("2023-01-01", "2023-06-30", "H1 2023"),
-    ("2023-07-01", "2023-12-31", "H2 2023"),
-    ("2024-01-01", "2024-06-30", "H1 2024"),
-]
-
-timeline_results = []
-for start, end, label in periods:
-    screener = ThematicScreener(
-        main_theme="Digital Transformation",
-        start_date=start,
-        end_date=end,
-        # ... other parameters
-    )
-    result = screener.screen_companies()
-    result["df_company"]["Period"] = label
-    timeline_results.append(result["df_company"])
-
-# Analyze trends over time
-trend_df = pd.concat(timeline_results)
-```
-
-#### Cross-Document Type Analysis
-
-```python
-# Analyze the same theme across different document types
-document_types = [
-    (DocumentType.NEWS, None, "Market Sentiment"),
-    (DocumentType.TRANSCRIPTS, 2024, "Management Commentary"),
-    (DocumentType.FILINGS, 2024, "Formal Disclosures")
-]
-
-cross_doc_results = {}
-for doc_type, fiscal_year, label in document_types:
-    screener = ThematicScreener(
-        main_theme="Sustainability Initiatives",
-        document_type=doc_type,
-        fiscal_year=fiscal_year,
-        # ... other parameters
-    )
-    cross_doc_results[label] = screener.screen_companies()
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-#### Authentication Errors
-```python
-# Check credentials
-import os
-print("Username:", os.environ.get("BIGDATA_USERNAME"))
-print("Password set:", bool(os.environ.get("BIGDATA_PASSWORD")))
-
-# Test connection
-from bigdata_research_tools.client import bigdata_connection
-try:
-    bigdata = bigdata_connection()
-    print("Connection successful")
-except Exception as e:
-    print(f"Connection failed: {e}")
-```
-
-#### Missing Dependencies
-```python
-# Check Excel dependencies
-from bigdata_research_tools.excel import check_excel_dependencies
-if not check_excel_dependencies():
-    print("Install Excel dependencies: pip install bigdata-research-tools[excel]")
-
-# Check Plotly dependencies
-from bigdata_research_tools.visuals.thematic_visuals import check_plotly_dependencies
-if not check_plotly_dependencies():
-    print("Install Plotly: pip install bigdata-research-tools[plotly]")
-```
-
-#### Memory and Performance Issues
-```python
-# Reduce batch sizes for large datasets
-results = screener.screen_companies(
-    batch_size=5,         # Smaller batches
-    document_limit=5,     # Fewer documents
-    frequency="3M"        # Less frequent intervals
-)
-
-# Monitor memory usage
-import psutil
-print(f"Memory usage: {psutil.virtual_memory().percent}%")
-```
-
-#### Rate Limiting
-```python
-# Adjust rate limits
-from bigdata_research_tools.search.search import SearchManager
-
-manager = SearchManager(
-    max_workers=2,              # Reduce concurrency
-    requests_per_minute=200,    # Lower rate limit
-    token_bucket_size=30       # Smaller buffer
-)
-```
-
-### Error Handling
-
-```python
-import logging
-from bigdata_research_tools.workflows import NarrativeMiner
-
-logger = logging.getLogger(__name__)
-
-try:
-    miner = NarrativeMiner(
-        narrative_sentences=sentences,
-        llm_model="openai::gpt-4o-mini",
-        start_date="2024-01-01",
-        end_date="2024-12-31",
-        document_type=DocumentType.NEWS
-    )
-    
-    results = miner.mine_narratives()
-    
-except ValueError as e:
-    logger.error(f"Configuration error: {e}")
-except EnvironmentError as e:
-    logger.error(f"Authentication error: {e}")
-except Exception as e:
-    logger.error(f"Unexpected error: {e}")
-    raise
-```
-
-### Validation Checks
-
-```python
-# Validate date formats
-from datetime import datetime
-
-def validate_date(date_string):
-    try:
-        datetime.strptime(date_string, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
-
-# Validate LLM model format
-def validate_llm_model(model_string):
-    return "::" in model_string and len(model_string.split("::")) == 2
-
-# Example usage
-start_date = "2024-01-01"
-llm_model = "openai::gpt-4o-mini"
-
-assert validate_date(start_date), f"Invalid date format: {start_date}"
-assert validate_llm_model(llm_model), f"Invalid LLM model format: {llm_model}"
-```
-
----
 
 ## Support and Resources
 

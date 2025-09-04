@@ -28,7 +28,7 @@ Welcome to the hands-on tutorial for the Bigdata Research Tools library! This in
    ```bash
    # Create .env file with your credentials
    echo "BIGDATA_API_KEY=your_api_key_here" > .env
-   echo "BIGDATA_API_BASE_URL=your_base_url_here" >> .env
+   echo "OPENAI_API_KEY=your_openai_api_key_here" >> .env   # Required to run the Advanced Workflows
    ```
 
 4. **Launch Jupyter:**
