@@ -307,15 +307,15 @@ companies = []
 
 for name in company_names:
     # Find company in knowledge graph
-    search_results = bigdata.knowledge_graph.find_companies(name)
+    search_results = bigdata.knowledge_graph.autosuggest(name)
     if search_results:
         companies.append(next(iter(search_results)))
         print(f"Found: {companies[-1].name} (ID: {companies[-1].id})")
 
 # Output:
-# Found: Apple Inc (ID: D8442C)
-# Found: Microsoft Corporation (ID: D4A6CC) 
-# Found: Tesla Inc (ID: 054E32)
+# Found: Apple Inc (ID: D8442A)
+# Found: Microsoft Corporation (ID: 228D42) 
+# Found: Tesla Inc (ID: DD3BB1)
 ```
 
 #### Method 3: Filter by Criteria
