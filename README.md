@@ -121,6 +121,8 @@ load_dotenv()
 
 ## Core Workflows
 
+You can find these workflows and additional examples on the Bigdata documentation site in the Cookbooks section: [Cookbooks – Bigdata docs](https://docs.bigdata.com/use-cases/introduction).
+
 ### Jupyter Notebook Setup
 
 If you're running these workflows in a Notebook, you'll need to set up asyncio properly to avoid event loop conflicts:
