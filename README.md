@@ -17,29 +17,26 @@
 7. [Thematic Screener](#thematic-screener)
 8. [Company Objects](#company-objects)
 9. [Risk Analyzer](#risk-analyzer)
-10. [Utility Modules](#utility-modules)
-11. [Query Builder](#query-builder)
-12. [Search Manager](#search-manager)
+10. [Query Builder](#query-builder)
+11. [Search Manager](#search-manager)
+12. [LLM Integration](#llm-integration)
 13. [Advanced Features](#advanced-features)
-14. [Configuration Options](#configuration-options)
-15. [Parameter Deep Dive](#parameter-deep-dive)
-   - [Fiscal Year Guide](#fiscal-year-guide)
-   - [Focus Parameter Guide](#focus-parameter-guide)
-16. [Interactive Tutorial](#interactive-tutorial)
-   - [Quick Start with uv](#quick-start-with-uv)
-   - [Tutorial Overview](#tutorial-overview)
-   - [Alternative Installation Methods](#alternative-installation-methods)
-17. [Examples](#examples)
-18. [Support and Resources](#support-and-resources)
-19. [License](#license)
+14. [Parameter Deep Dive](#parameter-deep-dive)
+    - [Fiscal Year Guide](#fiscal-year-guide)
+    - [Focus Parameter Guide](#focus-parameter-guide)
+15. [Interactive Tutorial](#interactive-tutorial)
+    - [Quick Start with uv](#quick-start-with-uv)
+    - [Tutorial Overview](#tutorial-overview)
+    - [Alternative Installation Methods](#alternative-installation-methods)
+16. [Examples](#examples)
+17. [Support and Resources](#support-and-resources)
+18. [License](#license)
 
 ---
 
 ## Overview
 
 **Bigdata Research Tools** is a Python library designed to automate and streamline research workflows using the Bigdata.com API. It provides high-level, plug-and-play functions for building customized research processes with minimal effort.
-
-### Key Features
 
 ## Key Features
 
@@ -434,7 +431,7 @@ tesla_company = tesla_company_search[0]
 analyzer = RiskAnalyzer(
     llm_model="openai::gpt-4o-mini",
     main_theme="Supply Chain Risk",
-    companies=[tesla],
+    companies=[tesla_company],
     start_date="2024-01-01",
     end_date="2024-12-31",
     document_type=DocumentType.NEWS,
@@ -471,11 +468,7 @@ control_entities = {
 - **Performance**: More control entities = fewer but more targeted results
 - **Optional**: Control entities are completely optional - omit for broader analysis
 
-
-
 ---
-
-## Utility Modules
 
 ## Query Builder
 
@@ -517,13 +510,13 @@ queries = build_batched_query(
     sentences=["Technology innovation strategies"],
     keywords=["innovation", "technology"],
     entities=entities_config,
-    control_entities= control_entities_config,
+    control_entities=control_entities_config,
 
     batch_size=5,
     fiscal_year=2024,
     scope=DocumentType.TRANSCRIPTS,
-    custom_batches = None,
-    sources = None,
+    custom_batches=None,
+    sources=None,
 )
 ```
 
@@ -573,7 +566,7 @@ date_ranges = create_date_ranges("2024-11-01", "2025-03-15", "M")
 results = run_search(
         queries,
         date_ranges=date_ranges,
-        limit= 50,
+        limit=50,
         scope=DocumentType.ALL,
         sortby=SortBy.RELEVANCE,
         rerank_threshold=None,
@@ -624,21 +617,26 @@ results = manager.concurrent_search(
 
 ---
 
-## Advanced Features
-
-### LLM Integration
+## LLM Integration
 
 The library supports multiple LLM providers:
 
-#### OpenAI Configuration
+### OpenAI Configuration
+
 ```python
 # Using OpenAI models
 llm_model = "openai::gpt-4o-mini"     # Cost-effective
 llm_model = "openai::gpt-4o"          # High performance
 llm_model = "openai::gpt-3.5-turbo"   # Fast processing
+
+
+# Set AWS credentials
+import os
+os.environ["OPENAI_API_KEY"] = "your_key"
 ```
 
-#### AWS Bedrock Configuration
+### AWS Bedrock Configuration
+
 ```python
 # Using Bedrock models
 llm_model = "bedrock::anthropic.claude-3-sonnet-20240229-v1:0"
@@ -650,6 +648,12 @@ os.environ["AWS_ACCESS_KEY_ID"] = "your_key"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "your_secret"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 ```
+
+### Azure Configuration
+
+TBD
+
+## Advanced Features
 
 ### Cross-Encoder Reranking
 
@@ -703,18 +707,6 @@ results = screener.screen_companies(
 ```
 
 ---
-
-## Configuration Options
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BIGDATA_USERNAME` | API username | Required |
-| `BIGDATA_PASSWORD` | API password | Required |
-| `BIGDATA_FILE_CONFIG` | Config file path | None |
-| `BIGDATA_OTHER_ENTITY_PLACEHOLDER` | Entity placeholder | "Other Company" |
-| `BIGDATA_TARGET_ENTITY_PLACEHOLDER` | Target placeholder | "Target Company" |
 
 ### Logging Configuration
 
@@ -965,8 +957,8 @@ jupyter notebook tutorial_notebook.ipynb
 
 ---
 
-
 ## Examples
+
 The library includes several complete examples in the `examples/` directory. 
 
 #### 1. Narrative Miner Example
