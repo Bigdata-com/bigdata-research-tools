@@ -1,5 +1,7 @@
 """
 Bigdata.com Research Tools
 """
+from importlib.metadata import version
 
-__version__: str = "0.17.3"
+
+__version__: str = version("bigdata-research-tools")

@@ -7,17 +7,16 @@ Author: Jelena Starovic (jstarovic@ravenpack.com)
 """
 
 import ast
+import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from json_repair import repair_json
 from pandas import DataFrame
-import json
 
 from bigdata_research_tools.llm import LLMEngine
-from bigdata_research_tools.prompts.themes import (
-    compose_themes_system_prompt,
-)
 from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
+from bigdata_research_tools.prompts.themes import compose_themes_system_prompt
 
 themes_default_llm_model_config: Dict[str, Any] = {
     "provider": "openai",
@@ -271,7 +270,6 @@ class ThemeTree:
         # Return the Graphviz dot object for rendering
         return mindmap
 
-
     def _visualize_plotly(self) -> None:
         """
         Auxiliary function to visualize the tree using Plotly.
@@ -301,7 +299,7 @@ class ThemeTree:
         df = DataFrame({"labels": labels, "parents": parents})
         fig = px.treemap(df, names="labels", parents="parents")
         fig.show()
-    
+
     def get_label_to_parent_mapping(self) -> dict:
         """
         Returns a mapping from each leaf node label to its parent node label.
@@ -320,7 +318,7 @@ class ThemeTree:
 
         traverse(self)
         return mapping
-    
+
     def _to_dict(self) -> dict:
         """
         Recursively convert the ThemeTree to a dictionary suitable for JSON serialization.
@@ -329,7 +327,12 @@ class ThemeTree:
             "label": self.label,
             "node": self.node,
             "summary": self.summary,
-            "children": [child._to_dict() for child in self.children] if self.children else [],
+            "children": (
+                [child._to_dict() for child in self.children] if self.children else []
+            ),
+            "children": (
+                [child._to_dict() for child in self.children] if self.children else []
+            ),
             "keywords": self.keywords,
         }
 
@@ -374,7 +377,6 @@ def generate_theme_tree(
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
     llm = LLMEngine(model=model_str)
 
-    
     system_prompt = compose_themes_system_prompt(main_theme, analyst_focus=focus)
 
     chat_history = [
@@ -382,7 +384,8 @@ def generate_theme_tree(
         {"role": "user", "content": main_theme},
     ]
 
-    tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
+    tree_str = llm.get_response(chat_history, **ll_model_config.get("kwargs", {}))
+    tree_str = repair_json(tree_str)
     tree_dict = ast.literal_eval(tree_str)
 
     return ThemeTree.from_dict(tree_dict)
@@ -420,6 +423,7 @@ def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
     """
     return [f"{label}: {summary}" for label, summary in label_summaries.items()]
 
+
 def generate_risk_tree(
     main_theme: str,
     focus: str = "",
@@ -452,7 +456,18 @@ def generate_risk_tree(
 
     system_prompt = compose_risk_system_prompt_focus(main_theme, focus)
 
-    tree_str = llm.get_response([{"role": "system", "content": system_prompt}], **ll_model_config["kwargs"])
+    tree_str = llm.get_response(
+        [{"role": "user", "content": system_prompt}],
+        **ll_model_config.get("kwargs", {}),
+    )
+
+    tree_str = repair_json(tree_str)
+    tree_str = llm.get_response(
+        [{"role": "user", "content": system_prompt}],
+        **ll_model_config.get("kwargs", {}),
+    )
+
+    tree_str = repair_json(tree_str)
 
     tree_dict = ast.literal_eval(tree_str)
 
