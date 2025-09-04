@@ -304,7 +304,7 @@ print(f"Found {len(companies)} companies in watchlist")
 
 ```python
 # Search for specific companies by name
-company_names = ["Apple Inc", "Microsoft Corporation", "Tesla Inc"]
+company_names = ["Apple Inc", "Microsoft Corp.", "Tesla Inc"]
 companies = []
 
 for name in company_names:
@@ -316,7 +316,7 @@ for name in company_names:
 
 # Output:
 # Found: Apple Inc (ID: D8442A)
-# Found: Microsoft Corporation (ID: 228D42) 
+# Found: Microsoft Corp. (ID: 228D42) 
 # Found: Tesla Inc (ID: DD3BB1)
 ```
 
