@@ -9,33 +9,29 @@
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Installation](#installation)
-3. [Authentication Setup](#authentication-setup)
-4. [Core Workflows](#core-workflows)
-   - [Narrative Miner](#narrative-miner)
-   - [Thematic Screener](#thematic-screener)
-   - [Risk Analyzer](#risk-analyzer)
-5. [Utility Modules](#utility-modules)
-   - [Query Builder](#query-builder)
-   - [Search Manager](#search-manager)
-   - [Visualization Tools](#visualization-tools)
-6. [Advanced Features](#advanced-features)
-7. [Configuration Options](#configuration-options)
-8. [Parameter Deep Dive](#parameter-deep-dive)
+2. [Key Features](#key-features)
+3. [Installation](#installation)
+4. [Authentication Setup](#authentication-setup)
+5. [Core Workflows](#core-workflows)
+6. [Narrative Miner](#narrative-miner)
+7. [Thematic Screener](#thematic-screener)
+8. [Company Objects](#company-objects)
+9. [Risk Analyzer](#risk-analyzer)
+10. [Utility Modules](#utility-modules)
+11. [Query Builder](#query-builder)
+12. [Search Manager](#search-manager)
+13. [Advanced Features](#advanced-features)
+14. [Configuration Options](#configuration-options)
+15. [Parameter Deep Dive](#parameter-deep-dive)
    - [Fiscal Year Guide](#fiscal-year-guide)
    - [Focus Parameter Guide](#focus-parameter-guide)
-9. [Interactive Tutorial](#interactive-tutorial)
+16. [Interactive Tutorial](#interactive-tutorial)
    - [Quick Start with uv](#quick-start-with-uv)
    - [Tutorial Overview](#tutorial-overview)
-10. [Running the Examples](#running-the-examples)
-   - [Environment Setup](#environment-setup)
-   - [Available Examples](#available-examples)
-   - [Customizing Examples](#customizing-examples)
-   - [Troubleshooting Examples](#troubleshooting-examples)
-11. [Advanced Examples and Tutorials](#advanced-examples-and-tutorials)
-    - [Custom Analysis Workflows](#custom-analysis-workflows)
-12. [Troubleshooting](#troubleshooting)
-13. [Support and Resources](#support-and-resources)
+   - [Alternative Installation Methods](#alternative-installation-methods)
+17. [Examples](#examples)
+18. [Support and Resources](#support-and-resources)
+19. [License](#license)
 
 ---
 
@@ -1114,7 +1110,7 @@ INFO:__main__:  Reuters: 12 documents
 INFO:__main__:  Bloomberg: 8 documents
 # Results exported to run_search_results.xlsx
 ```
-
+---
 
 ## Support and Resources
 
