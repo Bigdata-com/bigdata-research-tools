@@ -97,7 +97,7 @@ Set up your credentials using environment variables:
 ```bash
 export BIGDATA_USERNAME="your_username"
 export BIGDATA_PASSWORD="your_password"
-export OPENAI_API_KEY= "your_openai_api_key"
+export OPENAI_API_KEY="your_openai_api_key"
 ```
 
 ### Using .env File
@@ -630,7 +630,7 @@ llm_model = "openai::gpt-4o"          # High performance
 llm_model = "openai::gpt-3.5-turbo"   # Fast processing
 
 
-# Set AWS credentials
+# Set OpenAI credentials
 import os
 os.environ["OPENAI_API_KEY"] = "your_key"
 ```
@@ -651,7 +651,7 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 ### Azure Configuration
 
-TBD
+Coming soon
 
 ## Advanced Features
 
