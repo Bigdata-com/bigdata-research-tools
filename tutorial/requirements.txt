@@ -1,0 +1,27 @@
+# Requirements for Bigdata Research Tools Tutorial
+# This file contains all dependencies needed to run the tutorial notebook
+
+# Core dependencies
+bigdata-client>=2.15.0
+pandas>=2.2.3,<3.0.0
+numpy>=1.24.0
+python-dotenv>=1.0.0
+
+# Optional dependencies used in tutorial
+openpyxl>=3.1.5,<4.0.0  # For Excel export functionality
+pillow>=11.1.0,<12.0.0  # For image processing
+tqdm>=4.67.1  # For progress bars
+
+# Jupyter notebook dependencies
+ipython>=8.0.0,<9.0.0
+jupyter>=1.0.0
+notebook>=6.5.0
+jupyterlab>=4.0.0  # Modern Jupyter interface
+
+# Visualization dependencies
+matplotlib>=3.7.0  # For basic plotting
+plotly>=5.0.0
+
+
+# The main bigdata-research-tools package (install from source)
+# Install with: pip install -e ..
