@@ -641,8 +641,8 @@ os.environ["OPENAI_API_KEY"] = "your_key"
 
 ```python
 # Using Bedrock models
-llm_model = "bedrock::us.anthropic.claude-3-sonnet-20240229-v1:0"
-llm_model = "bedrock::us.anthropic.claude-3-haiku-20240307-v1:0"
+llm_model = "bedrock::anthropic.claude-3-sonnet-20240229-v1:0"
+llm_model = "bedrock::anthropic.claude-3-haiku-20240307-v1:0"
 
 # Set AWS credentials
 import os
@@ -676,7 +676,7 @@ The following snippets shows how to authenticate with an API Key.
 # Using Azure models
 llm_model = "azure::gpt-4o-mini"
 
-# Set AWS credentials
+# Set Azure credentials
 import os
 os.environ["AZURE_OPENAI_ENDPOINT"] = "CLIENT_AZURE_OPENAI_ENDPOINT"
 os.environ["OPENAI_API_VERSION"] = "API_VERSION"
@@ -689,7 +689,7 @@ If other authentication methods (Entra ID, CLI Authentication) are available the
 # Using Azure models
 llm_model = "azure::gpt-4o-mini"
 
-# Set AWS credentials
+# Set Azure credentials
 import os
 os.environ["AZURE_OPENAI_ENDPOINT"] = "CLIENT_AZURE_OPENAI_ENDPOINT"
 os.environ["OPENAI_API_VERSION"] = "API_VERSION"
