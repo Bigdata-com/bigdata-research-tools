@@ -651,9 +651,50 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "your_secret"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 ```
 
+> **_NOTE:_**  If you are logged in using AWS single sign on (SSO) no environment variables are required.
+
 ### Azure Configuration
 
-Coming soon
+In order to use Azure OpenAI as a provider the following environment variables must be set:
+- `AZURE_OPENAI_ENDPOINT="CLIENT_AZURE_OPENAI_ENDPOINT"`
+- `OPENAI_API_VERSION="API_VERSION"`
+
+Two methods are supported for authentication:
+
+- Using API_KEY: The environment variable `AZURE_OPENAI_API_KEY` must be set.
+
+- Other allowed azure authentication methods (e.g. CLI authentication, Entra ID): This is resolved automatically using DefaultAzureCredential in this case only the mandatory environment variables must be set.
+
+In order to use our workflows with these models they need to:
+
+- Have a deployed model in their Azure account
+- Set the workflow model as azure::deployed_model (e.g. azure::gpt-4o-mini)
+
+The following snippets shows how to authenticate with an API Key.
+
+```python
+# Using Azure models
+llm_model = "azure::gpt-4o-mini"
+
+# Set Azure credentials
+import os
+os.environ["AZURE_OPENAI_ENDPOINT"] = "CLIENT_AZURE_OPENAI_ENDPOINT"
+os.environ["OPENAI_API_VERSION"] = "API_VERSION"
+os.environ["AZURE_OPENAI_API_KEY"] = "your_key"
+```
+
+If other authentication methods (Entra ID, CLI Authentication) are available the snippets becomes:
+
+```python
+# Using Azure models
+llm_model = "azure::gpt-4o-mini"
+
+# Set Azure credentials
+import os
+os.environ["AZURE_OPENAI_ENDPOINT"] = "CLIENT_AZURE_OPENAI_ENDPOINT"
+os.environ["OPENAI_API_VERSION"] = "API_VERSION"
+```
+
 
 ## Advanced Features
 
