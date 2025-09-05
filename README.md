@@ -13,24 +13,29 @@
 3. [Installation](#installation)
 4. [Authentication Setup](#authentication-setup)
 5. [Core Workflows](#core-workflows)
-6. [Narrative Miner](#narrative-miner)
-7. [Thematic Screener](#thematic-screener)
-8. [Company Objects](#company-objects)
-9. [Risk Analyzer](#risk-analyzer)
-10. [Query Builder](#query-builder)
-11. [Search Manager](#search-manager)
-12. [LLM Integration](#llm-integration)
-13. [Advanced Features](#advanced-features)
-14. [Parameter Deep Dive](#parameter-deep-dive)
-    - [Fiscal Year Guide](#fiscal-year-guide)
-    - [Focus Parameter Guide](#focus-parameter-guide)
-15. [Interactive Tutorial](#interactive-tutorial)
+    - [Thematic Screener](#thematic-screener)
+    - [Risk Analyzer](#risk-analyzer)
+    - [Narrative Miner](#narrative-miner)
+6. [Core Functionalities](#core-functionalities)
+    - [Query Builder](#query-builder)
+    - [Search Manager](#search-manager)
+    - [LLM Integration](#llm-integration)
+7. [Parameter Deep Dive](#parameter-deep-dive)
+    - [Company Objects](#company-objects)
+    - [Control Entities](#control-entities)
+    - [Fiscal Year Guide](#fiscal-year)
+    - [Focus Parameter Guide](#focus)
+    - [Cross Encoder Reranking](#cross-encoder-reranking)
+    - [Document Limit](#document-limit)
+    - [Frequency](#frequency)
+    - [Batch Size](#batch-size)
+6. [Interactive Tutorial](#interactive-tutorial)
     - [Quick Start with uv](#quick-start-with-uv)
     - [Tutorial Overview](#tutorial-overview)
     - [Alternative Installation Methods](#alternative-installation-methods)
-16. [Examples](#examples)
-17. [Support and Resources](#support-and-resources)
-18. [License](#license)
+7. [Examples](#examples)
+8. [Support and Resources](#support-and-resources)
+9. [License](#license)
 
 ---
 
@@ -42,7 +47,7 @@
 
 - **⚡ Concurrent Search**: Execute multiple searches efficiently with built-in rate limiting.
 - **🛡️ Thread-Safe Operations**: Safe concurrent access for all workflows.
-- **🧭 Guided Workflow Builder**: Easily build guided research workflows—see ready-to-use examples in the [Bigdata Cookbook](https://github.com/Bigdata-com/bigdata-cookbook).
+- **🧭 Guided Workflow Builder**: Easily build guided research workflows: see ready-to-use examples in the [Bigdata Cookbook](https://github.com/Bigdata-com/bigdata-cookbook) Repository.
 - **🎨 Interactive Visualizations**: Create dashboards and charts for your results.
 
 
@@ -79,8 +84,11 @@ pip install bigdata-research-tools[excel]
 # For visualization features
 pip install bigdata-research-tools[plotly]
 
-# For OpenAI integration
+# For OpenAI integration, also via Azure
 pip install bigdata-research-tools[openai]
+
+# For AWS Bedrock integration
+pip install bigdata-research-tools[bedrock]
 
 # For all optional features
 pip install bigdata-research-tools[excel,plotly,openai]
@@ -97,7 +105,6 @@ Set up your credentials using environment variables:
 ```bash
 export BIGDATA_USERNAME="your_username"
 export BIGDATA_PASSWORD="your_password"
-export OPENAI_API_KEY="your_openai_api_key"
 ```
 
 ### Using .env File
@@ -107,7 +114,6 @@ Create a `.env` file in your project directory:
 ```bash
 BIGDATA_USERNAME="your_username"
 BIGDATA_PASSWORD="your_password"
-OPENAI_API_KEY="your_openai_api_key"
 ```
 
 Load the environment variables in your Python script:
@@ -121,6 +127,14 @@ load_dotenv()
 
 ## Core Workflows
 
+Bigdata Research Tools integrates some end-to-end workflows built with Bigdata API, such as:
+
+- **🔍 Narrative Miners**: Track narrative evolution across news, transcripts, and filings
+- **📊 Thematic Screeners**: Analyze company exposure to specific themes
+- **⚠️ Risk Analyzer**: Assess company risk exposure to various scenarios
+
+Moreover, the Bigdata Research Tools functionalities such as search, LLM integrations, and Labeler, are the cornerstone of many other workflows and use cases, including Market Analysis, Daily Digests, Systematic Monitoring, and Report Generation.
+
 You can find these workflows and additional examples on the Bigdata documentation site in the Cookbooks section: [Cookbooks – Bigdata docs](https://docs.bigdata.com/use-cases/introduction).
 
 ### Jupyter Notebook Setup
@@ -133,86 +147,11 @@ asyncio.get_running_loop()
 import nest_asyncio; nest_asyncio.apply()
 ```
 
-## Narrative Miner
+### Thematic Screener
 
-The Narrative Miner tracks how specific narratives evolve over time across different document types.
+Analyzes company exposure to specific themes by generating sub-themes and assigning exposure scores. Returns structured tables with labeled text and a final basket of companies sorted by exposure scores along with a final motivation. 
 
-### Basic Usage
-
-```python
-from bigdata_research_tools.workflows import NarrativeMiner
-from bigdata_client.models.search import DocumentType
-
-narrative_miner = NarrativeMiner(
-    narrative_sentences=[
-        "Artificial Intelligence Development",
-        "Machine Learning Innovation",
-        "Data Privacy Concerns"
-    ],
-    llm_model="openai::gpt-4o-mini",
-    start_date="2024-01-01",
-    end_date="2024-12-31",
-    fiscal_year=2024,
-
-    document_type=DocumentType.NEWS
-)
-
-results = narrative_miner.mine_narratives(
-    export_path="narrative_analysis.xlsx"
-)
-```
-
-### Parameters
-
-#### Constructor Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `narrative_sentences` | `List[str]` | ✅ | List of narrative sentences to track |
-| `start_date` | `str` | ✅ | Start date in YYYY-MM-DD format |
-| `end_date` | `str` | ✅ | End date in YYYY-MM-DD format |
-| `llm_model` | `str` | ✅ | LLM model in format "provider::model" |
-| `document_type` | `DocumentType` | ✅ | Type of documents to search |
-| `fiscal_year` | `int` | ❌ | Fiscal year for transcripts/filings. Set to `None` for news |
-| `sources` | `List[str]` | ❌ | Filter by specific news sources |
-| `rerank_threshold` | `float` | ❌ | Cross-encoder threshold (0-1) |
-
-#### Method Parameters - `mine_narratives()`
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `document_limit` | `int` | `10` | Max documents per query |
-| `batch_size` | `int` | `10` | Entities per batch |
-| `freq` | `str` | `"3M"` | Analysis frequency (Y/M/W/D) |
-| `export_path` | `str` | `None` | Excel export path |
-
-### Document Types
-
-```python
-from bigdata_client.models.search import DocumentType
-
-# Available document types
-DocumentType.NEWS          # News articles
-DocumentType.TRANSCRIPTS   # Earnings call transcripts
-DocumentType.FILINGS       # SEC filings
-DocumentType.ALL           # All document types. fiscal_year must not be None
-```
-
-### Return Values
-
-```python
-results = {
-    "df_labeled": DataFrame  # Labeled search results with narrative classifications
-}
-```
-
----
-
-## Thematic Screener
-
-Analyzes company exposure to specific themes by generating sub-themes and scoring companies.
-
-### Basic Usage
+#### Basic Usage
 
 ```python
 from bigdata_research_tools.workflows import ThematicScreener
@@ -240,9 +179,10 @@ results = screener.screen_companies(
 )
 ```
 
-### Parameters
+#### Parameters
 
-#### Constructor Parameters
+##### Constructor Parameters
+Parameters to initialize the `ThematicScreener` class.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -252,22 +192,23 @@ results = screener.screen_companies(
 | `start_date` | `str` | ✅ | Start date (YYYY-MM-DD) |
 | `end_date` | `str` | ✅ | End date (YYYY-MM-DD) |
 | `document_type` | `DocumentType` | ✅ | Document scope |
-| `fiscal_year` | `int` | ❌ | Required for transcripts/filings. Set to `None` for news (see [Fiscal Year Guide](#fiscal-year-guide))  |
+| `fiscal_year` | `int` | ❌ | Required for transcripts/filings. Set to `None` for news (see [Fiscal Year Guide](#fiscal-year))  |
 | `sources` | `List[str]` | ❌ | Source filters |
-| `rerank_threshold` | `float` | ❌ | Reranking threshold |
-| `focus` | `str` | ❌ | Additional focus description (see [Focus Parameter Guide](#focus-parameter-guide)) |
+| `rerank_threshold` | `float` | ❌ | Reranking threshold (0-1) (see [Reranker Guide](#cross-encoder-reranking))|
+| `focus` | `str` | ❌ | Additional focus description (see [Focus Parameter Guide](#focus)) |
 
-#### Method Parameters - `screen_companies()`
+##### Method Parameters - `screen_companies()`
+Parameters to run the analysis end-to-end.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `document_limit` | `int` | `10` | Documents per query |
-| `batch_size` | `int` | `10` | Batch size for processing |
-| `frequency` | `str` | `"3M"` | Date range frequency |
+| `document_limit` | `int` | `10` | Documents per query  (see [Document Limit Guide](#document-limit))|
+| `batch_size` | `int` | `10` | Batch size for processing  (see [Batch Size Parameter Guide](#batch-size))|
+| `frequency` | `str` | `"3M"` | Date range frequency  (see [Frequency Parameter Guide](#frequency))|
 | `word_range` | `Tuple[int, int]` | `(50, 100)` | Word range for motivations |
 | `export_path` | `str` | `None` | Excel export path |
 
-### Return Values
+#### Return Values
 
 ```python
 results = {
@@ -279,88 +220,22 @@ results = {
 }
 ```
 ---
-## Company Objects
 
-Company objects are `bigdata_client.models.entities.Company` instances that represent companies in the Bigdata knowledge graph. Here's how to obtain them:
+### Risk Analyzer
 
-#### Method 1: From Watchlists (Recommended)
+Assesses company exposure to risk scenarios with detailed risk taxonomy generation and exposure score calculation. Returns structured tables with labeled text and a final basket of companies sorted by risk exposure along with a final motivation. 
+
+#### Basic Usage
 
 ```python
 from bigdata_research_tools.client import bigdata_connection
-
-# Connect to Bigdata API
-bigdata = bigdata_connection()
-
-# Get companies from a specific watchlist
-watchlist_id = "a3915138-bba9-437e-a813-aa1620a822cc"  # Example GRID watchlist
-watchlist = bigdata.watchlists.get(watchlist_id)
-companies = bigdata.knowledge_graph.get_entities(watchlist.items)
-
-print(f"Found {len(companies)} companies in watchlist")
-# Output: Found 7 companies in watchlist
-```
-
-#### Method 2: Search by Company Names
-
-```python
-# Search for specific companies by name
-company_names = ["Apple Inc", "Microsoft Corp.", "Tesla Inc"]
-companies = []
-
-for name in company_names:
-    # Find company in knowledge graph
-    search_results = bigdata.knowledge_graph.autosuggest(name)
-    if search_results:
-        companies.append(next(iter(search_results)))
-        print(f"Found: {companies[-1].name} (ID: {companies[-1].id})")
-
-# Output:
-# Found: Apple Inc (ID: D8442A)
-# Found: Microsoft Corp. (ID: 228D42) 
-# Found: Tesla Inc (ID: DD3BB1)
-```
-
-#### Method 3: Filter by Criteria
-
-```python
-# Get all companies from a watchlist, then filter
-all_companies = bigdata.knowledge_graph.get_entities(watchlist.items)
-
-# Filter by sector or other criteria
-tech_companies = [
-    company for company in all_companies 
-    if hasattr(company, 'sector') and 'Technology' in company.sector
-]
-
-```
-
-#### Company Object Properties
-
-Each `Company` object has these key properties:
-
-```python
-company = companies[0]
-print(f"Name: {company.name}")           # Apple Inc
-print(f"ID: {company.id}")               # D8442C
-print(f"Ticker: {company.ticker}")       # AAPL
-print(f"Type: {type(company)}")          # <class 'bigdata_client.models.entities.Company'>
-
-# Additional properties may include:
-# company.sector, company.industry, company.country, etc.
-```
-
----
-
-## Risk Analyzer
-
-Assesses company exposure to risk scenarios with detailed risk taxonomy generation.
-
-### Basic Usage
-
-```python
 from bigdata_research_tools.workflows.risk_analyzer import RiskAnalyzer
 from bigdata_client.models.search import DocumentType
 
+# Get companies from a watchlist
+bigdata = bigdata_connection()
+watchlist = bigdata.watchlists.get("watchlist_id")
+companies = bigdata.knowledge_graph.get_entities(watchlist.items)
 
 analyzer = RiskAnalyzer(
     llm_model="openai::gpt-4o-mini",
@@ -378,9 +253,10 @@ results = analyzer.screen_companies(
 )
 ```
 
-### Parameters
+#### Parameters
 
-#### Constructor Parameters
+##### Constructor Parameters
+Parameters to initialize the `RiskAnalyzer` class.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -392,22 +268,23 @@ results = analyzer.screen_companies(
 | `document_type` | `DocumentType` | ✅ | Document scope |
 | `keywords` | `List[str]` | ❌ | Keyword filters |
 | `control_entities` | `Dict[str, List[str]]` | ❌ | Entity co-mention filters (see [Control Entities](#control-entities)) |
-| `fiscal_year` | `int` | ❌ |  Required for transcripts/filings. Set to `None` for news (see [Fiscal Year Guide](#fiscal-year-guide))  |
+| `fiscal_year` | `int` | ❌ |  Required for transcripts/filings. Set to `None` for news (see [Fiscal Year Guide](#fiscal-year))  |
 | `sources` | `List[str]` | ❌ | Source filters |
-| `rerank_threshold` | `float` | ❌ | Reranking threshold |
-| `focus` | `str` | ❌ | Additional focus description (see [Focus Parameter Guide](#focus-parameter-guide)) |
+| `rerank_threshold` | `float` | ❌ | Reranking threshold (0-1) (see [Reranker Guide](#cross-encoder-reranking))|
+| `focus` | `str` | ❌ | Additional focus description (see [Focus Parameter Guide](#focus)) |
 
-#### Method Parameters - `screen_companies()`
+##### Method Parameters - `screen_companies()`
+Parameters to run the analysis end-to-end.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `document_limit` | `int` | `10` | Documents per query |
-| `batch_size` | `int` | `10` | Batch size for processing |
-| `frequency` | `str` | `"3M"` | Date range frequency |
+| `document_limit` | `int` | `10` | Documents per query  (see [Document Limit Guide](#document-limit))|
+| `batch_size` | `int` | `10` | Batch size for processing  (see [Batch Size Parameter Guide](#batch-size))|
+| `frequency` | `str` | `"3M"` | Date range frequency  (see [Frequency Parameter Guide](#frequency))|
 | `word_range` | `Tuple[int, int]` | `(50, 100)` | Word range for motivations |
 | `export_path` | `str` | `None` | Excel export path |
 
-### Return Values
+#### Return Values
 
 ```python
 results = {
@@ -419,64 +296,91 @@ results = {
 }
 ```
 
-### Control Entities
+---
+### Narrative Miner
 
-Control entities allow you to filter results based on **co-mentions** - documents must mention both your target companies AND the control entities to be included in results.
+The Narrative Miner tracks how specific narratives evolve over time across different document types.  Returns structured tables with labeled text.
 
-#### How Control Entities Work
+#### Basic Usage
 
 ```python
-# Example: Find documents about Tesla that also mention China or Taiwan
-tesla_company_search = bigdata.knowledge_graph.autosuggest("Tesla Inc.")
-tesla_company = tesla_company_search[0]
+from bigdata_research_tools.workflows import NarrativeMiner
+from bigdata_client.models.search import DocumentType
 
-analyzer = RiskAnalyzer(
+narrative_miner = NarrativeMiner(
+    narrative_sentences=[
+        "Artificial Intelligence Development",
+        "Machine Learning Innovation",
+        "Data Privacy Concerns"
+    ],
     llm_model="openai::gpt-4o-mini",
-    main_theme="Supply Chain Risk",
-    companies=[tesla_company],
     start_date="2024-01-01",
     end_date="2024-12-31",
-    document_type=DocumentType.NEWS,
-    control_entities={
-        "place": ["China", "Taiwan"],  # Must also mention these places
-        "people": ["Elon Musk", "Tim Cook"],
-        "product": ["iPhone", "Model S", "Azure"]
-    }
+    fiscal_year=2024,
+
+    document_type=DocumentType.NEWS
+)
+
+results = narrative_miner.mine_narratives(
+    export_path="narrative_analysis.xlsx"
 )
 ```
 
-#### Control Entity Types
+#### Parameters
+
+##### Constructor Parameters
+Parameters to initialize the `NarrativeMiner` class.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `narrative_sentences` | `List[str]` | ✅ | List of narrative sentences to track |
+| `start_date` | `str` | ✅ | Start date in YYYY-MM-DD format |
+| `end_date` | `str` | ✅ | End date in YYYY-MM-DD format |
+| `llm_model` | `str` | ✅ | LLM model in format "provider::model" |
+| `document_type` | `DocumentType` | ✅ | Type of documents to search |
+| `fiscal_year` | `int` | ❌ | Fiscal year for transcripts/filings. Set to `None` for news |
+| `sources` | `List[str]` | ❌ | Filter by specific news sources |
+| `rerank_threshold` | `float` | ❌ | Reranking threshold (0-1) (see [Reranker Guide](#cross-encoder-reranking))|
+
+##### Method Parameters - `mine_narratives()`
+Parameters to run the analysis end-to-end.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `document_limit` | `int` | `10` | Documents per query  (see [Document Limit Guide](#document-limit))|
+| `batch_size` | `int` | `10` | Batch size for processing  (see [Batch Size Parameter Guide](#batch-size))|
+| `freq` | `str` | `"3M"` | Date range frequency  (see [Frequency Parameter Guide](#frequency))|
+| `export_path` | `str` | `None` | Excel export path |
+
+#### Document Types
 
 ```python
-control_entities = {
-    # Geographic filters
-    "place": ["United States", "China", "Taiwan", "Germany"],
-    
-    # People filters  
-    "people": ["Elon Musk", "Tim Cook", "Satya Nadella"],
-    
-    # Topic/concept filters
-    "topic": ["regulation", "trade policy", "cybersecurity"],
-    
-    # Product filters  
-    "product": ["iPhone", "Model S", "Azure"]
-}
+from bigdata_client.models.search import DocumentType
+
+# Available document types
+DocumentType.NEWS          # News articles
+DocumentType.TRANSCRIPTS   # Earnings call transcripts
+DocumentType.FILINGS       # SEC filings
+DocumentType.ALL           # All document types. fiscal_year must not be None
 ```
 
-#### Important Notes
+#### Return Values
 
-- **AND Logic**: Documents must mention target companies AND control entities
-- **OR Logic**: Within each control entity type, documents can mention ANY of the listed entities
-- **Performance**: More control entities = fewer but more targeted results
-- **Optional**: Control entities are completely optional - omit for broader analysis
-
+```python
+results = {
+    "df_labeled": DataFrame  # Labeled search results with narrative classifications
+}
+```
 ---
+## Core Functionalities
 
-## Query Builder
+### Query Builder
 
-Advanced query construction for the Bigdata API with entity batching and control entities.
+Bigdata Research Tools enables advanced query construction for the Bigdata Search API. The Query Builder combines Entity, Keyword, and Similarity Search, allowing users to control the query logic ad optimize its efficiency with entity batching and control entities. It also supports different Document Types and specific Sources. 
 
-### Basic Usage
+More information on Bigdata Search API's query filters can be found at [Bigdata.com - Query Filters](https://docs.bigdata.com/getting-started/search/query_filters).
+
+#### Basic Usage
 
 ```python
 from bigdata_research_tools.search.query_builder import (
@@ -522,7 +426,7 @@ queries = build_batched_query(
 )
 ```
 
-### EntitiesToSearch Class
+#### EntitiesToSearch Class
 
 ```python
 @dataclass
@@ -536,7 +440,7 @@ class EntitiesToSearch:
     concepts: Optional[List[str]] = None      # Concept terms
 ```
 
-### Function Parameters - `build_batched_query()`
+#### Function Parameters - `build_batched_query()`
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -552,11 +456,11 @@ class EntitiesToSearch:
 
 ---
 
-## Search Manager
+### Search Manager
 
-High-performance concurrent search execution with rate limiting.
+Bigdata Research Tools supports high-performance concurrent search execution, handling client-side rate limiting under the hood. This is particularly useful when searching over a large number of elements (e.g. Companies, Sentences, Keywords).
 
-### Basic Usage
+#### Basic Usage
 
 ```python
 from bigdata_research_tools.search.search import run_search
@@ -575,7 +479,7 @@ results = run_search(
     )
 ```
 
-### Function Parameters - `run_search()`
+#### Function Parameters - `run_search()`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -589,7 +493,7 @@ results = run_search(
 
 **Note**: The function uses `bigdata_connection()` internally, so no explicit client parameter is needed.
 
-### Rate Limiting Configuration
+#### Rate Limiting Configuration
 
 ```python
 from bigdata_research_tools.search.search import SearchManager, normalize_date_range
@@ -619,11 +523,13 @@ results = manager.concurrent_search(
 
 ---
 
-## LLM Integration
+### LLM Integration
 
-The library supports multiple LLM providers:
+The library supports multiple LLM providers.
 
-### OpenAI Configuration
+**_NOTE:_** While most built-in prompts are optimized for OpenAI models, you can expect them to be robust across LLM providers, although some prompt fine-tuning to fit a specific LLM is recommended.
+
+#### OpenAI Configuration
 
 ```python
 # Using OpenAI models
@@ -637,7 +543,7 @@ import os
 os.environ["OPENAI_API_KEY"] = "your_key"
 ```
 
-### AWS Bedrock Configuration
+#### AWS Bedrock Configuration
 
 ```python
 # Using Bedrock models
@@ -653,7 +559,7 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 > **_NOTE:_**  If you are logged in using AWS single sign on (SSO) no environment variables are required.
 
-### Azure Configuration
+#### Azure Configuration
 
 In order to use Azure OpenAI as a provider the following environment variables must be set:
 - `AZURE_OPENAI_ENDPOINT="CLIENT_AZURE_OPENAI_ENDPOINT"`
@@ -695,82 +601,139 @@ os.environ["AZURE_OPENAI_ENDPOINT"] = "CLIENT_AZURE_OPENAI_ENDPOINT"
 os.environ["OPENAI_API_VERSION"] = "API_VERSION"
 ```
 
+## Parameter Deep Dive
+The workflows in Bigdata Research Tools rely on a handful of key parameters. Here is a detailed explanation of how to use them in practice and what they mean.
+### Company Objects
 
-## Advanced Features
+Company objects are `bigdata_client.models.entities.Company` instances that represent companies in the Bigdata knowledge graph. Here's how to obtain them:
 
-### Cross-Encoder Reranking
-
-Improve search relevance with cross-encoder reranking:
+##### Method 1: From Watchlists (Recommended)
 
 ```python
-# Enable reranking with threshold
-narrative_miner = NarrativeMiner(
-    narrative_sentences=sentences,
-    rerank_threshold=0.7,  # Higher = more strict
-    # ... other parameters
+from bigdata_research_tools.client import bigdata_connection
+
+# Connect to Bigdata API
+bigdata = bigdata_connection()
+
+# Get companies from a specific watchlist
+watchlist_id = "a3915138-bba9-437e-a813-aa1620a822cc"  # Example GRID watchlist
+watchlist = bigdata.watchlists.get(watchlist_id)
+companies = bigdata.knowledge_graph.get_entities(watchlist.items)
+
+print(f"Found {len(companies)} companies in watchlist")
+# Output: Found 7 companies in watchlist
+```
+
+##### Method 2: Search by Company Names
+
+```python
+# Search for specific companies by name
+company_names = ["Apple Inc", "Microsoft Corp.", "Tesla Inc"]
+companies = []
+
+for name in company_names:
+    # Find company in knowledge graph
+    search_results = bigdata.knowledge_graph.autosuggest(name, limit=1)
+    if search_results:
+        companies.append(next(iter(search_results)))
+        print(f"Found: {companies[-1].name} (ID: {companies[-1].id})")
+
+# Output:
+# Found: Apple Inc (ID: D8442A)
+# Found: Microsoft Corp. (ID: 228D42) 
+# Found: Tesla Inc (ID: DD3BB1)
+```
+
+##### Method 3: Filter by Criteria
+
+```python
+# Get all companies from a watchlist, then filter
+all_companies = bigdata.knowledge_graph.get_entities(watchlist.items)
+
+# Filter by sector or other criteria
+tech_companies = [
+    company for company in all_companies 
+    if hasattr(company, 'sector') and 'Technology' in company.sector
+]
+
+```
+
+##### Company Object Properties
+
+Each `Company` object has these key properties:
+
+```python
+company = companies[0]
+print(f"Name: {company.name}")           # Apple Inc
+print(f"ID: {company.id}")               # D8442C
+print(f"Ticker: {company.ticker}")       # AAPL
+print(f"Type: {type(company)}")          # <class 'bigdata_client.models.entities.Company'>
+
+# Additional properties may include:
+# company.sector, company.industry, company.country, etc.
+```
+---
+### Control Entities
+
+Control entities allow you to filter results based on **co-mentions**. You can define queries so that documents must mention both your target companies AND the control entities to be included in results. These can be Places, People, Products, Organizations, Concepts, Topics, or other Companies.
+
+#### How Control Entities Work
+
+```python
+# Example: Find documents about Tesla that also mention China or Taiwan
+tesla_company_search = bigdata.knowledge_graph.autosuggest("Tesla Inc.")
+tesla_company = tesla_company_search[0]
+
+analyzer = RiskAnalyzer(
+    llm_model="openai::gpt-4o-mini",
+    main_theme="Supply Chain Risk",
+    companies=[tesla_company],
+    start_date="2024-01-01",
+    end_date="2024-12-31",
+    document_type=DocumentType.NEWS,
+    control_entities={
+        "place": ["China", "Taiwan"],  # Must also mention these places
+        "people": ["Elon Musk", "Tim Cook"],
+        "product": ["iPhone", "Model S", "Azure"]
+    }
 )
 ```
 
-### Custom Date Frequencies
-
-Control temporal analysis granularity:
+#### Control Entity Types
 
 ```python
-# Frequency options
-"Y"    # Yearly intervals
-"6M"   # Six-monthly intervals  
-"3M"   # Quarterly intervals (default)
-"M"    # Monthly intervals
-"W"    # Weekly intervals
-"D"    # Daily intervals
+control_entities = {
+    # Geographic filters
+    "place": ["United States", "China", "Taiwan", "Germany"],
 
-# Usage example
-results = screener.screen_companies(
-    frequency="M",  # Monthly analysis
-    # ... other parameters
-)
+    # Organization filters
+    "org": ["U.S. Department of Commerce"],
+    
+    # People filters  
+    "people": ["Elon Musk", "Tim Cook", "Satya Nadella"],
+    
+    # Topic/concept filters
+    "topic": ["regulation", "trade policy", "cybersecurity"],
+
+    # Concept filters
+    "concepts": ["Trade"],
+    
+    # Product filters  
+    "product": ["iPhone", "Model S", "Azure"]
+}
 ```
 
-### Batch Processing Optimization
+#### Important Notes
 
-Optimize performance with proper batching:
-
-```python
-# For large company universes
-screener = ThematicScreener(
-    companies=large_company_list,
-    # ... other parameters
-)
-
-results = screener.screen_companies(
-    batch_size=25,        # Larger batches for efficiency
-    document_limit=20,    # More documents per company
-    # ... other parameters
-)
-```
+- **AND Logic**: Documents must mention target companies AND control entities
+- **OR Logic**: Within each control entity type, documents can mention ANY of the listed entities
+- **Performance**: More control entities = fewer but more targeted results
+- **Optional**: Control entities are completely optional - omit for broader analysis
 
 ---
+### Fiscal Year
 
-### Logging Configuration
-
-```python
-import logging
-
-# Enable detailed logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-# Library-specific logging
-logging.getLogger("bigdata_research_tools").setLevel(logging.DEBUG)
-```
-
-## Parameter Deep Dive
-
-### Fiscal Year Guide
-
-The `fiscal_year` parameter is **required** when working with **transcripts** or **filings** and determines which fiscal year documents to analyze.
+The `fiscal_year` parameter is **required** when working with **transcripts** or **filings** and determines which fiscal year documents to analyze. This sets the FiscalYear filter in Bigdata Search API which leverage the Reporting Details of a transcript.
 
 #### How Fiscal Years Work
 
@@ -815,7 +778,6 @@ screener = ThematicScreener(
 #### Important Notes
 
 - **Calendar vs Fiscal Year**: Companies may have different fiscal year end dates (e.g., Apple's fiscal year ends in September)
-- **Availability**: Not all companies may have documents for every fiscal year
 - **Current Year**: For the current fiscal year, only filed documents up to the current date will be available
 
 #### When NOT to Use Fiscal Year
@@ -831,15 +793,15 @@ screener = ThematicScreener(
 )
 ```
 
-### Focus Parameter Guide
+### Focus
 
-The `focus` parameter provides **additional context and specificity** to guide the AI's theme generation and analysis.
+The `ThematicScreener` and `RiskAnalyzer` classes rely on LLM-generated taxonomy trees to conduct an in-depth analysis of company exposure. The `focus` parameter provides **additional context and specificity** to guide the AI's taxonomy tree generation and allows the human agent to be involved in the taxonomy generation.
 
 #### What Focus Does
 
-1. **Refines Theme Generation**: Influences how sub-themes are created
+1. **Refines Taxonomy Generation**: Influences how sub-themes are created
 2. **Guides Analysis Direction**: Helps the AI understand what aspects to emphasize
-3. **Improves Relevance**: Makes results more targeted to your specific research interest
+3. **Improves Relevance**: Integrates your expert knowledge and makes results more targeted to your specific research interest
 
 #### Focus Examples
 
@@ -898,6 +860,79 @@ focus = "Analyze market sentiment, analyst opinions, and competitive positioning
 
 # For filings - focus on formal disclosures
 focus = "Examine risk factor disclosures, business segment performance, and regulatory compliance discussions in official filings"
+```
+
+---
+
+### Cross-Encoder Reranking
+
+Refines search relevance with cross-encoder reranking, ensuring that the search results closely resemble your sentences:
+
+```python
+# Enable reranking with threshold
+narrative_miner = NarrativeMiner(
+    narrative_sentences=sentences,
+    rerank_threshold=0.7,  # Higher = more strict
+    # ... other parameters
+)
+```
+
+### Document Limit
+
+The `limit` parameter determines the maximum number of documents to be retrieved by each query. This is a single `int` value that applies to any combination of (batched) query and date range.
+
+### Frequency
+
+Searching over a long time frame with a set document limit implies a trade-off between speed ad coverage. With the `frequency` parameter you can control temporal analysis granularity and split your time sample in shorter intervals. Bigdata Research Tools will automatically create the date ranges and run the queries on each of them.
+
+```python
+# Frequency options
+"Y"    # Yearly intervals
+"6M"   # Six-monthly intervals  
+"3M"   # Quarterly intervals (default)
+"M"    # Monthly intervals
+"W"    # Weekly intervals
+"D"    # Daily intervals
+
+# Usage example
+results = screener.screen_companies(
+    frequency="M",  # Monthly analysis
+    # ... other parameters
+)
+```
+
+### Batch Size
+
+Running our analysis on a large portfolio will require you to optimize speed, costs, and coverage. `batch_size` sets the number of companies that you want to include a single query. This allows to optimize the performance by grouping companies together and running searches separately for each batch.
+
+```python
+# For large company universes
+screener = ThematicScreener(
+    companies=large_company_list,
+    # ... other parameters
+)
+
+results = screener.screen_companies(
+    batch_size=25,        # Larger batches for efficiency
+    document_limit=200,   
+    # ... other parameters
+)
+```
+---
+
+## Logging Configuration
+
+```python
+import logging
+
+# Enable detailed logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Library-specific logging
+logging.getLogger("bigdata_research_tools").setLevel(logging.DEBUG)
 ```
 
 ---
