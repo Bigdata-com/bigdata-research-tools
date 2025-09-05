@@ -23,6 +23,7 @@
 7. [Parameter Deep Dive](#parameter-deep-dive)
     - [Company Objects](#company-objects)
     - [Control Entities](#control-entities)
+    - [Document Types](#document-types)
     - [Fiscal Year Guide](#fiscal-year)
     - [Focus Parameter Guide](#focus)
     - [Cross Encoder Reranking](#cross-encoder-reranking)
@@ -129,13 +130,17 @@ load_dotenv()
 
 Bigdata Research Tools integrates some end-to-end workflows built with Bigdata API, such as:
 
-- **🔍 Narrative Miners**: Track narrative evolution across news, transcripts, and filings
 - **📊 Thematic Screeners**: Analyze company exposure to specific themes
 - **⚠️ Risk Analyzer**: Assess company risk exposure to various scenarios
+- **🔍 Narrative Miners**: Track narrative evolution across news, transcripts, and filings
 
-Moreover, the Bigdata Research Tools functionalities such as search, LLM integrations, and Labeler, are the cornerstone of many other workflows and use cases, including Market Analysis, Daily Digests, Systematic Monitoring, and Report Generation.
+Moreover, the Bigdata Research Tools functionalities such as search, LLM integrations, and Labeler, are the cornerstone of many other workflows and use cases, including:
+- **Market Analysis**
+- **Daily Digests**
+- **Systematic Monitoring**
+- **Report Generation**
 
-You can find these workflows and additional examples on the Bigdata documentation site in the Cookbooks section: [Cookbooks – Bigdata docs](https://docs.bigdata.com/use-cases/introduction).
+You can find these workflows and additional examples on the Bigdata documentation in the **Cookbooks** section: [Cookbooks – Bigdata docs](https://docs.bigdata.com/use-cases/introduction).
 
 ### Jupyter Notebook Setup
 
@@ -191,7 +196,7 @@ Parameters to initialize the `ThematicScreener` class.
 | `companies` | `List[Company]` | ✅ | List of companies to screen (see [Company Objects](#company-objects)) |
 | `start_date` | `str` | ✅ | Start date (YYYY-MM-DD) |
 | `end_date` | `str` | ✅ | End date (YYYY-MM-DD) |
-| `document_type` | `DocumentType` | ✅ | Document scope |
+| `document_type` | `DocumentType` | ✅ | Document scope (see [Document Types](#document-types))|
 | `fiscal_year` | `int` | ❌ | Required for transcripts/filings. Set to `None` for news (see [Fiscal Year Guide](#fiscal-year))  |
 | `sources` | `List[str]` | ❌ | Source filters |
 | `rerank_threshold` | `float` | ❌ | Reranking threshold (0-1) (see [Reranker Guide](#cross-encoder-reranking))|
@@ -265,7 +270,7 @@ Parameters to initialize the `RiskAnalyzer` class.
 | `companies` | `List[Company]` | ✅ | Companies to analyze (see [Company Objects](#company-objects)) |
 | `start_date` | `str` | ✅ | Analysis start date |
 | `end_date` | `str` | ✅ | Analysis end date |
-| `document_type` | `DocumentType` | ✅ | Document scope |
+| `document_type` | `DocumentType` | ✅ | Document scope (see [Document Types](#document-types)) |
 | `keywords` | `List[str]` | ❌ | Keyword filters |
 | `control_entities` | `Dict[str, List[str]]` | ❌ | Entity co-mention filters (see [Control Entities](#control-entities)) |
 | `fiscal_year` | `int` | ❌ |  Required for transcripts/filings. Set to `None` for news (see [Fiscal Year Guide](#fiscal-year))  |
@@ -337,7 +342,7 @@ Parameters to initialize the `NarrativeMiner` class.
 | `start_date` | `str` | ✅ | Start date in YYYY-MM-DD format |
 | `end_date` | `str` | ✅ | End date in YYYY-MM-DD format |
 | `llm_model` | `str` | ✅ | LLM model in format "provider::model" |
-| `document_type` | `DocumentType` | ✅ | Type of documents to search |
+| `document_type` | `DocumentType` | ✅ |  Document scope (see [Document Types](#document-types))|
 | `fiscal_year` | `int` | ❌ | Fiscal year for transcripts/filings. Set to `None` for news |
 | `sources` | `List[str]` | ❌ | Filter by specific news sources |
 | `rerank_threshold` | `float` | ❌ | Reranking threshold (0-1) (see [Reranker Guide](#cross-encoder-reranking))|
@@ -351,18 +356,6 @@ Parameters to run the analysis end-to-end.
 | `batch_size` | `int` | `10` | Batch size for processing  (see [Batch Size Parameter Guide](#batch-size))|
 | `freq` | `str` | `"3M"` | Date range frequency  (see [Frequency Parameter Guide](#frequency))|
 | `export_path` | `str` | `None` | Excel export path |
-
-#### Document Types
-
-```python
-from bigdata_client.models.search import DocumentType
-
-# Available document types
-DocumentType.NEWS          # News articles
-DocumentType.TRANSCRIPTS   # Earnings call transcripts
-DocumentType.FILINGS       # SEC filings
-DocumentType.ALL           # All document types. fiscal_year must not be None
-```
 
 #### Return Values
 
@@ -731,6 +724,19 @@ control_entities = {
 - **Optional**: Control entities are completely optional - omit for broader analysis
 
 ---
+### Document Types
+The `document_type` parameter allows to direct your queries to specific content types. Options include:
+
+```python
+from bigdata_client.models.search import DocumentType
+
+# Available document types
+DocumentType.NEWS          # News articles
+DocumentType.TRANSCRIPTS   # Earnings call transcripts
+DocumentType.FILINGS       # SEC filings
+DocumentType.ALL           # All document types. fiscal_year must not be None
+```
+
 ### Fiscal Year
 
 The `fiscal_year` parameter is **required** when working with **transcripts** or **filings** and determines which fiscal year documents to analyze. This sets the FiscalYear filter in Bigdata Search API which leverage the Reporting Details of a transcript.
