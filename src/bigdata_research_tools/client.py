@@ -11,8 +11,9 @@ _bigdata_client: Optional[Bigdata] = None
 
 
 def init_bigdata_client(
-    user: str = None,
-    password: str = None,
+    user: Optional[str] = None,
+    password: Optional[str] = None,
+    api_key: Optional[str] = None,
     retries: int = 5,
     wait_time: int = 3,
 ) -> Bigdata:
@@ -24,18 +25,25 @@ def init_bigdata_client(
             If None, it will try to get it from the environment variable BIGDATA_USERNAME.
         password (str): The password to authenticate.
             If None, it will try to get it from the environment variable BIGDATA_PASSWORD.
+        api_key (str): The API key to authenticate.
+            If None, it will try to get it from the environment variable BIGDATA_API_KEY.
         retries (int): The number of retries to attempt.
         wait_time (int): The time to wait between retries.
     """
     user = user or environ.get("BIGDATA_USERNAME", None)
     password = password or environ.get("BIGDATA_PASSWORD", None)
+    api_key = api_key or environ.get("BIGDATA_API_KEY", None)
     file_config = environ.get("BIGDATA_FILE_CONFIG", "Skipped")
     if retries > 0:
         try:
             logger.debug(
                 f"Attempting to initialize BigData client.\nFile config: {file_config}"
             )
-            client = Bigdata(user, password)
+            client = Bigdata(
+                username=user,
+                password=password,
+                api_key=api_key,
+            )
         except Exception as e:
             logger.warning(
                 f"Bigdata error: {type(e).__name__}. {e}.\n"
@@ -43,8 +51,9 @@ def init_bigdata_client(
             )
             sleep(wait_time)
             return init_bigdata_client(
-                user,
-                password,
+                user=user,
+                password=password,
+                api_key=api_key,
                 retries=retries - 1,
                 wait_time=wait_time + 1,
             )

@@ -89,7 +89,7 @@ def test_control_entities():
         control_entities=control_entities,
         sources=None,            
         batch_size=5,
-        fiscal_year=None,        
+        fiscal_year=2024,        
         scope=DocumentType.TRANSCRIPTS,
         custom_batches=None      
     )

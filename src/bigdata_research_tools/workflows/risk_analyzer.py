@@ -13,11 +13,13 @@ from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.tree import SemanticTree, generate_risk_tree
 from bigdata_research_tools.workflows.utils import get_scored_df
+from bigdata_research_tools.workflows.base import Workflow
+
 
 logger: Logger = getLogger(__name__)
 
 
-class RiskAnalyzer:
+class RiskAnalyzer(Workflow):
 
     def __init__(
         self,
@@ -56,7 +58,7 @@ class RiskAnalyzer:
             focus (Optional[str]): The focus of the analysis. No value by default.
                 If used, generated sub-themes will be based on this.
         """
-
+        super().__init__()
         self.llm_model = llm_model
         self.main_theme = main_theme
         self.companies = companies
@@ -77,9 +79,12 @@ class RiskAnalyzer:
             List[str]: A list of risk summaries for the terminal nodes.
             List[str]: A list of terminal labels for the risk categories.
         """
+
+        self.provider, self.model = self.llm_model.split("::")
         risk_tree = generate_risk_tree(
             main_theme=self.main_theme,
             focus=self.focus,
+            llm_model_config={"provider": self.provider, "model": self.model},
         )
 
         risk_summaries = risk_tree.get_terminal_summaries()
@@ -230,7 +235,7 @@ class RiskAnalyzer:
 
         df_company = get_scored_df(
             df_labeled,
-            index_columns=["Company", "Ticker", "Industry"],
+            index_columns=["Company", "Ticker", "Sector", "Industry"],
             pivot_column="Sub-Scenario",
         )
         df_industry = get_scored_df(
@@ -251,6 +256,7 @@ class RiskAnalyzer:
         df_company: DataFrame,
         df_industry: DataFrame,
         motivation_df: DataFrame,
+        risk_tree: ThemeTree,
         export_path: str,
     ):
         """
@@ -272,6 +278,8 @@ class RiskAnalyzer:
                     "Motivations": (motivation_df, (0, 0)),
                 },
             )
+            ## Save risk tree to json
+            risk_tree.save_json(export_path.replace(".xlsx", "_mindmap.json"))
         else:
             logger.warning(
                 "No export path provided. Results will not be saved to Excel."
@@ -328,15 +336,22 @@ class RiskAnalyzer:
         )
 
         try:
+            self.notify_observers(f"Generating risk taxonomy")
             risk_tree, risk_summaries, terminal_labels = self.create_taxonomy()
 
+            self.notify_observers(f"Risk taxonomy generated with {len(terminal_labels)} leafs")
+            self.notify_observers(risk_tree.as_string())
+            self.notify_observers(f"Searching companies for risk exposure")
             df_sentences = self.retrieve_results(
                 sentences=risk_summaries,
                 freq=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
             )
+            self.notify_observers(f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies.")
+            self.notify_observers(df_sentences[["timestamp_utc", "sentence_id", "headline", "entity_name", "text", "other_entities"]].head(10).to_markdown(index=False))
 
+            self.notify_observers(f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} risks")
             df, df_labeled = self.label_search_results(
                 df_sentences=df_sentences,
                 terminal_labels=terminal_labels,
@@ -347,23 +362,27 @@ class RiskAnalyzer:
                     "headline",
                 ],
             )
-
+            self.notify_observers(f"Labeling completed. {len(df_labeled)} chunks labeled with risk factors.")
+            self.notify_observers("Post-processing results")
             df_company, df_industry, df_motivation = self.generate_results(
                 df_labeled, word_range
             )
-
+            self.notify_observers("Results post-processed")
             # Export to Excel if path provided
             if export_path:
+                self.notify_observers(f"Exporting results to disk")
                 self.save_results(
                     df_labeled,
                     df_company,
                     df_industry,
                     df_motivation,
+                    risk_tree,
                     export_path=export_path,
                 )
-
+                self.notify_observers(f"Results exported")
         except Exception as e:
             execution_result = "error"
+            raise e
         else:
             execution_result = "success"
         finally:

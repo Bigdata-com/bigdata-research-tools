@@ -21,7 +21,8 @@ from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
 from tqdm import tqdm
 
-from bigdata_research_tools.client import init_bigdata_client
+from bigdata_research_tools.client import bigdata_connection, init_bigdata_client
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 DATE_RANGE_TYPE = Union[
     AbsoluteDateRange,
@@ -140,7 +141,7 @@ class SearchManager:
         :param rerank_threshold:
             Enable the cross-encoder by setting value between [0,1]
         :return:
-            A list of search results, or None if a rate limit timeout occurred.
+            A list of search results.
         """
         if not self._acquire_token(timeout):
             logging.warning("Timed out attempting to acquire rate limit token")
@@ -150,16 +151,16 @@ class SearchManager:
             date_range = AbsoluteDateRange(*date_range)
 
         try:
-            query = self.bigdata.search.new(
+            query_obj = self.bigdata.search.new(
                 query=query,
                 date_range=date_range,
                 sortby=sortby,
                 scope=scope,
                 rerank_threshold=rerank_threshold,
             )
-            results = query.run(limit=limit)
+            results = query_obj.run(limit=limit)
             if kwargs.get("current_trace"):
-                kwargs["current_trace"].add_query_units(query.get_usage())
+                kwargs["current_trace"].add_query_units(query_obj.get_usage())
             return results
         except Exception as e:
             logging.error(f"Search error: {e}")
@@ -228,8 +229,6 @@ class SearchManager:
             ):
                 query, date_range = futures[future]
                 try:
-                    # Store the search results in the dictionary,
-                    # Even if the search result is empty.
                     results[(query, date_range)] = future.result()
                 except Exception as e:
                     logging.error(f"Error in search {query, date_range}: {e}")
@@ -244,7 +243,7 @@ def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
     # Convert mutable AbsoluteDateRange into hashable objects
     for i, dr in enumerate(date_ranges):
         if isinstance(dr, AbsoluteDateRange):
-            date_ranges[i] = (dr.start_dt, dr.end_dt)
+            date_ranges[i] = (dr.start_dt.strftime("%Y-%m-%d %H:%M:%S"), dr.end_dt.strftime("%Y-%m-%d %H:%M:%S"))
     return date_ranges
 
 
@@ -274,27 +273,56 @@ def run_search(
         rerank_threshold (Optional[float]): The threshold for reranking the search results.
             See https://sdk.bigdata.com/en/latest/how_to_guides/rerank_search.html.
     Returns:
-        Union[Dict[Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]], list[list[Document]]]:
+        Union[Dict[Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]], list[list[Document]], list[dict]]:
         If `only_results` is True, returns the list of search results.
 
         If `only_results` is False, returns a mapping of the tuple of search query and date range to
         the list of the corresponding search results.
     """
-    # TODO (cpinto, 2025-03-21): We can add type hints for the `kwargs` parameter, but that would mean
-    #   also exposing the `SearchManager` class:
-    # kwargs (Optional[dict]): Additional keyword arguments to pass to initialize the `SearchManager`
-    #   that will be used.
-    manager = SearchManager(**kwargs)
     date_ranges = normalize_date_range(date_ranges)
-    query_results = manager.concurrent_search(
-        queries=queries,
-        date_ranges=date_ranges,
-        sortby=sortby,
-        scope=scope,
-        limit=limit,
-        rerank_threshold=rerank_threshold,
-        **kwargs,
-    )
+    date_ranges.sort(key=lambda x: x[0])
+
+    if not kwargs.get("current_trace"):
+        start_date = date_ranges[0][0] if date_ranges else None
+        end_date = date_ranges[-1][1] if date_ranges else None     
+
+        current_trace = Trace(
+            event_name=TraceEventNames.RUN_SEARCH,
+            document_type=scope,
+            start_date=start_date,
+            end_date=end_date,
+            rerank_threshold=rerank_threshold,
+            llm_model=None,
+            frequency=None,
+            workflow_start_date=Trace.get_time_now(),
+        )
+
+        kwargs["current_trace"] = current_trace
+
+    try: 
+        manager = SearchManager(**kwargs)
+        query_results = manager.concurrent_search(
+            queries=queries,
+            date_ranges=date_ranges,
+            sortby=sortby,
+            scope=scope,
+            limit=limit,
+            rerank_threshold=rerank_threshold,
+            **kwargs,
+        )
+    except Exception:
+        execution_result = "error"
+        raise
+    else:
+        execution_result = "success"
+    finally:
+        current_trace = kwargs.get("current_trace")
+        if current_trace and current_trace.event_name == TraceEventNames.RUN_SEARCH:
+            current_trace.workflow_end_date = Trace.get_time_now()
+            current_trace.result = execution_result  # noqa
+            send_trace(bigdata_connection(), current_trace)
+
+
     if only_results:
         return list(query_results.values())
     return query_results

@@ -5,6 +5,7 @@ from bigdata_client.models.search import DocumentType
 from pandas import merge
 
 from bigdata_research_tools.client import init_bigdata_client
+from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
 from bigdata_research_tools.search import search_narratives
@@ -13,7 +14,7 @@ from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 logger: Logger = getLogger(__name__)
 
 
-class NarrativeMiner:
+class NarrativeMiner(Workflow):
     def __init__(
         self,
         narrative_sentences: List[str],
@@ -41,7 +42,7 @@ class NarrativeMiner:
                                If not provided, the search is run across all available sources.
             rerank_threshold:  Enable the cross-encoder by setting the value between [0, 1].
         """
-
+        super().__init__()
         self.llm_model = llm_model
         self.narrative_sentences = narrative_sentences
         self.sources = sources
@@ -91,6 +92,7 @@ class NarrativeMiner:
         )
         try:
             # Run a search via BigData API with our mining parameters
+            self.notify_observers(f"Searching documents for relevant content")
             df_sentences = search_narratives(
                 sentences=self.narrative_sentences,
                 sources=self.sources,
@@ -104,31 +106,36 @@ class NarrativeMiner:
                 current_trace=current_trace,
                 fiscal_year=self.fiscal_year,
                 bigdata_client=bigdata_client,
+                fiscal_year=self.fiscal_year,
             )
-
+            self.notify_observers(f"Search completed. {len(df_sentences)} chunks found.")
+            self.notify_observers("Labelling search results")
             # Label the search results with our narrative sentences
             labeler = NarrativeLabeler(llm_model=self.llm_model)
             df_labels = labeler.get_labels(
                 self.narrative_sentences,
                 texts=df_sentences["text"].tolist(),
             )
-
+            self.notify_observers(f"Labelling completed. {len(df_labels)} labels generated.")
+            self.notify_observers("Post-processing results")
             # Merge and process results
             df_labeled = merge(
                 df_sentences, df_labels, left_index=True, right_index=True
             )
             df_labeled = labeler.post_process_dataframe(df_labeled)
 
+            self.notify_observers("Results post-processed")
             if df_labeled.empty:
                 logger.warning("Empty dataframe: no relevant content")
                 # Return an empty dictionary
                 return {}
-
             # Export to Excel if path provided
             if export_path:
+                self.notify_observers(f"Exporting results to excel")
                 save_to_excel(
                     export_path, tables={"Semantic Labels": (df_labeled, (0, 0))}
                 )
+                self.notify_observers(f"Results exported")
 
         except Exception:
             execution_result = "error"

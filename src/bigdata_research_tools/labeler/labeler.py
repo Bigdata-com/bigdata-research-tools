@@ -1,12 +1,17 @@
+import re
 from itertools import zip_longest
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
 from typing import Any, Dict, List, Optional
 
+from json_repair import repair_json
 from pandas import DataFrame
 
-from bigdata_research_tools.llm.base import AsyncLLMEngine
-from bigdata_research_tools.llm.utils import run_concurrent_prompts
+from bigdata_research_tools.llm.base import AsyncLLMEngine, LLMEngine
+from bigdata_research_tools.llm.utils import (
+    run_concurrent_prompts,
+    run_parallel_prompts,
+)
 
 logger: Logger = getLogger(__name__)
 
@@ -51,10 +56,8 @@ class Labeler:
         """
         response_mapping = {}
         for response in responses:
-            if not response:
-                continue
 
-            if not isinstance(response, dict):
+            if not response or not isinstance(response, dict):
                 continue
 
             for k, v in response.items():
@@ -62,9 +65,18 @@ class Labeler:
                     response_mapping[k] = {
                         "motivation": v.get("motivation", ""),
                         "label": v.get("label", self.unknown_label),
+                        **{
+                            key: value
+                            for key, value in v.items()
+                            if key not in ["motivation", "label"]
+                        },
                     }
                     # Add any extra keys present in v
-                    extra_keys = {key: value for key, value in v.items() if key not in ["motivation", "label"]}
+                    extra_keys = {
+                        key: value
+                        for key, value in v.items()
+                        if key not in ["motivation", "label"]
+                    }
                     response_mapping[k].update(extra_keys)
                 except (KeyError, AttributeError):
                     response_mapping[k] = {
@@ -94,10 +106,23 @@ class Labeler:
             "temperature": self.temperature,
             "response_format": {"type": "json_object"},
         }
-        llm = AsyncLLMEngine(model=self.llm_model)
-        return run_concurrent_prompts(
-            llm, prompts, system_prompt, max_workers, **llm_kwargs
-        )
+
+        # ADS-140
+        # Currently, Bedrock does not support async calls. Its implementation uses synchronous calls.
+        # In order to handle Bedrock as a provider we use a different function for running the prompts.
+        # We execute parallel calls using ThreadPoolExecutor for Bedrock and async calls for other providers.
+        provider, _ = self.llm_model.split("::")
+
+        if provider == "bedrock":
+            llm = LLMEngine(model=self.llm_model)
+            return run_parallel_prompts(
+                llm, prompts, system_prompt, max_workers, **llm_kwargs
+            )
+        else:
+            llm = AsyncLLMEngine(model=self.llm_model)
+            return run_concurrent_prompts(
+                llm, prompts, system_prompt, max_workers, **llm_kwargs
+            )
 
 
 def get_prompts_for_labeler(
@@ -116,9 +141,14 @@ def get_prompts_for_labeler(
 
     Returns:
         A list of prompts for the labeling system.
-    """      
-    return [dumps({"sentence_id": i, **config, "text": text})
-            for i, (config, text) in enumerate(zip_longest(textsconfig, texts, fillvalue={}))]
+    """
+    return [
+        dumps({"sentence_id": i, **config, "text": text})
+        for i, (config, text) in enumerate(
+            zip_longest(textsconfig, texts, fillvalue={})
+        )
+    ]
+
 
 def parse_labeling_response(response: str) -> Dict:
     """
@@ -133,6 +163,16 @@ def parse_labeling_response(response: str) -> Dict:
             - label
     """
     try:
+        # Improve json retrieval robustness by using a regex as first attempt
+        # to extract the json object from the response.
+        # If that fails, we use the json_repair library to try to fix common
+        # json formatting issues.
+        match = re.search(r'\{\s*"\d*":.*?\}\s*\}', response, re.DOTALL)
+
+        if match:
+            response = match.group(0)
+        else:
+            response = repair_json(response, return_objects=False)
         deserialized_response = loads(response)
     except JSONDecodeError:
         logger.error(f"Error deserializing response: {response}")

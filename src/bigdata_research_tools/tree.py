@@ -1,9 +1,10 @@
 import ast
+import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from json_repair import repair_json
 from pandas import DataFrame
-import json
 
 from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
@@ -227,16 +228,17 @@ class SemanticTree:
             # Determine if the node is a terminal (leaf) node
             is_terminal = not node.children
 
-            # For terminal nodes, use summary if available, otherwise use label
-            # For middle nodes, use the label
-            node_text = (
-                node.summary if is_terminal and hasattr(node, "summary") else node.label
-            )
+            # For terminal nodes, use "<B>label</B>: summary" format
+            if is_terminal and hasattr(node, "summary"):
+                node_text = f"<B>{node.label}</B>: {node.summary}"
+            # For middle nodes, use "<B>label</B>"
+            else:
+                node_text = f"<B>{node.label}</B>"
 
             # Add a node to the mind map with a box shape
             mindmap.node(
                 str(node),
-                node_text,
+                f"<{node_text}>",  # Use HTML-like label format
                 shape="box",
                 style="filled",
                 # Make terminal nodes lighter than middle nodes
@@ -313,6 +315,32 @@ class SemanticTree:
         traverse(self)
         return mapping
 
+    def _to_dict(self) -> dict:
+        """
+        Recursively convert the ThemeTree to a dictionary suitable for JSON serialization.
+        """
+        return {
+            "label": self.label,
+            "node": self.node,
+            "summary": self.summary,
+            "children": (
+                [child._to_dict() for child in self.children] if self.children else []
+            ),
+            "keywords": self.keywords,
+        }
+
+    def save_json(self, filepath: str, **kwargs) -> None:
+        """
+        Save the ThemeTree as a JSON dictionary to the specified file.
+
+        Args:
+            filepath (str): Path to the output JSON file.
+            **kwargs: Additional keyword arguments passed to json.dump.
+        """
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(self._to_dict(), f, ensure_ascii=False, indent=2, **kwargs)
+
+
 def generate_theme_tree(
     main_theme: str,
     focus: str = "",
@@ -324,7 +352,6 @@ def generate_theme_tree(
     Args:
         main_theme (str): The primary theme to analyze.
         focus (str, optional): Specific aspect(s) to guide sub-theme generation.
-            If provided, a two-step process is used to better integrate the focus.
         llm_model_config (dict): Configuration for the large language model used to generate themes.
             Expected keys:
             - `provider` (str): The model provider (e.g., 'openai').
@@ -343,41 +370,15 @@ def generate_theme_tree(
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
     llm = LLMEngine(model=model_str)
 
-    # Handle focus using different strategies
-    if not focus:
-        # One-step process without focus
-        system_prompt = compose_themes_system_prompt_onestep(main_theme)
+    system_prompt = compose_themes_system_prompt(main_theme, analyst_focus=focus)
 
-        chat_history = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": main_theme},
-        ]
+    chat_history = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": main_theme},
+    ]
 
-        tree_str = llm.get_response(chat_history, **ll_model_config["kwargs"])
-    else:
-        # Two-step process with focus
-        # Step 1: Generate base tree
-        base_prompt = compose_themes_system_prompt_base(main_theme)
-        base_chat_history = [
-            {"role": "system", "content": base_prompt},
-            {"role": "user", "content": main_theme},
-        ]
-
-        initial_tree_str = llm.get_response(
-            base_chat_history, **ll_model_config["kwargs"]
-        )
-
-        # Step 2: Refine with focus
-        focus_prompt = compose_themes_system_prompt_focus(main_theme, focus)
-        focus_chat_history = [
-            {"role": "system", "content": focus_prompt},
-            {"role": "user", "content": main_theme},
-            {"role": "user", "content": focus},
-            {"role": "user", "content": initial_tree_str},
-        ]
-
-        tree_str = llm.get_response(focus_chat_history, **ll_model_config["kwargs"])
-
+    tree_str = llm.get_response(chat_history, **ll_model_config.get("kwargs", {}))
+    tree_str = repair_json(tree_str)
     tree_dict = ast.literal_eval(tree_str)
 
     return SemanticTree.from_dict(tree_dict)
@@ -451,6 +452,8 @@ def generate_risk_tree(
     tree_str = llm.get_response(
         [{"role": "system", "content": system_prompt}], **ll_model_config["kwargs"]
     )
+
+    tree_str = repair_json(tree_str)
 
     tree_dict = ast.literal_eval(tree_str)
 
