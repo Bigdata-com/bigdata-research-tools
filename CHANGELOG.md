@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Add support for Bigdata.com API keys for authentication. Follow this guide to create your API key: https://docs.bigdata.com/api-rest/introduction
+- Applied the observer pattern to workflows to allow external monitoring of progress during execution. You can find more details on the `bigdata_research_tools.utils.observer` module.
 
 
 ## [0.19.0] - 2025-09-03
