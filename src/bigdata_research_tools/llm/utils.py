@@ -1,10 +1,17 @@
 import asyncio
 import time
+import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger, getLogger
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Union
+from collections import defaultdict
+from dataclasses import dataclass, asdict
+from datetime import datetime
 
-from openai import APITimeoutError, RateLimitError
+from openai import APITimeoutError, RateLimitError, BadRequestError
+
+# Store error logs in memory
+error_logs = []
 from tqdm import tqdm
 
 from bigdata_research_tools.llm.base import AsyncLLMEngine, LLMEngine
@@ -18,6 +25,7 @@ def run_concurrent_prompts(
     prompts: List[str],
     system_prompt: str,
     max_workers: int = 30,
+    error_log_path: str = "azure_content_filter_errors.json",
     **kwargs,
 ) -> List[str]:
     """
@@ -28,11 +36,15 @@ def run_concurrent_prompts(
         prompts (list[str]): List of prompts to run concurrently.
         system_prompt (str): The system prompt.
         max_workers (int): The maximum number of workers to run concurrently.
+        error_log_path (str): Path to save error logs.
         kwargs (dict): Additional arguments to pass to the `get_response` method of the LLMEngine.
 
     Returns:
         list[str]: The list of responses from the LLM model, each in the same order as the prompts.
     """
+    global error_logs
+    error_logs = []  # Reset error logs for this run
+    
     semaphore = asyncio.Semaphore(max_workers)
     logger.info(f"Running {len(prompts)} prompts concurrently")
     tasks = [
@@ -41,7 +53,30 @@ def run_concurrent_prompts(
         )
         for idx, prompt in enumerate(prompts)
     ]
-    return asyncio.run(_run_with_progress_bar(tasks))
+    
+    results = asyncio.run(_run_with_progress_bar(tasks))
+    
+    # After all tasks complete, write accumulated errors if any
+    if error_logs:
+        try:
+            # Load existing errors if file exists
+            try:
+                with open(error_log_path, 'r') as f:
+                    existing_errors = json.load(f)
+                    if isinstance(existing_errors, list):
+                        error_logs.extend(existing_errors)
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+                
+            # Write all errors atomically
+            with open(error_log_path, 'w') as f:
+                json.dump(error_logs, f, indent=2)
+            logger.warning(f"Errors logged to {error_log_path}")
+            print(f"Errors logged to {error_log_path}")
+        except Exception as e:
+            logger.error(f"Failed to write error logs: {str(e)}")
+    
+    return results
 
 
 async def _fetch_with_semaphore(
@@ -78,10 +113,22 @@ async def _fetch_with_semaphore(
             try:
                 response = await llm_engine.get_response(chat_history, **kwargs)
                 return idx, response
+            except BadRequestError as e:
+                # Store simple error info
+                error_logs.append({
+                    'timestamp': datetime.now().isoformat(),
+                    'system_prompt': system_prompt,
+                    'user_prompt': prompt,
+                    'error': str(e)
+                })
+                
+                logger.warning(f"Azure OpenAI error: {str(e)}")
+                return idx, ""
             except (APITimeoutError, RateLimitError):
                 await asyncio.sleep(retry_delay)
                 # Exponential backoff
                 retry_delay = min(retry_delay * 2, 60)
+        
         logger.error(f"Failed to get response for prompt: {prompt}")
         return idx, ""
 
