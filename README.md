@@ -593,6 +593,7 @@ import os
 os.environ["AZURE_OPENAI_ENDPOINT"] = "CLIENT_AZURE_OPENAI_ENDPOINT"
 os.environ["OPENAI_API_VERSION"] = "API_VERSION"
 ```
+> **_NOTE:_**  Models deployed on Azure apply configurable safety filters to detect violent, harmful, or otherwise unsafe content. As documented in [several discussions](https://learn.microsoft.com/en-us/answers/questions/2244789/azure-openai-api-inconsistent-false-positive-jailb) , these filters can occasionally produce false positives because they lack the context to interpret prompts or retrieved text accurately. While our prompts contain no harmful language, news or transcript content may include ambiguous terms that trigger these checks. To reduce the likelihood of false positives, we recommend configuring endpoints with the lowest safety threshold and disabling jailbreak-protection shields.
 
 ## Parameter Deep Dive
 The workflows in Bigdata Research Tools rely on a handful of key parameters. Here is a detailed explanation of how to use them in practice and what they mean.
