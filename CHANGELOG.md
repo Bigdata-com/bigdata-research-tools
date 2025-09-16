@@ -18,6 +18,11 @@ Preparation for a first stable release.
 - Renamed `settings` to `utils` to better reflect its purpose as a utility module and free
   the name for future use.
 
+## [0.20.1] - 2025-09-16
+
+### Fix
+- Fix code duplication that caused duplicated LLM calls introduced at 0.19.0 (#5)
+
 ## [0.20.0] - 2025-09-15
 
 ### Added
