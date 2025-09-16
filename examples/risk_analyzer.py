@@ -2,6 +2,7 @@ from typing import Dict
 
 from bigdata_client.models.search import DocumentType
 
+from bigdata_research_tools.utils.observer import Observer, OberserverNotification
 from bigdata_research_tools.client import bigdata_connection
 from bigdata_research_tools.visuals import create_risk_exposure_dashboard
 from bigdata_research_tools.workflows.risk_analyzer import RiskAnalyzer
@@ -34,9 +35,17 @@ def risk_analyzer_example(
         document_type=DocumentType.NEWS,
         control_entities=control_entities,
         focus=focus,  # Optional focus to narrow the theme,
-    ).screen_companies(export_path=export_path)
+    )
+        
+    
+    class PrintObserver(Observer):
+        def update(self, message: OberserverNotification):
+            print(f"Notification received: {message}")
 
-    return analyzer
+    analyzer.register_observer(PrintObserver())
+
+
+    return analyzer.screen_companies(export_path=export_path)
 
 
 if __name__ == "__main__":

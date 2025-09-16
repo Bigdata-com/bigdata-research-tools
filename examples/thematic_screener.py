@@ -2,6 +2,7 @@ from typing import Dict
 
 from bigdata_client.models.search import DocumentType
 
+from bigdata_research_tools.utils.observer import Observer, OberserverNotification
 from bigdata_research_tools.client import bigdata_connection
 from bigdata_research_tools.workflows import ThematicScreener
 from bigdata_research_tools.visuals import create_thematic_exposure_dashboard
@@ -28,9 +29,15 @@ def thematic_screener_example(
         end_date="2024-11-15",
         document_type=DocumentType.TRANSCRIPTS,
         fiscal_year=2024
-    ).screen_companies(export_path=export_path)
+    )
 
-    return thematic_screener
+    class PrintObserver(Observer):
+        def update(self, message: OberserverNotification):
+            print(f"Notification received: {message}")
+
+    thematic_screener.register_observer(PrintObserver())
+
+    return thematic_screener.screen_companies(export_path=export_path)
 
 
 if __name__ == "__main__":

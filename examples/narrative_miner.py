@@ -2,6 +2,7 @@ from typing import Dict
 
 from bigdata_client.models.search import DocumentType
 
+from bigdata_research_tools.utils.observer import Observer, OberserverNotification
 from bigdata_research_tools.workflows import NarrativeMiner
 
 
@@ -33,6 +34,15 @@ def narrative_miner_example(export_path: str = "narrative_miner_sample.xlsx") ->
         document_type=DocumentType.TRANSCRIPTS,
         fiscal_year=2024,
     )
+
+        
+    
+    class PrintObserver(Observer):
+        def update(self, message: OberserverNotification):
+            print(f"Notification received: {message}")
+
+    narrative_miner.register_observer(PrintObserver())
+
 
     return narrative_miner.mine_narratives(export_path=export_path)
 
