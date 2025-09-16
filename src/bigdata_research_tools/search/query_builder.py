@@ -212,8 +212,9 @@ def _get_entity_ids(
         if entity is not None:
             if entity_type in (Entity, ReportingEntity):
                 entity = entity_type(entity.id)
-
-            entity_ids.append(entity)
+                entity_ids.append(entity)
+            else:
+                entity_ids.append(Entity(entity.id))
 
     return entity_ids
 

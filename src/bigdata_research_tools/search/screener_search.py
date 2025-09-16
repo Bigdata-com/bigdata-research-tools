@@ -157,7 +157,7 @@ def search_by_companies(
 
         results, entities = filter_search_results(results)
         # Filter entities to only include COMPANY entities
-        entities = filter_company_entities(entities)
+        entities, topics = filter_company_entities(entities)
         
         # Determine whether to filter by companies based on document type
         # For filings and transcripts, we don't need to filter as we use reporting entities
@@ -172,6 +172,7 @@ def search_by_companies(
             results=results,
             entities=entities,
             companies=companies if needs_company_filtering else None,
+            topics=topics,
             document_type=scope,
         )
     except Exception:
@@ -203,13 +204,16 @@ def filter_company_entities(
         entity
         for entity in entities
         if hasattr(entity, "entity_type") and getattr(entity, "entity_type") == "COMP"
-    ]
+    ], [entity for entity in entities
+            if hasattr(entity, 'entity_type') and
+            getattr(entity, "entity_type") != 'COMP']
 
 def process_screener_search_results(
     results: List[Document],
     entities: List[ListQueryComponent],
     companies: Optional[List[Company]] = None,
     document_type: DocumentType = DocumentType.NEWS,
+    topics: Optional[List[ListQueryComponent]] = None,
 ) -> DataFrame:
     """
     Build a unified DataFrame from search results for any document type.
@@ -240,10 +244,16 @@ def process_screener_search_results(
             - text: str
             - other_entities: str
             - entities: List[Dict[str, Any]]
+            - topics: List[Dict[str, Any]]
+            - source_name: str (if applicable)
+            - source_rank: int (if applicable)
+            - url: str (if applicable)
             - masked_text: str
             - other_entities_map: List[Tuple[int, str]]
     """
     entity_key_map = {entity.id: entity for entity in entities}
+    topic_key_map = {entity.id: entity for entity in topics}
+    company_ids = {company.id for company in companies} if companies else None
 
     rows = []
     for result in tqdm(results, desc=f"Processing {document_type} results..."):
@@ -268,6 +278,14 @@ def process_screener_search_results(
                 for entity in chunk.entities
                 if entity.key in entity_key_map
             ]
+            chunk_topics = [{'key': entity.key,
+                             'name': (topic_key_map[entity.key].name if entity.key in topic_key_map else None),
+                             'entity_type': (topic_key_map[entity.key].entity_type if entity.key in topic_key_map else None),
+                             #'country': (topic_key_map[entity.key].country if entity.key in topic_key_map else None),
+                             'start': entity.start,
+                             'end': entity.end}
+                            for entity in chunk.entities
+                            if entity.key in topic_key_map]
 
             if not chunk_entities:
                 continue  # Skip if no entities are mapped
@@ -306,6 +324,7 @@ def process_screener_search_results(
                                 e["name"] for e in other_entities
                             ),
                             "entities": chunk_entities,
+                            'topics': chunk_topics,
                         }
                     )
             else:
@@ -317,7 +336,7 @@ def process_screener_search_results(
                         continue  # Skip if entity is not found
                     
                     # # if entity isn't in our original watchlist, skip
-                    if companies and entity_key not in companies:
+                    if company_ids and chunk_entity["key"] not in company_ids:
                         continue
 
                     # Exclude the entity from other entities
@@ -345,7 +364,11 @@ def process_screener_search_results(
                                 e["name"] for e in other_entities
                             ),
                             "entities": chunk_entities,
-                        }
+                            'topics': chunk_topics,
+                            'source_name': result.source.name,
+                            'source_rank': result.source.rank,
+                            'url': result.url
+                                }
                     )
 
     if not rows:
