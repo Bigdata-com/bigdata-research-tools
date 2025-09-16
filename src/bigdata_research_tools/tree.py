@@ -8,11 +8,7 @@ from pandas import DataFrame
 
 from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
-from bigdata_research_tools.prompts.themes import (
-    compose_themes_system_prompt_base,
-    compose_themes_system_prompt_focus,
-    compose_themes_system_prompt_onestep,
-)
+from bigdata_research_tools.prompts.themes import compose_themes_system_prompt
 
 themes_default_llm_model_config: Dict[str, Any] = {
     "provider": "openai",
