@@ -330,9 +330,6 @@ class ThemeTree:
             "children": (
                 [child._to_dict() for child in self.children] if self.children else []
             ),
-            "children": (
-                [child._to_dict() for child in self.children] if self.children else []
-            ),
             "keywords": self.keywords,
         }
 
@@ -456,12 +453,6 @@ def generate_risk_tree(
 
     system_prompt = compose_risk_system_prompt_focus(main_theme, focus)
 
-    tree_str = llm.get_response(
-        [{"role": "user", "content": system_prompt}],
-        **ll_model_config.get("kwargs", {}),
-    )
-
-    tree_str = repair_json(tree_str)
     tree_str = llm.get_response(
         [{"role": "user", "content": system_prompt}],
         **ll_model_config.get("kwargs", {}),
