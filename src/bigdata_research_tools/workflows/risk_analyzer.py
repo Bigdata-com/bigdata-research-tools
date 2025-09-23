@@ -312,6 +312,7 @@ class RiskAnalyzer(Workflow):
             - df_labeled: The DataFrame with the labeled search results.
             - df_company: The DataFrame with the output by company.
             - df_industry: The DataFrame with the output by industry.
+            - df_motivation: The DataFrame with the generated motivations.
             - risk_tree: The SemanticTree created for the screening.
         """
 
