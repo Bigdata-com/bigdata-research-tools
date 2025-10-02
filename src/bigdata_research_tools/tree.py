@@ -3,6 +3,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+import graphviz
 from json_repair import repair_json
 from pandas import DataFrame
 
@@ -196,21 +197,13 @@ class SemanticTree:
                 f"Supported engines are 'graphviz' and 'plotly'."
             )
 
-    def _visualize_graphviz(self) -> "graphviz.Digraph":
+    def _visualize_graphviz(self) -> graphviz.Digraph:
         """
         Auxiliary function to visualize the tree using Graphviz.
 
         Returns:
             A Graphviz Digraph object for rendering the mindmap.
         """
-        try:
-            import graphviz
-        except ImportError:
-            raise ImportError(
-                "Missing optional dependency for tree visualization, "
-                "please install `bigdata_research_tools[graphviz]` to enable them."
-            )
-
         mindmap = graphviz.Digraph()
 
         # Set direction to left-right

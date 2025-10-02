@@ -21,6 +21,7 @@ Preparation for a first stable release.
 
 ### Fixed
 - Changed build system to use `uv_build` instead of `setuptools` to avoid issues with package data inclusion.
+- Fix duplicate dependencies in main vs optional dependencies. `openai` is now only optional while `graphviz`, `openpyxl` and `Pillow` is now only in main dependencies.
 
 ## [0.20.1] - 2025-09-16
 
