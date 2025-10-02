@@ -12,15 +12,13 @@ from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.tree import SemanticTree, generate_risk_tree
-from bigdata_research_tools.workflows.utils import get_scored_df
 from bigdata_research_tools.workflows.base import Workflow
-
+from bigdata_research_tools.workflows.utils import get_scored_df
 
 logger: Logger = getLogger(__name__)
 
 
 class RiskAnalyzer(Workflow):
-
     def __init__(
         self,
         llm_model: str,
@@ -256,7 +254,7 @@ class RiskAnalyzer(Workflow):
         df_company: DataFrame,
         df_industry: DataFrame,
         motivation_df: DataFrame,
-        risk_tree: ThemeTree,
+        risk_tree: SemanticTree,
         export_path: str,
     ):
         """
@@ -337,22 +335,41 @@ class RiskAnalyzer(Workflow):
         )
 
         try:
-            self.notify_observers(f"Generating risk taxonomy")
+            self.notify_observers("Generating risk taxonomy")
             risk_tree, risk_summaries, terminal_labels = self.create_taxonomy()
 
-            self.notify_observers(f"Risk taxonomy generated with {len(terminal_labels)} leafs")
+            self.notify_observers(
+                f"Risk taxonomy generated with {len(terminal_labels)} leafs"
+            )
             self.notify_observers(risk_tree.as_string())
-            self.notify_observers(f"Searching companies for risk exposure")
+            self.notify_observers("Searching companies for risk exposure")
             df_sentences = self.retrieve_results(
                 sentences=risk_summaries,
                 frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
             )
-            self.notify_observers(f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies.")
-            self.notify_observers(df_sentences[["timestamp_utc", "sentence_id", "headline", "entity_name", "text", "other_entities"]].head(10).to_markdown(index=False))
+            self.notify_observers(
+                f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies."
+            )
+            self.notify_observers(
+                df_sentences[
+                    [
+                        "timestamp_utc",
+                        "sentence_id",
+                        "headline",
+                        "entity_name",
+                        "text",
+                        "other_entities",
+                    ]
+                ]
+                .head(10)
+                .to_markdown(index=False)
+            )
 
-            self.notify_observers(f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} risks")
+            self.notify_observers(
+                f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} risks"
+            )
             df, df_labeled = self.label_search_results(
                 df_sentences=df_sentences,
                 terminal_labels=terminal_labels,
@@ -363,7 +380,9 @@ class RiskAnalyzer(Workflow):
                     "headline",
                 ],
             )
-            self.notify_observers(f"Labeling completed. {len(df_labeled)} chunks labeled with risk factors.")
+            self.notify_observers(
+                f"Labeling completed. {len(df_labeled)} chunks labeled with risk factors."
+            )
             self.notify_observers("Post-processing results")
             df_company, df_industry, df_motivation = self.generate_results(
                 df_labeled, word_range
@@ -371,7 +390,7 @@ class RiskAnalyzer(Workflow):
             self.notify_observers("Results post-processed")
             # Export to Excel if path provided
             if export_path:
-                self.notify_observers(f"Exporting results to disk")
+                self.notify_observers("Exporting results to disk")
                 self.save_results(
                     df_labeled,
                     df_company,
@@ -380,7 +399,7 @@ class RiskAnalyzer(Workflow):
                     risk_tree,
                     export_path=export_path,
                 )
-                self.notify_observers(f"Results exported")
+                self.notify_observers("Results exported")
         except Exception as e:
             execution_result = "error"
             raise e

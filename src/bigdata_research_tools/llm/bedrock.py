@@ -13,7 +13,7 @@ from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
 
 
 class AsyncBedrockProvider(AsyncLLMProvider):
-    # Asynchronous boto3 is tricky, for now use the synchronous client, this will not 
+    # Asynchronous boto3 is tricky, for now use the synchronous client, this will not
     # provide the benefits from async, but will at least let our workflows run for now
     def __init__(self, model: str, region: str = None):
         super().__init__(model)
@@ -52,13 +52,16 @@ class AsyncBedrockProvider(AsyncLLMProvider):
         response_prefix = ""
         for message in chat_history:
             if message["role"] != "system":
-                formatted_history.append({"role": message["role"], "content": [{"text": message["content"]}]})
+                formatted_history.append(
+                    {"role": message["role"], "content": [{"text": message["content"]}]}
+                )
             else:
                 system.append({"text": message["content"]})
-        if "response_format" in kwargs and kwargs["response_format"].get("type") == "json":
-            formatted_history.append(
-                {"role": "assistant", "content": [{"text": "{"}]}
-            )
+        if (
+            "response_format" in kwargs
+            and kwargs["response_format"].get("type") == "json"
+        ):
+            formatted_history.append({"role": "assistant", "content": [{"text": "{"}]})
             response_prefix = "{"
         # https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
         model_kwargs = {
@@ -91,7 +94,9 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                     Only implemented for a few models. See
                     https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
+        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
+            chat_history, **kwargs
+        )
         response = bedrock_client.converse(**model_kwargs)
 
         output_message = (
@@ -124,7 +129,9 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
+        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
+            chat_history, **kwargs
+        )
         if tools:
             model_kwargs["toolConfig"] = {"tools": tools}
         response = bedrock_client.converse(**model_kwargs)
@@ -145,7 +152,8 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 for f in output_message
                 if "text" not in f
             ],
-            "text": output_prefix + "".join([x["text"] for x in output_message if "text" in x]),
+            "text": output_prefix
+            + "".join([x["text"] for x in output_message if "text" in x]),
         }
         return output
 
@@ -165,6 +173,7 @@ class AsyncBedrockProvider(AsyncLLMProvider):
             Generator[str, None, None]: A generator that yields the response from the LLM model.
         """
         raise NotImplementedError
+
 
 class BedrockProvider(LLMProvider):
     def __init__(self, model: str, region: str = None):
@@ -204,13 +213,16 @@ class BedrockProvider(LLMProvider):
         response_prefix = ""
         for message in chat_history:
             if message["role"] != "system":
-                formatted_history.append({"role": message["role"], "content": [{"text": message["content"]}]})
+                formatted_history.append(
+                    {"role": message["role"], "content": [{"text": message["content"]}]}
+                )
             else:
                 system.append({"text": message["content"]})
-        if "response_format" in kwargs and kwargs["response_format"].get("type") == "json":
-            formatted_history.append(
-                {"role": "assistant", "content": [{"text": "{"}]}
-            )
+        if (
+            "response_format" in kwargs
+            and kwargs["response_format"].get("type") == "json"
+        ):
+            formatted_history.append({"role": "assistant", "content": [{"text": "{"}]})
             response_prefix = "{"
         # https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
         model_kwargs = {
@@ -243,7 +255,9 @@ class BedrockProvider(LLMProvider):
                     Only implemented for a few models. See
                     https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
+        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
+            chat_history, **kwargs
+        )
         response = bedrock_client.converse(**model_kwargs)
 
         output_message = (
@@ -276,7 +290,9 @@ class BedrockProvider(LLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
+        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
+            chat_history, **kwargs
+        )
         if tools:
             model_kwargs["toolConfig"] = {"tools": tools}
         response = bedrock_client.converse(**model_kwargs)
@@ -297,7 +313,8 @@ class BedrockProvider(LLMProvider):
                 for f in output_message
                 if "text" not in f
             ],
-            "text": output_prefix + "".join([x["text"] for x in output_message if "text" in x]),
+            "text": output_prefix
+            + "".join([x["text"] for x in output_message if "text" in x]),
         }
         return output
 

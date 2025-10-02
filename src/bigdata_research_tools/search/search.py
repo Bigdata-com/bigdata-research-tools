@@ -243,7 +243,10 @@ def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
     # Convert mutable AbsoluteDateRange into hashable objects
     for i, dr in enumerate(date_ranges):
         if isinstance(dr, AbsoluteDateRange):
-            date_ranges[i] = (dr.start_dt.strftime("%Y-%m-%d %H:%M:%S"), dr.end_dt.strftime("%Y-%m-%d %H:%M:%S"))
+            date_ranges[i] = (
+                dr.start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                dr.end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+            )
     return date_ranges
 
 
@@ -284,7 +287,7 @@ def run_search(
 
     if not kwargs.get("current_trace"):
         start_date = date_ranges[0][0] if date_ranges else None
-        end_date = date_ranges[-1][1] if date_ranges else None     
+        end_date = date_ranges[-1][1] if date_ranges else None
 
         current_trace = Trace(
             event_name=TraceEventNames.RUN_SEARCH,
@@ -299,7 +302,7 @@ def run_search(
 
         kwargs["current_trace"] = current_trace
 
-    try: 
+    try:
         manager = SearchManager(**kwargs)
         query_results = manager.concurrent_search(
             queries=queries,
@@ -321,7 +324,6 @@ def run_search(
             current_trace.workflow_end_date = Trace.get_time_now()
             current_trace.result = execution_result  # noqa
             send_trace(bigdata_connection(), current_trace)
-
 
     if only_results:
         return list(query_results.values())

@@ -1,18 +1,21 @@
 from itertools import chain
 from json import JSONDecodeError
 from logging import Logger, getLogger
-from pydantic import ValidationError
 from re import findall
 from time import sleep
-from typing import List, Tuple 
+from typing import List, Tuple
+
 from bigdata_client.connection import RequestMaxLimitExceeds
 from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import ListQueryComponent
 from bigdata_client.models.document import DocumentChunk
 from bigdata_client.query_type import QueryType
+from pydantic import ValidationError
+
 from bigdata_research_tools.client import bigdata_connection
 
 logger: Logger = getLogger(__name__)
+
 
 def _collect_entity_keys(results: List[Document]) -> List[str]:
     """
@@ -32,6 +35,7 @@ def _collect_entity_keys(results: List[Document]) -> List[str]:
     )
     entity_keys = list(entity_keys)
     return entity_keys
+
 
 def _look_up_entities_binary_search(
     entity_keys: List[str], max_batch_size: int = 50
@@ -63,7 +67,7 @@ def _look_up_entities_binary_search(
         """
         non_entity_key_pattern = r"'key':\s*'([A-Z0-9]{6})'.+?'entityType':\s*'[A-Z]+'"
 
-        try:            
+        try:
             batch_lookup = bigdata.knowledge_graph.get_entities(batch)
             entities.extend(batch_lookup)
         except ValidationError as e:
@@ -99,6 +103,7 @@ def _look_up_entities_binary_search(
 
     return entities
 
+
 def filter_search_results(
     results: List[List[Document]],
 ) -> Tuple[List[Document], List[ListQueryComponent]]:
@@ -122,10 +127,10 @@ def filter_search_results(
 
     return results, entities
 
-def build_chunk_entities(chunk: DocumentChunk, 
-                         entities: List[ListQueryComponent]
-) -> List[dict]:
 
+def build_chunk_entities(
+    chunk: DocumentChunk, entities: List[ListQueryComponent]
+) -> List[dict]:
     entity_key_map = {entity.id: entity for entity in entities}
 
     chunk_entities = [

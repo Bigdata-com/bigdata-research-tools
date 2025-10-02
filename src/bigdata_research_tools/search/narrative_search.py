@@ -14,7 +14,7 @@ from bigdata_research_tools.search.query_builder import (
 )
 from bigdata_research_tools.search.search import run_search
 from bigdata_research_tools.search.search_utils import (
-    build_chunk_entities, 
+    build_chunk_entities,
     filter_search_results,
 )
 
@@ -146,7 +146,7 @@ def _process_narrative_search(
             chunk_entities = build_chunk_entities(chunk, entities)
 
             if not chunk_entities:
-                continue 
+                continue
 
             # Collect all necessary information in the row
             rows.append(
@@ -156,11 +156,11 @@ def _process_narrative_search(
                     "sentence_id": f"{result.id}-{chunk.chunk}",
                     "headline": result.headline,
                     "text": chunk.text,
-                    "entity": [entity["name"] for entity in chunk_entities], 
+                    "entity": [entity["name"] for entity in chunk_entities],
                     "country_code": [entity["country"] for entity in chunk_entities],
-                    "entity_type": [entity["entity_type"] for entity in chunk_entities], 
+                    "entity_type": [entity["entity_type"] for entity in chunk_entities],
                 }
-            ) 
+            )
 
     if not rows:
         raise ValueError("No rows to process")

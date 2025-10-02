@@ -1,24 +1,16 @@
-# Minimal makefile for Sphinx documentation
-#
+.PHONY: tests lint format
 
-# You can set these variables from the command line, and also
-# from the environment for the first two.
-SPHINXOPTS    ?=
-SPHINXBUILD   ?= sphinx-build
-SOURCEDIR     = docs
-BUILDDIR      = build
+tests:
+	@uv run -m pytest --cov --cov-config=.coveragerc  --cov-report term --cov-report xml:./coverage-reports/coverage.xml -s tests/*
 
-# Put it first so that "make" without argument is like "make help".
-help:
-	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+lint:
+	@uvx ruff check --extend-select I --fix src/bigdata_research_tools/ tests/
 
-.PHONY: help Makefile
+lint-check:
+	@uvx ruff check --extend-select I src/bigdata_research_tools/ tests/
 
-# Catch-all target: route all unknown targets to Sphinx using the new
-# "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-%: Makefile
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+format:
+	@uvx ruff format src/bigdata_research_tools/ tests/
 
-
-create-docs:
-	@uv run $(MAKE) clean html
+type-check:
+	@uvx ty check src/bigdata_research_tools/ tests/

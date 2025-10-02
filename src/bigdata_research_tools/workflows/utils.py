@@ -4,14 +4,14 @@ Script with any common helper functions used across the workflows.
 
 from typing import List
 
+from IPython.display import HTML, display
 from pandas import DataFrame
 
-from IPython.display import display, HTML
 
 def display_output_chunks_dataframe(final_df):
     """
     Display selected document chunks in a formatted HTML view for better readability.
-    
+
     Args:
         final_df: DataFrame containing semantic labels with document chunks
     """
@@ -24,13 +24,16 @@ def display_output_chunks_dataframe(final_df):
         output_lines.append(f"<strong>Industry:</strong> {element.Industry}<br>")
         output_lines.append(f"<strong>Date:</strong> {element.Date}<br>")
         output_lines.append(f"<strong>Headline:</strong> {element.Headline}<br>")
-        output_lines.append(f"<strong>Sentence Identifier:</strong> {element['Document ID']}<br>")
+        output_lines.append(
+            f"<strong>Sentence Identifier:</strong> {element['Document ID']}<br>"
+        )
         output_lines.append(f"<strong>Quote:</strong> <em>{element.Quote}</em><br>")
         output_lines.append(f"<strong>Sub-Theme Label:</strong> {element.Theme}<br>")
         output_lines.append("--------------------<br>")
 
     # Join all lines into a single string and display it
-    display(HTML(''.join(output_lines)))
+    display(HTML("".join(output_lines)))
+
 
 def get_scored_df(
     df: DataFrame, index_columns: List[str], pivot_column: str

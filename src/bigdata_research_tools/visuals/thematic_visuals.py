@@ -1,9 +1,7 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from bigdata_research_tools.settings import check_libraries_installed
 from bigdata_research_tools.visuals.visuals import ExposureDashboard
@@ -33,7 +31,7 @@ class ThematicExposureDashboard(ExposureDashboard):
         "subplot_titles": [
             "Thematic Exposure Heatmap (Raw Scores)",
             "Total Thematic Exposure Score",
-            f"Top Thematic Exposures by Company",
+            "Top Thematic Exposures by Company",
             "Thematic Scores across Sub-Themes",
         ],
         "axis_titles": {

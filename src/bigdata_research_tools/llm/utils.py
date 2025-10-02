@@ -7,7 +7,7 @@ from typing import List, Tuple
 from openai import APITimeoutError, RateLimitError
 from tqdm import tqdm
 
-from bigdata_research_tools.llm.base import AsyncLLMEngine, LLMEngine
+from bigdata_research_tools.llm.base import AsyncLLMEngine
 
 logger: Logger = getLogger(__name__)
 

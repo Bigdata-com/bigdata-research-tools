@@ -5,22 +5,20 @@ from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType
 from pandas import DataFrame, merge
 
-from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
-from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.client import init_bigdata_client
+from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.tree import generate_theme_tree
+from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
-
 
 logger: Logger = getLogger(__name__)
 
 
 class ThematicScreener(Workflow):
-
     def __init__(
         self,
         llm_model: str,
@@ -120,7 +118,7 @@ class ThematicScreener(Workflow):
 
         try:
             self.provider, self.model = self.llm_model.split("::")
-            self.notify_observers(f"Generating thematic tree")
+            self.notify_observers("Generating thematic tree")
             theme_tree = generate_theme_tree(
                 main_theme=self.main_theme,
                 focus=self.focus,
@@ -129,9 +127,11 @@ class ThematicScreener(Workflow):
 
             theme_summaries = theme_tree.get_terminal_summaries()
             terminal_labels = theme_tree.get_terminal_labels()
-            self.notify_observers(f"Thematic tree generated with {len(terminal_labels)} leafs")
+            self.notify_observers(
+                f"Thematic tree generated with {len(terminal_labels)} leafs"
+            )
             self.notify_observers(theme_tree.as_string())
-            self.notify_observers(f"Searching companies for thematic exposure")
+            self.notify_observers("Searching companies for thematic exposure")
             df_sentences = search_by_companies(
                 companies=self.companies,
                 sentences=theme_summaries,
@@ -147,19 +147,36 @@ class ThematicScreener(Workflow):
                 current_trace=current_trace,
                 bigdata_client=bigdata_client,
             )
-            self.notify_observers(f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies.")
-            self.notify_observers(df_sentences[["timestamp_utc", "sentence_id", "headline", "entity_name", "text", "other_entities"]].head(10).to_markdown(index=False))
+            self.notify_observers(
+                f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies."
+            )
+            self.notify_observers(
+                df_sentences[
+                    [
+                        "timestamp_utc",
+                        "sentence_id",
+                        "headline",
+                        "entity_name",
+                        "text",
+                        "other_entities",
+                    ]
+                ]
+                .head(10)
+                .to_markdown(index=False)
+            )
             # Label the search results with our theme labels
             labeler = ScreenerLabeler(llm_model=self.llm_model)
-            self.notify_observers(f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} themes")
+            self.notify_observers(
+                f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} themes"
+            )
             df_labels = labeler.get_labels(
                 main_theme=self.main_theme,
                 labels=terminal_labels,
                 texts=df_sentences["masked_text"].tolist(),
             )
-            self.notify_observers(f"Labelling completed")
+            self.notify_observers("Labelling completed")
             # Merge and process results
-            self.notify_observers(f"Post-processing results")
+            self.notify_observers("Post-processing results")
             df = merge(df_sentences, df_labels, left_index=True, right_index=True)
             df = labeler.post_process_dataframe(df)
 
@@ -172,8 +189,10 @@ class ThematicScreener(Workflow):
                     "df_motivation": DataFrame(),
                     "theme_tree": theme_tree,
                 }
-            self.notify_observers(f"Results post-processed")
-            self.notify_observers(f"Scoring thematic exposure for {len(df['Company'])} companies")
+            self.notify_observers("Results post-processed")
+            self.notify_observers(
+                f"Scoring thematic exposure for {len(df['Company'])} companies"
+            )
             df_company = get_scored_df(
                 df,
                 index_columns=["Company", "Ticker", "Industry"],
@@ -182,17 +201,19 @@ class ThematicScreener(Workflow):
             df_industry = get_scored_df(
                 df, index_columns=["Industry"], pivot_column="Theme"
             )
-            self.notify_observers(f"Thematic exposure scored")
-            self.notify_observers(f"Generating motivations for {len(df_company)} companies")
+            self.notify_observers("Thematic exposure scored")
+            self.notify_observers(
+                f"Generating motivations for {len(df_company)} companies"
+            )
             motivation_generator = Motivation(model=self.llm_model)
             motivation_df = motivation_generator.generate_company_motivations(
                 df=df, theme_name=self.main_theme, word_range=word_range
             )
-            self.notify_observers(f"Motivations generated")
+            self.notify_observers("Motivations generated")
 
             # Export to Excel if path provided
             if export_path:
-                self.notify_observers(f"Exporting results to excel")
+                self.notify_observers("Exporting results to excel")
                 save_to_excel(
                     file_path=export_path,
                     tables={
@@ -202,7 +223,7 @@ class ThematicScreener(Workflow):
                         "Motivations": (motivation_df, (0, 0)),
                     },
                 )
-                self.notify_observers(f"Results exported.")
+                self.notify_observers("Results exported.")
         except Exception:
             execution_result = "error"
             raise

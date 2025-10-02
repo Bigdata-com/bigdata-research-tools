@@ -1198,6 +1198,15 @@ INFO:__main__:  Bloomberg: 8 documents
 
 ---
 
+
+## Tooling
+This project uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting and [ty](https://docs.astral.sh/ty/) for a type checker. To ensure your code adheres to the project's style guidelines, run the following commands before committing your changes:
+```bash
+make type-check
+make lint
+make format
+```
+
 ## License
 
 This software is licensed for use solely under the terms agreed upon in the

@@ -56,7 +56,6 @@ class Labeler:
         """
         response_mapping = {}
         for response in responses:
-
             if not response or not isinstance(response, dict):
                 continue
 

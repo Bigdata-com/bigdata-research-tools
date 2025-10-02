@@ -19,6 +19,7 @@ class TraceEventNames(Enum):
     COMPANY_SEARCH = "CompanySearchRun"
     RUN_SEARCH = "SearchRun"
 
+
 @dataclasses.dataclass
 class Trace:
     event_name: TraceEventNames = None

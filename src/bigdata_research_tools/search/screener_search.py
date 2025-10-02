@@ -1,5 +1,5 @@
 from logging import Logger, getLogger
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import ListQueryComponent
@@ -14,14 +14,13 @@ from bigdata_research_tools.prompts.labeler import (
     get_target_entity_placeholder,
 )
 from bigdata_research_tools.search.query_builder import (
-    build_batched_query,
     EntitiesToSearch,
+    build_batched_query,
     create_date_ranges,
 )
 from bigdata_research_tools.search.search import run_search
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.search.search_utils import filter_search_results
-
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 logger: Logger = getLogger(__name__)
 
@@ -113,9 +112,9 @@ def search_by_companies(
         # Extract entities for search querying
         entity_keys = [entity.id for entity in companies]
 
-    # Create entity configs
+        # Create entity configs
         entities_config = EntitiesToSearch(companies=entity_keys)
-        
+
         # If control_entities are provided, create a control EntityConfig
         # For this example, assuming control_entities are all company entities
         control_entities_config = None
@@ -158,7 +157,7 @@ def search_by_companies(
         results, entities = filter_search_results(results)
         # Filter entities to only include COMPANY entities
         entities = filter_company_entities(entities)
-        
+
         # Determine whether to filter by companies based on document type
         # For filings and transcripts, we don't need to filter as we use reporting entities
         # For news, we need to check against our original universe of companies as a news article
@@ -188,6 +187,7 @@ def search_by_companies(
 
     return df_sentences
 
+
 def filter_company_entities(
     entities: List[ListQueryComponent],
 ) -> List[ListQueryComponent]:
@@ -204,6 +204,7 @@ def filter_company_entities(
         for entity in entities
         if hasattr(entity, "entity_type") and getattr(entity, "entity_type") == "COMP"
     ]
+
 
 def process_screener_search_results(
     results: List[Document],
@@ -315,7 +316,7 @@ def process_screener_search_results(
 
                     if not entity_key:
                         continue  # Skip if entity is not found
-                    
+
                     # # if entity isn't in our original watchlist, skip
                     if companies and entity_key not in companies:
                         continue
@@ -362,9 +363,7 @@ def process_screener_search_results(
     return df.reset_index(drop=True)
 
 
-def mask_sentences(
-    df: DataFrame
-) -> DataFrame:
+def mask_sentences(df: DataFrame) -> DataFrame:
     """
     Mask the target entity and other entities in the text.
 

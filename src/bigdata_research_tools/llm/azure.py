@@ -69,7 +69,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
                 )
 
                 return chat_completion.choices[0].message.content
-            except Exception as e:
+            except Exception:
                 if attempt == max_retries - 1:
                     raise
                 await asyncio.sleep(delay)
@@ -195,7 +195,7 @@ class AzureProvider(LLMProvider):
                 )
 
                 return chat_completion.choices[0].message.content
-            except Exception as e:
+            except Exception:
                 if attempt == max_retries - 1:
                     raise
                 time.sleep(delay)

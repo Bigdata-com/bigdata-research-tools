@@ -144,6 +144,7 @@ def get_screener_system_prompt(
         unknown_label=unknown_label,
     )
 
+
 risk_system_prompt_template: str = """
 
 Forget all previous prompts.
@@ -308,9 +309,9 @@ Output:
 
 """
 
+
 def get_risk_system_prompt(main_theme: str, label_summaries: List[str]) -> str:
     """Generate a system prompt for labeling sentences with thematic labels."""
     return risk_system_prompt_template.format(
-        main_theme=main_theme,
-        label_summaries=label_summaries
+        main_theme=main_theme, label_summaries=label_summaries
     )

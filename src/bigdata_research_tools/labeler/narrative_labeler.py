@@ -149,6 +149,6 @@ class NarrativeLabeler(Labeler):
         ]
 
         sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Chunk Text"]
-        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True) 
-        
+        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)
+
         return df
