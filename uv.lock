@@ -318,8 +318,8 @@ wheels = [
 
 [[package]]
 name = "bigdata-research-tools"
-version = "0.99.0"
-source = { virtual = "." }
+version = "1.0.0b0"
+source = { editable = "." }
 dependencies = [
     { name = "bigdata-client" },
     { name = "graphviz" },
