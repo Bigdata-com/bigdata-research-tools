@@ -354,7 +354,7 @@ Parameters to run the analysis end-to-end.
 |-----------|------|---------|-------------|
 | `document_limit` | `int` | `10` | Documents per query  (see [Document Limit Guide](#document-limit))|
 | `batch_size` | `int` | `10` | Batch size for processing  (see [Batch Size Parameter Guide](#batch-size))|
-| `freq` | `str` | `"3M"` | Date range frequency  (see [Frequency Parameter Guide](#frequency))|
+| `frequency` | `str` | `"3M"` | Date range frequency  (see [Frequency Parameter Guide](#frequency))|
 | `export_path` | `str` | `None` | Excel export path |
 
 #### Return Values

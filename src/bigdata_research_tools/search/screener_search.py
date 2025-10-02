@@ -36,7 +36,7 @@ def search_by_companies(
     sources: Optional[List[str]] = None,
     keywords: Optional[List[str]] = None,
     control_entities: Optional[Dict] = None,
-    freq: str = "M",
+    frequency: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
     rerank_threshold: Optional[float] = None,
     document_limit: int = 50,
@@ -59,7 +59,7 @@ def search_by_companies(
         keywords (List[str]): A list of keywords for constructing keyword queries.
             If None, no keyword queries are created.
         control_entities (Dict): A dictionary of control entities of different types for creating co-mentions queries.
-        freq (str): The frequency of the date ranges. Defaults to '3M'.
+        frequency (str): The frequency of the date ranges. Defaults to '3M'.
         sort_by (SortBy): The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
         rerank_threshold (Optional[float]): The threshold for reranking the search results.
@@ -103,7 +103,7 @@ def search_by_companies(
             end_date=end_date,
             rerank_threshold=rerank_threshold,
             llm_model=None,
-            frequency=freq,
+            frequency=frequency,
             workflow_start_date=Trace.get_time_now(),
         )
 
@@ -136,7 +136,7 @@ def search_by_companies(
         )
 
         # Create list of date ranges
-        date_ranges = create_date_ranges(start_date, end_date, freq)
+        date_ranges = create_date_ranges(start_date, end_date, frequency)
 
         no_queries = len(batched_query)
         no_dates = len(date_ranges)

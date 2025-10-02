@@ -397,7 +397,7 @@ def _expand_queries(
     return queries_expanded
     
 def create_date_intervals(
-    start_date: str, end_date: str, freq: str
+    start_date: str, end_date: str, frequency: str
 ) -> List[Tuple[pd.Timestamp, pd.Timestamp]]:
     """
     Generates date intervals based on a specified frequency within a given start and end date range.
@@ -407,7 +407,7 @@ def create_date_intervals(
             The start date in 'YYYY-MM-DD' format.
         end_date (str):
             The end date in 'YYYY-MM-DD' format.
-        freq (str):
+        frequency (str):
             The frequency for intervals. Supported values:
                 - 'Y': Yearly intervals.
                 - 'M': Monthly intervals.
@@ -443,11 +443,11 @@ def create_date_intervals(
 
     # Adjust frequency for yearly and monthly to use appropriate start markers
     # 'AS' for year start, 'MS' for month start
-    adjusted_freq = freq.replace("Y", "AS").replace("M", "MS")
+    adjusted_freq = frequency.replace("Y", "AS").replace("M", "MS")
 
     # Generate date range based on the adjusted frequency
     try:
-        date_range = pd.date_range(start=start_date, end=end_date, freq=adjusted_freq)
+        date_range = pd.date_range(start=start_date, end=end_date, frequency=adjusted_freq)
     except ValueError:
         raise ValueError("Invalid frequency. Use 'Y', 'M', 'W', or 'D'.")
 
@@ -475,7 +475,7 @@ def create_date_intervals(
 
 
 def create_date_ranges(
-    start_date: str, end_date: str, freq: str
+    start_date: str, end_date: str, frequency: str
 ) -> List[AbsoluteDateRange]:
     """
     Generates a list of `AbsoluteDateRange` objects based on the specified frequency.
@@ -485,7 +485,7 @@ def create_date_ranges(
             The start date in 'YYYY-MM-DD' format.
         end_date (str):
             The end date in 'YYYY-MM-DD' format.
-        freq (str):
+        frequency (str):
             The frequency for dividing the date range. Supported values:
                 - 'Y': Yearly.
                 - 'M': Monthly.
@@ -502,5 +502,5 @@ def create_date_ranges(
         2. Converts each interval (start and end tuple) into an `AbsoluteDateRange` object.
         3. Returns a list of these `AbsoluteDateRange` objects.
     """
-    intervals = create_date_intervals(start_date, end_date, freq=freq)
+    intervals = create_date_intervals(start_date, end_date, frequency=frequency)
     return [AbsoluteDateRange(start, end) for start, end in intervals]

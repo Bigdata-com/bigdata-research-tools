@@ -4042,21 +4042,21 @@ transcripts, and SEC filings:
     print("Mining news narratives...")
     news_results = news_miner.mine_narratives(
         document_limit=100,
-        freq='W',  # Weekly frequency
+        frequency='W',  # Weekly frequency
         export_path=news_results_path
     )
     
     print("Mining earnings call transcripts...")
     transcripts_results = transcripts_miner.mine_narratives(
         document_limit=100,
-        freq='M',  # Monthly frequency (earnings are quarterly)
+        frequency='M',  # Monthly frequency (earnings are quarterly)
         export_path=transcripts_results_path
     )
     
     print("Mining SEC filings...")
     filings_results = filings_miner.mine_narratives(
         document_limit=100,
-        freq='M',  # Monthly frequency (filings are quarterly)
+        frequency='M',  # Monthly frequency (filings are quarterly)
         export_path=filings_results_path
     )
 
@@ -4376,13 +4376,13 @@ overall source scores.
 
       # Narrative Analysis Functions
       
-      def prepare_narrative_data(df, freq='W'):
+      def prepare_narrative_data(df, frequency='W'):
           """
           Prepare narrative data for visualization by creating time series of narrative counts,
           converting to z-scores, and applying smoothing.
           """
           pivot_df = pd.pivot_table(df, index='Date', columns='Label', aggfunc='size', fill_value=0)
-          resampled_df = pivot_df.resample(freq).sum()
+          resampled_df = pivot_df.resample(frequency).sum()
       
           # Calculate z-scores for each narrative
           zscore_df = pd.DataFrame()
@@ -4602,7 +4602,7 @@ and a narrative breakdown chart for news media.
     def visualize_news_narrative_breakdown():
             """Create a stacked area chart showing the breakdown of specific narratives in news with unique colors"""
             # Prepare news narrative data
-            news_narratives = prepare_narrative_data(news_df, freq='W')
+            news_narratives = prepare_narrative_data(news_df, frequency='W')
             
             # Filter to only include the top narratives
             max_values = news_narratives.max()

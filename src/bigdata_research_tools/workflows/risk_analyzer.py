@@ -95,14 +95,14 @@ class RiskAnalyzer(Workflow):
     def retrieve_results(
         self,
         sentences: List[str],
-        freq: str = "3M",
+        frequency: str = "3M",
         document_limit: int = 10,
         batch_size: int = 10,
     ) -> DataFrame:
         """Retrieve search results based on the provided sentences and parameters.
         Args:
             sentences (List[str]): List of sentences to search for.
-            freq (str): The frequency of the date ranges. Supported values:
+            frequency (str): The frequency of the date ranges. Supported values:
                 - 'Y': Yearly intervals.
                 - 'M': Monthly intervals.
                 - 'W': Weekly intervals.
@@ -126,7 +126,7 @@ class RiskAnalyzer(Workflow):
             fiscal_year=self.fiscal_year,
             sources=self.sources,
             rerank_threshold=self.rerank_threshold,
-            freq=freq,
+            frequency=frequency,
             document_limit=document_limit,
             batch_size=batch_size,
         )
@@ -345,7 +345,7 @@ class RiskAnalyzer(Workflow):
             self.notify_observers(f"Searching companies for risk exposure")
             df_sentences = self.retrieve_results(
                 sentences=risk_summaries,
-                freq=frequency,
+                frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
             )

@@ -141,7 +141,7 @@ class ThematicScreener(Workflow):
                 fiscal_year=self.fiscal_year,
                 sources=self.sources,
                 rerank_threshold=self.rerank_threshold,
-                freq=frequency,
+                frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
                 current_trace=current_trace,

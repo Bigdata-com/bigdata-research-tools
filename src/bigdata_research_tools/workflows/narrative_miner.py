@@ -56,7 +56,7 @@ class NarrativeMiner(Workflow):
         self,
         document_limit: int = 10,
         batch_size: int = 10,
-        freq: str = "3M",
+        frequency: str = "3M",
         export_path: Optional[str] = None,
     ) -> Dict:
         """
@@ -65,7 +65,7 @@ class NarrativeMiner(Workflow):
         Args:
             document_limit: Maximum number of documents to analyze.
             batch_size: Size of batches for processing.
-            freq: Frequency for analysis ('M' for monthly).
+            frequency: Frequency for analysis ('M' for monthly).
             export_path: Optional path to export results to an Excel file.
 
         Returns:
@@ -87,7 +87,7 @@ class NarrativeMiner(Workflow):
             end_date=self.end_date,
             rerank_threshold=self.rerank_threshold,
             llm_model=self.llm_model,
-            frequency=freq,
+            frequency=frequency,
             workflow_start_date=Trace.get_time_now(),
         )
         try:
@@ -99,7 +99,7 @@ class NarrativeMiner(Workflow):
                 rerank_threshold=self.rerank_threshold,
                 start_date=self.start_date,
                 end_date=self.end_date,
-                freq=freq,
+                frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
                 scope=self.document_type,

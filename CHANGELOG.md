@@ -7,7 +7,7 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.99.0] - 2025-07-03
+## [0.99.0] - Unreleased
 Preparation for a first stable release.
 
 ### Changed
@@ -17,6 +17,7 @@ Preparation for a first stable release.
   features related to Excel in one place.
 - Renamed `settings` to `utils` to better reflect its purpose as a utility module and free
   the name for future use.
+- Renamed all `freq` parameters to `frequency` for better clarity and consistency accross workflows.
 
 ## [0.20.1] - 2025-09-16
 

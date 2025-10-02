@@ -30,7 +30,7 @@ def search_narratives(
     sources: Optional[List[str]] = None,
     keywords: Optional[List[str]] = None,
     control_entities: Optional[List[str]] = None,
-    freq: str = "M",
+    frequency: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
     rerank_threshold: Optional[float] = None,
     document_limit: int = 50,
@@ -53,7 +53,7 @@ def search_narratives(
             If None, no keyword queries are created.
         control_entities (Optional[List[str]]): A list of control entity IDs for creating co-mentions queries.
             If None, no control queries are created.
-        freq (str): The frequency of the date ranges. Defaults to 'M'.
+        frequency (str): The frequency of the date ranges. Defaults to 'M'.
         sort_by (SortBy): The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
         rerank_threshold (Optional[float]): The threshold for reranking the search results.
@@ -91,7 +91,7 @@ def search_narratives(
     )
 
     # Create list of date ranges
-    date_ranges = create_date_ranges(start_date, end_date, freq)
+    date_ranges = create_date_ranges(start_date, end_date, frequency)
 
     no_queries = len(batched_query)
     no_dates = len(date_ranges)
