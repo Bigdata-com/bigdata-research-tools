@@ -1,5 +1,3 @@
-from typing import Dict
-
 from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.client import bigdata_connection
@@ -14,7 +12,7 @@ def risk_analyzer_example(
     control_entities: dict = {"place": ["Canada", "Mexico"]},
     focus: str = "",
     export_path: str = "risk_analyzer_results.xlsx",
-) -> Dict:
+) -> dict:
     GRID_watchlist_ID = "44118802-9104-4265-b97a-2e6d88d74893"
 
     bigdata = bigdata_connection()

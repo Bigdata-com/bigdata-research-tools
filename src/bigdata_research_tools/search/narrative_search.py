@@ -1,8 +1,7 @@
 from logging import Logger, getLogger
-from typing import List, Optional
 
 from bigdata_client.document import Document
-from bigdata_client.models.advanced_search_query import ListQueryComponent
+from bigdata_client.models.entities import Concept
 from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
@@ -22,17 +21,17 @@ logger: Logger = getLogger(__name__)
 
 
 def search_narratives(
-    sentences: List[str],
+    sentences: list[str],
     start_date: str,
     end_date: str,
     scope: DocumentType,
-    fiscal_year: Optional[int] = None,
-    sources: Optional[List[str]] = None,
-    keywords: Optional[List[str]] = None,
-    control_entities: Optional[List[str]] = None,
+    fiscal_year: int | None = None,
+    sources: list[str] | None = None,
+    keywords: list[str] | None = None,
+    control_entities: list[str] | None = None,
     frequency: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
-    rerank_threshold: Optional[float] = None,
+    rerank_threshold: float | None = None,
     document_limit: int = 50,
     batch_size: int = 10,
     **kwargs,
@@ -91,7 +90,9 @@ def search_narratives(
     )
 
     # Create list of date ranges
-    date_ranges = create_date_ranges(start_date, end_date, frequency)
+    date_ranges = create_date_ranges(
+        start_date, end_date, frequency, return_datetime=True
+    )
 
     no_queries = len(batched_query)
     no_dates = len(date_ranges)
@@ -117,8 +118,8 @@ def search_narratives(
 
 
 def _process_narrative_search(
-    results: List[Document],
-    entities: List[ListQueryComponent],
+    results: list[Document],
+    entities: list[Concept],
 ) -> DataFrame:
     """
     Build a dataframe for when no companies are specified.

@@ -1,7 +1,7 @@
 import ast
 import json
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Any
 
 import graphviz
 from json_repair import repair_json
@@ -11,7 +11,7 @@ from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
 from bigdata_research_tools.prompts.themes import compose_themes_system_prompt
 
-themes_default_llm_model_config: Dict[str, Any] = {
+themes_default_llm_model_config: dict[str, Any] = {
     "provider": "openai",
     "model": "gpt-4o-mini",
     "kwargs": {
@@ -40,18 +40,15 @@ class SemanticTree:
         summary (str): A brief explanation of the node's relevance. For the root node,
             this describes the overall relevance of the tree; for sub-nodes, it explains their
             connection to the parent node.
-        children (Optional[List[SemanticTree]]): A list of child nodes representing sub-units.
-        keywords (Optional[List[str]]): A list of keywords summarizing the current node.
+        children (list[SemanticTree] | None): A list of child nodes representing sub-units.
+        keywords (list[str] | None): A list of keywords summarizing the current node.
     """
 
     label: str
     node: int
-    summary: str = None
-    children: List["SemanticTree"] = None
-    keywords: Optional[List[str]] = None
-
-    def __post_init__(self):
-        self.children = self.children or []
+    summary: str = ""
+    children: list["SemanticTree"] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
 
     def __str__(self) -> str:
         return self.as_string()
@@ -70,7 +67,7 @@ class SemanticTree:
         # Handle case sensitivity in keys
         tree_dict = dict_keys_to_lowercase(tree_dict)
 
-        tree = SemanticTree(**tree_dict)
+        tree = SemanticTree(**tree_dict)  # ty: ignore[missing-argument]
         tree.children = [
             SemanticTree.from_dict(child) for child in tree_dict.get("children", [])
         ]
@@ -104,7 +101,7 @@ class SemanticTree:
             s += child.as_string(prefix=child_prefix)
         return s
 
-    def get_label_summaries(self) -> Dict[str, str]:
+    def get_label_summaries(self) -> dict[str, str]:
         """
         Extract the label summaries from the tree.
 
@@ -116,7 +113,7 @@ class SemanticTree:
             label_summary.update(child.get_label_summaries())
         return label_summary
 
-    def get_summaries(self) -> List[str]:
+    def get_summaries(self) -> list[str]:
         """
         Extract the node summaries from a SemanticTree.
 
@@ -128,7 +125,7 @@ class SemanticTree:
             summaries.extend(child.get_summaries())
         return summaries
 
-    def get_terminal_label_summaries(self) -> Dict[str, str]:
+    def get_terminal_label_summaries(self) -> dict[str, str]:
         """
         Extract the items (labels, summaries) from terminal nodes of the tree.
 
@@ -143,7 +140,7 @@ class SemanticTree:
             label_summary.update(child.get_terminal_label_summaries())
         return label_summary
 
-    def get_terminal_labels(self) -> List[str]:
+    def get_terminal_labels(self) -> list[str]:
         """
         Extract the terminal labels from the tree.
 
@@ -152,7 +149,7 @@ class SemanticTree:
         """
         return list(self.get_terminal_label_summaries().keys())
 
-    def get_terminal_summaries(self) -> List[str]:
+    def get_terminal_summaries(self) -> list[str]:
         """
         Extract summaries from terminal nodes of the tree.
 
@@ -333,7 +330,7 @@ class SemanticTree:
 def generate_theme_tree(
     main_theme: str,
     focus: str = "",
-    llm_model_config: Dict[str, Any] = None,
+    llm_model_config: dict[str, Any] | None = None,
 ) -> SemanticTree:
     """
     Generate a `SemanticTree` class from a main theme and focus.
@@ -373,7 +370,7 @@ def generate_theme_tree(
     return SemanticTree.from_dict(tree_dict)
 
 
-def dict_keys_to_lowercase(d: Dict[str, Any]) -> Dict[str, Any]:
+def dict_keys_to_lowercase(d: dict[str, Any]) -> dict[str, Any]:
     """
     Convert all keys in a dictionary to lowercase, including nested dictionaries.
 
@@ -392,7 +389,7 @@ def dict_keys_to_lowercase(d: Dict[str, Any]) -> Dict[str, Any]:
     return new_dict
 
 
-def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
+def stringify_label_summaries(label_summaries: dict[str, str]) -> list[str]:
     """
     Convert the label summaries of a SemanticTree into a list of strings.
 
@@ -409,7 +406,7 @@ def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
 def generate_risk_tree(
     main_theme: str,
     focus: str = "",
-    llm_model_config: Dict[str, Any] = None,
+    llm_model_config: dict[str, Any] | None = None,
 ) -> SemanticTree:
     """
     Generate a `SemanticTree` class from a main theme and analyst focus.
@@ -433,6 +430,8 @@ def generate_risk_tree(
         SemanticTree: The generated theme tree.
     """
     ll_model_config = llm_model_config or themes_default_llm_model_config
+    if "kwargs" not in ll_model_config:
+        ll_model_config["kwargs"] = {}
     model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
     llm = LLMEngine(model=model_str)
 

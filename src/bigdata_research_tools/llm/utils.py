@@ -2,7 +2,7 @@ import asyncio
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger, getLogger
-from typing import List, Tuple
+from typing import Any, Coroutine
 
 from openai import APITimeoutError, RateLimitError
 from tqdm import tqdm
@@ -15,11 +15,11 @@ logger: Logger = getLogger(__name__)
 # https://platform.openai.com/docs/guides/batch
 def run_concurrent_prompts(
     llm_engine: AsyncLLMEngine,
-    prompts: List[str],
+    prompts: list[str],
     system_prompt: str,
     max_workers: int = 30,
     **kwargs,
-) -> List[str]:
+) -> list[str]:
     """
     Run the LLM on the received prompts, concurrently.
 
@@ -51,7 +51,7 @@ async def _fetch_with_semaphore(
     system_prompt: str,
     prompt: str,
     **kwargs,
-) -> Tuple[int, str]:
+) -> tuple[int, str]:
     """
     Fetch the response from the LLM engine with a semaphore.
 
@@ -86,10 +86,12 @@ async def _fetch_with_semaphore(
         return idx, ""
 
 
-async def _run_with_progress_bar(tasks) -> List:
+async def _run_with_progress_bar(
+    tasks: list[Coroutine[Any, Any, tuple[int, str]]],
+) -> list[str]:
     """Run asyncio tasks with a tqdm progress bar."""
     # Pre-allocate a list for results to preserve order
-    results = [None] * len(tasks)
+    results = [""] * len(tasks)
     with tqdm(total=len(tasks), desc="Querying an LLM...") as pbar:
         for coro in asyncio.as_completed(tasks):
             idx, result = await coro
@@ -103,11 +105,11 @@ async def _run_with_progress_bar(tasks) -> List:
 # Added function to run synchronous LLM calls in parallel using threads.
 def run_parallel_prompts(
     llm_engine,
-    prompts: List[str],
+    prompts: list[str],
     system_prompt: str,
     max_workers: int = 30,
     **kwargs,
-) -> List[str]:
+) -> list[str]:
     """
     Run the LLM on the received prompts concurrently using threads.
 
@@ -139,7 +141,7 @@ def run_parallel_prompts(
         logger.error(f"Failed to get response for prompt: {prompt}")
         return idx, ""
 
-    results = [None] * len(prompts)
+    results = [""] * len(prompts)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
             executor.submit(fetch, idx, prompt) for idx, prompt in enumerate(prompts)

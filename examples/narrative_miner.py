@@ -1,12 +1,10 @@
-from typing import Dict
-
 from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.utils.observer import OberserverNotification, Observer
 from bigdata_research_tools.workflows import NarrativeMiner
 
 
-def narrative_miner_example(export_path: str = "narrative_miner_sample.xlsx") -> Dict:
+def narrative_miner_example(export_path: str = "narrative_miner_sample.xlsx") -> dict:
     narrative_miner = NarrativeMiner(
         narrative_sentences=[
             "Supervised Learning Techniques",

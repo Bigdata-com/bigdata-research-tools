@@ -3,12 +3,11 @@ from json import JSONDecodeError
 from logging import Logger, getLogger
 from re import findall
 from time import sleep
-from typing import List, Tuple
 
 from bigdata_client.connection import RequestMaxLimitExceeds
 from bigdata_client.document import Document
-from bigdata_client.models.advanced_search_query import ListQueryComponent
 from bigdata_client.models.document import DocumentChunk
+from bigdata_client.models.entities import Concept
 from bigdata_client.query_type import QueryType
 from pydantic import ValidationError
 
@@ -17,7 +16,7 @@ from bigdata_research_tools.client import bigdata_connection
 logger: Logger = getLogger(__name__)
 
 
-def _collect_entity_keys(results: List[Document]) -> List[str]:
+def _collect_entity_keys(results: list[Document]) -> list[str]:
     """
     Collect all entity keys from the search results.
 
@@ -38,8 +37,8 @@ def _collect_entity_keys(results: List[Document]) -> List[str]:
 
 
 def _look_up_entities_binary_search(
-    entity_keys: List[str], max_batch_size: int = 50
-) -> List[ListQueryComponent]:
+    entity_keys: list[str], max_batch_size: int = 50
+) -> list[Concept]:
     """
     Look up entities using the Bigdata Knowledge Graph in a binary search manner.
 
@@ -54,7 +53,7 @@ def _look_up_entities_binary_search(
     entities = []
     non_entities = []
 
-    def depth_first_search(batch: List[str]) -> None:
+    def depth_first_search(batch: list[str]) -> None:
         """
         Recursively lookup entities in a depth-first search manner.
 
@@ -105,8 +104,8 @@ def _look_up_entities_binary_search(
 
 
 def filter_search_results(
-    results: List[List[Document]],
-) -> Tuple[List[Document], List[ListQueryComponent]]:
+    results: list[list[Document]],
+) -> tuple[list[Document], list[Concept]]:
     """
     Postprocess the search results to filter only COMPANY entities.
 
@@ -115,7 +114,7 @@ def filter_search_results(
             the function `bigdata_research_tools.search.run_search` with the
             parameter `only_results` set to True
     Returns:
-        Tuple[List[Document], List[ListQueryComponent]]: A tuple of the filtered
+        Tuple[List[Document], List[Concept]]: A tuple of the filtered
             search results and the entities.
     """
     # Flatten the list of result lists
@@ -128,9 +127,7 @@ def filter_search_results(
     return results, entities
 
 
-def build_chunk_entities(
-    chunk: DocumentChunk, entities: List[ListQueryComponent]
-) -> List[dict]:
+def build_chunk_entities(chunk: DocumentChunk, entities: list[Concept]) -> list[dict]:
     entity_key_map = {entity.id: entity for entity in entities}
 
     chunk_entities = [

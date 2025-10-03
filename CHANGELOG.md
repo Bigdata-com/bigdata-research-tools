@@ -23,6 +23,9 @@ Preparation for a first stable release.
 - Changed build system to use `uv_build` instead of `setuptools` to avoid issues with package data inclusion.
 - Fix duplicate dependencies in main vs optional dependencies. `openai` is now only optional while `graphviz`, `openpyxl` and `Pillow` is now only in main dependencies.
 
+### Removed
+- Removed support for Python 3.9 as it has reached its end of life. The minimum supported version is now Python 3.10.
+
 ## [0.20.1] - 2025-09-16
 
 ### Fix

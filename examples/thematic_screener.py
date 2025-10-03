@@ -1,5 +1,3 @@
-from typing import Dict
-
 from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.client import bigdata_connection
@@ -12,7 +10,7 @@ def thematic_screener_example(
     theme_name: str,
     llm_model: str = "openai::gpt-4o-mini",
     export_path: str = "thematic_screener_results.xlsx",
-) -> Dict:
+) -> dict:
     GRID_watchlist_ID = "a60c351a-1822-4a88-8c45-a4e78abd979a"
 
     bigdata = bigdata_connection()

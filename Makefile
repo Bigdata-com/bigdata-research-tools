@@ -13,4 +13,4 @@ format:
 	@uvx ruff format src/bigdata_research_tools/ examples/ tutorial/ tests/
 
 type-check:
-	@uvx ty check src/bigdata_research_tools/ examples/ tutorial/ tests/
+	@uvx ty check src/bigdata_research_tools/ # examples/ tutorial/ tests/

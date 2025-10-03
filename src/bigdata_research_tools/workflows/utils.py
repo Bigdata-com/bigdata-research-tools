@@ -2,8 +2,6 @@
 Script with any common helper functions used across the workflows.
 """
 
-from typing import List
-
 from IPython.display import HTML, display
 from pandas import DataFrame
 
@@ -36,7 +34,7 @@ def display_output_chunks_dataframe(final_df):
 
 
 def get_scored_df(
-    df: DataFrame, index_columns: List[str], pivot_column: str
+    df: DataFrame, index_columns: list[str], pivot_column: str
 ) -> DataFrame:
     """
     Calculate a Composite Score by pivoting the received DataFrame.

@@ -1,9 +1,7 @@
 from logging import Logger, getLogger
-from typing import Dict, List, Optional
 
 from bigdata_client.document import Document
-from bigdata_client.models.advanced_search_query import ListQueryComponent
-from bigdata_client.models.entities import Company
+from bigdata_client.models.entities import Company, Concept
 from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
@@ -26,18 +24,18 @@ logger: Logger = getLogger(__name__)
 
 
 def search_by_companies(
-    companies: List[Company],
-    sentences: List[str],
+    companies: list[Company],
+    sentences: list[str],
     start_date: str,
     end_date: str,
     scope: DocumentType = DocumentType.ALL,
-    fiscal_year: Optional[int] = None,
-    sources: Optional[List[str]] = None,
-    keywords: Optional[List[str]] = None,
-    control_entities: Optional[Dict] = None,
+    fiscal_year: int | None = None,
+    sources: list[str] | None = None,
+    keywords: list[str] | None = None,
+    control_entities: dict | None = None,
     frequency: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
-    rerank_threshold: Optional[float] = None,
+    rerank_threshold: float | None = None,
     document_limit: int = 50,
     batch_size: int = 10,
     **kwargs,
@@ -135,7 +133,9 @@ def search_by_companies(
         )
 
         # Create list of date ranges
-        date_ranges = create_date_ranges(start_date, end_date, frequency)
+        date_ranges = create_date_ranges(
+            start_date, end_date, frequency, return_datetime=True
+        )
 
         no_queries = len(batched_query)
         no_dates = len(date_ranges)
@@ -189,27 +189,27 @@ def search_by_companies(
 
 
 def filter_company_entities(
-    entities: List[ListQueryComponent],
-) -> List[ListQueryComponent]:
+    entities: list[Concept],
+) -> list[Concept]:
     """
     Filter only COMPANY entities from the list of entities.
 
     Args:
-        entities (List[ListQueryComponent]): A list of entities to filter.
+        entities (List[Concept]): A list of entities to filter.
     Returns:
-        List[ListQueryComponent]: A list of COMPANY entities.
+        List[Concept]: A list of COMPANY entities.
     """
     return [
         entity
         for entity in entities
-        if hasattr(entity, "entity_type") and getattr(entity, "entity_type") == "COMP"
+        if hasattr(entity, "entity_type") and entity.entity_type == "COMP"
     ]
 
 
 def process_screener_search_results(
-    results: List[Document],
-    entities: List[ListQueryComponent],
-    companies: Optional[List[Company]] = None,
+    results: list[Document],
+    entities: list[Concept],
+    companies: list[Company] | None = None,
     document_type: DocumentType = DocumentType.NEWS,
 ) -> DataFrame:
     """
@@ -217,7 +217,7 @@ def process_screener_search_results(
 
     Args:
         results (List[Document]): A list of Bigdata search results.
-        entities (List[ListQueryComponent]): A list of entities.
+        entities (List[Entity]): A list of entities.
         companies (Optional[List[Company]]): A list of companies to filter for.
             Only used for non-reporting entity documents.
         document_type (DocumentType): The type of documents being processed.

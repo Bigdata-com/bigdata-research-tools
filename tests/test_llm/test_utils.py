@@ -1,7 +1,8 @@
+from bigdata_research_tools.llm.base import AsyncLLMEngine
 from bigdata_research_tools.llm.utils import run_concurrent_prompts
 
 
-class DummyAsyncLLMEngine:
+class DummyAsyncLLMEngine(AsyncLLMEngine):
     async def get_response(self, chat_history, **kwargs):
         return "dummy response"
 

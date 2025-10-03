@@ -62,7 +62,9 @@ def main():
     logger.info(f"Generated {len(queries)} search queries")
 
     # Create date ranges for the search
-    date_ranges = create_date_ranges("2024-10-01", "2024-12-31", "M")  # Monthly
+    date_ranges = create_date_ranges(
+        "2024-10-01", "2024-12-31", "M", return_datetime=True
+    )  # Monthly
     logger.info(f"Searching across {len(date_ranges)} time periods")
 
     # Execute the search

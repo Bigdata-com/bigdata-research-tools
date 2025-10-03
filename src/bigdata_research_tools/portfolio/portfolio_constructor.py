@@ -42,8 +42,8 @@ class PortfolioConstructor:
         df: pd.DataFrame,
         score_col: str,
         balance_col: str,
-        weight_col: str = None,
-        size: int = None,
+        weight_col: str | None = None,
+        size: int | None = None,
         max_position_weight: float = 0.05,
         max_category_weight: float = 0.15,
         weight_method: WeightMethod = WeightMethod.EQUAL,
@@ -149,7 +149,10 @@ class PortfolioConstructor:
         return df[mask].copy()
 
     def _calculate_weights(
-        self, portfolio: pd.DataFrame, weight_method: WeightMethod, weight_col: str
+        self,
+        portfolio: pd.DataFrame,
+        weight_method: WeightMethod,
+        weight_col: str | None,
     ) -> pd.DataFrame:
         """
         Calculate initial weights based on the specified weighting method.

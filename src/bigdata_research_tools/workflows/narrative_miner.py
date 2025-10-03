@@ -1,5 +1,4 @@
 from logging import Logger, getLogger
-from typing import Dict, List, Optional
 
 from bigdata_client.models.search import DocumentType
 from pandas import merge
@@ -17,14 +16,14 @@ logger: Logger = getLogger(__name__)
 class NarrativeMiner(Workflow):
     def __init__(
         self,
-        narrative_sentences: List[str],
+        narrative_sentences: list[str],
         start_date: str,
         end_date: str,
         llm_model: str,
         document_type: DocumentType,
-        fiscal_year: Optional[int],
-        sources: Optional[List[str]] = None,
-        rerank_threshold: Optional[float] = None,
+        fiscal_year: int | None,
+        sources: list[str] | None = None,
+        rerank_threshold: float | None = None,
     ):
         """
         This class will track a set of user-defined narratives (specified in narrative_sentences) over
@@ -57,8 +56,8 @@ class NarrativeMiner(Workflow):
         document_limit: int = 10,
         batch_size: int = 10,
         frequency: str = "3M",
-        export_path: Optional[str] = None,
-    ) -> Dict:
+        export_path: str | None = None,
+    ) -> dict:
         """
         Mine narratives
 

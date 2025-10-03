@@ -1,5 +1,4 @@
 from logging import Logger, getLogger
-from typing import Dict, List, Optional, Tuple
 
 from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType
@@ -23,13 +22,13 @@ class ThematicScreener(Workflow):
         self,
         llm_model: str,
         main_theme: str,
-        companies: List[Company],
+        companies: list[Company],
         start_date: str,
         end_date: str,
         document_type: DocumentType,
-        fiscal_year: Optional[int] = None,
-        sources: Optional[List[str]] = None,
-        rerank_threshold: Optional[float] = None,
+        fiscal_year: int | None = None,
+        sources: list[str] | None = None,
+        rerank_threshold: float | None = None,
         focus: str = "",
     ):
         """
@@ -71,9 +70,9 @@ class ThematicScreener(Workflow):
         document_limit: int = 10,
         batch_size: int = 10,
         frequency: str = "3M",
-        word_range: Tuple[int, int] = (50, 100),
-        export_path: str = None,
-    ) -> Dict:
+        word_range: tuple[int, int] = (50, 100),
+        export_path: str | None = None,
+    ) -> dict:
         """
         Screen companies for the Executive Narrative Factor.
 

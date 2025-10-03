@@ -1,5 +1,4 @@
 from os import environ
-from typing import Dict, List
 
 
 def get_other_entity_placeholder() -> str:
@@ -87,7 +86,7 @@ screener_system_prompt_template: str = """
     - Ensure that all strings in the JSON are correctly formatted with proper quotes.
  """
 
-patent_prompts: Dict[str, str] = {
+patent_prompts: dict[str, str] = {
     "filing": """
 You are analyzing text to detect patent filing activities by "Target Company". 
 Determine if the text describes a legitimate patent filing.
@@ -127,7 +126,7 @@ Format response as a JSON object with this schema:
 }
 
 
-def get_narrative_system_prompt(theme_labels: List[str]) -> str:
+def get_narrative_system_prompt(theme_labels: list[str]) -> str:
     """Generate a system prompt for labeling sentences with narrative labels."""
     return narrative_system_prompt_template.format(
         theme_labels=theme_labels,
@@ -135,7 +134,7 @@ def get_narrative_system_prompt(theme_labels: List[str]) -> str:
 
 
 def get_screener_system_prompt(
-    main_theme: str, label_summaries: List[str], unknown_label: str
+    main_theme: str, label_summaries: list[str], unknown_label: str
 ) -> str:
     """Generate a system prompt for labeling sentences with thematic labels."""
     return screener_system_prompt_template.format(
@@ -166,7 +165,7 @@ Follow these guidelines:
 <exposure_assessment>
 - Examine whether the text explicitly mentions the Risk Scenario "{main_theme}" or any of its core components.
 - Ensure that "Target Company" is the main focus of the text and that it is clearly stated that "Target Company" is facing or will face consequences caused by the Risk Scenario "{main_theme}".
-- Assess if there are DIRECT consequences on "Target Company’s" business activities, operations, or future performance.
+- Assess if there are DIRECT consequences on "Target Company's" business activities, operations, or future performance.
 - Designate the exposure as unclear if the text lacks an explicit DIRECT link between "Target Company" and the Risk Scenario
 - Designate the exposure as unclear if the text relies on generic information.
 </exposure_assessment>
@@ -237,7 +236,7 @@ ID: 2
 Entity Sector: Retail
 Entity Industry: Apparel
 Headline: "Economic Challenges Ahead Due to Tariffs on China"
-Text: "Target Company’s analysts report a potential economic downturn linked to new tariffs against China."
+Text: "Target Company's analysts report a potential economic downturn linked to new tariffs against China."
 Risk Scenario: "New Tariffs Against China"
 Output:
 
@@ -265,7 +264,7 @@ ID: 4
 Entity Sector: Finance
 Entity Industry: Investment Banking
 Headline: "Market Trends Influence Stock Performance"
-Text: "Target Company’s stock is influenced by broad market trends."
+Text: "Target Company's stock is influenced by broad market trends."
 Risk Scenario: "Increased Uncertainty and Volatility"
 Output:
 
@@ -310,7 +309,7 @@ Output:
 """
 
 
-def get_risk_system_prompt(main_theme: str, label_summaries: List[str]) -> str:
+def get_risk_system_prompt(main_theme: str, label_summaries: list[str]) -> str:
     """Generate a system prompt for labeling sentences with thematic labels."""
     return risk_system_prompt_template.format(
         main_theme=main_theme, label_summaries=label_summaries

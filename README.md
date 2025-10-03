@@ -477,7 +477,7 @@ results = run_search(
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `queries` | `List[QueryComponent]` |  | List of search queries |
-| `date_ranges` | `DATE_RANGE_TYPE` | `None` | Date range specifications |
+| `date_ranges` | `INPUT_DATE_RANGE` |  | Date range specifications |
 | `limit` | `int` | `10` | Results per query |
 | `only_results` | `bool` | `True` | Return format control |
 | `scope` | `DocumentType` | `ALL` | Document type filter |

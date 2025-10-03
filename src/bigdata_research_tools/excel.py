@@ -1,9 +1,8 @@
 from logging import Logger, getLogger
-from typing import List, Tuple
 
 import pandas as pd
 
-from bigdata_research_tools.utils import (
+from bigdata_research_tools.utils.files import (
     check_libraries_installed,
     get_resources_path,
 )
@@ -52,7 +51,7 @@ class ExcelManager:
 
     def save_workbook(
         self,
-        df_args: List[Tuple[pd.DataFrame, str, Tuple[int, int]]],
+        df_args: list[tuple[pd.DataFrame, str, tuple[int, int]]],
         workbook_path: str,
     ) -> None:
         """Save DataFrames to Excel workbook."""

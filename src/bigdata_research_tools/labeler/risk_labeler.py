@@ -1,5 +1,5 @@
 from logging import Logger, getLogger
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pandas import DataFrame, Series
 
@@ -23,7 +23,7 @@ class RiskLabeler(Labeler):
     def __init__(
         self,
         llm_model: str,
-        label_prompt: Optional[str] = None,
+        label_prompt: str | None = None,
         # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
         #  Changing it here would break the process.
         unknown_label: str = "unclear",
@@ -44,10 +44,10 @@ class RiskLabeler(Labeler):
     def get_labels(
         self,
         main_theme: str,
-        labels: List[str],
-        texts: List[str],
+        labels: list[str],
+        texts: list[str],
         max_workers: int = 50,
-        textsconfig: Optional[List[Dict[str, Any]]] = [],
+        textsconfig: list[dict[str, Any]] | None = None,
     ) -> DataFrame:
         """
         Process thematic labels for texts.
@@ -81,7 +81,7 @@ class RiskLabeler(Labeler):
         return self._deserialize_label_responses(responses)
 
     def post_process_dataframe(
-        self, df: DataFrame, extra_fields: dict, extra_columns: List[str]
+        self, df: DataFrame, extra_fields: dict, extra_columns: list[str]
     ) -> DataFrame:
         """
         Post-process the labeled DataFrame.

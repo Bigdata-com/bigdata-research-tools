@@ -1,5 +1,4 @@
 from logging import Logger, getLogger
-from typing import Dict, List, Optional, Tuple
 
 from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType
@@ -23,15 +22,15 @@ class RiskAnalyzer(Workflow):
         self,
         llm_model: str,
         main_theme: str,
-        companies: List[Company],
+        companies: list[Company],
         start_date: str,
         end_date: str,
         document_type: DocumentType,
-        keywords: Optional[List[str]] = None,
-        control_entities: Optional[Dict[str, List[str]]] = None,
-        fiscal_year: Optional[int] = None,
-        sources: Optional[List[str]] = None,
-        rerank_threshold: Optional[float] = None,
+        keywords: list[str] | None = None,
+        control_entities: dict[str, list[str]] | None = None,
+        fiscal_year: int | None = None,
+        sources: list[str] | None = None,
+        rerank_threshold: float | None = None,
         focus: str = "",
     ):
         """
@@ -92,7 +91,7 @@ class RiskAnalyzer(Workflow):
 
     def retrieve_results(
         self,
-        sentences: List[str],
+        sentences: list[str],
         frequency: str = "3M",
         document_limit: int = 10,
         batch_size: int = 10,
@@ -132,8 +131,8 @@ class RiskAnalyzer(Workflow):
         return df_sentences
 
     def _add_prompt_fields(
-        self, df_sentences: DataFrame, additional_prompt_fields: Optional[List] = None
-    ) -> List[Dict]:
+        self, df_sentences: DataFrame, additional_prompt_fields: list[str] | None = None
+    ) -> list[dict]:
         """
         Add additional fields from the DataFrame for the labeling prompt.
 
@@ -158,7 +157,7 @@ class RiskAnalyzer(Workflow):
         df_sentences,
         terminal_labels,
         risk_tree: SemanticTree,
-        additional_prompt_fields: Optional[List] = None,
+        additional_prompt_fields: list[str] | None = None,
     ):
         """
         Label the search results with our theme labels.
@@ -222,7 +221,7 @@ class RiskAnalyzer(Workflow):
         return df, df_clean
 
     def generate_results(
-        self, df_labeled: DataFrame, word_range: Tuple[int, int] = (50, 100)
+        self, df_labeled: DataFrame, word_range: tuple[int, int] = (50, 100)
     ):
         """Generate the Pivot Tables with factor Scores for companies and industries."""
 
@@ -288,9 +287,9 @@ class RiskAnalyzer(Workflow):
         document_limit: int = 10,
         batch_size: int = 10,
         frequency: str = "3M",
-        word_range: Tuple[int, int] = (50, 100),
-        export_path: str = None,
-    ) -> Dict:
+        word_range: tuple[int, int] = (50, 100),
+        export_path: str | None = None,
+    ) -> dict:
         """
         Screen companies for the Executive Narrative Factor.
 

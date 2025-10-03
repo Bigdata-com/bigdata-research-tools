@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from datetime import datetime
 from itertools import chain, zip_longest
-from typing import Dict, List, Optional, Tuple, Type
+from typing import Type
 
 import pandas as pd
 from bigdata_client.daterange import AbsoluteDateRange
@@ -23,16 +24,16 @@ from bigdata_research_tools.client import bigdata_connection
 
 @dataclass
 class EntitiesToSearch:
-    people: Optional[List[str]] = None
-    product: Optional[List[str]] = None
-    org: Optional[List[str]] = None
-    place: Optional[List[str]] = None
-    topic: Optional[List[str]] = None
-    concepts: Optional[List[str]] = None
-    companies: Optional[List[str]] = None
+    people: list[str] | None = None
+    product: list[str] | None = None
+    org: list[str] | None = None
+    place: list[str] | None = None
+    topic: list[str] | None = None
+    concepts: list[str] | None = None
+    companies: list[str] | None = None
 
     @staticmethod
-    def get_entity_type_map() -> Dict[str, Type]:
+    def get_entity_type_map() -> dict[str, Type]:
         return {
             "people": Person,
             "product": Product,
@@ -44,7 +45,7 @@ class EntitiesToSearch:
         }
 
 
-def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
+def build_similarity_queries(sentences: list[str]) -> list[Similarity]:
     """
     Processes a list of sentences to create a list of Similarity query objects, ensuring no duplicates.
 
@@ -71,16 +72,16 @@ def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
 
 
 def build_batched_query(
-    sentences: List[str],
-    keywords: Optional[List[str]],
-    entities: Optional[EntitiesToSearch],
-    control_entities: Optional[EntitiesToSearch],
-    sources: Optional[List[str]],
+    sentences: list[str],
+    keywords: list[str] | None,
+    entities: EntitiesToSearch | None,
+    control_entities: EntitiesToSearch | None,
+    sources: list[str] | None,
     batch_size: int,
-    fiscal_year: Optional[int],
+    fiscal_year: int | None,
     scope: DocumentType,
-    custom_batches: Optional[List[EntitiesToSearch]],
-) -> List[QueryComponent]:
+    custom_batches: list[EntitiesToSearch] | None,
+) -> list[QueryComponent]:
     """
     Builds a list of batched query objects based on the provided parameters.
 
@@ -146,7 +147,7 @@ def build_batched_query(
 
 
 def _validate_parameters(
-    document_scope: DocumentType = None, fiscal_year: int = None
+    document_scope: DocumentType | None = None, fiscal_year: int | None = None
 ) -> None:
     """
     Validates parameters based on predefined rules.
@@ -171,10 +172,10 @@ def _validate_parameters(
 
 
 def _build_base_queries(
-    sentences: Optional[List[str]],
-    keywords: Optional[List[str]],
-    sources: Optional[List[str]],
-) -> Tuple[List[QueryComponent], Optional[QueryComponent], Optional[QueryComponent]]:
+    sentences: list[str] | None,
+    keywords: list[str] | None,
+    sources: list[str] | None,
+) -> tuple[list[QueryComponent], QueryComponent | None, QueryComponent | None]:
     """Build the base queries from sentences, keywords, and sources."""
     # Create similarity queries from sentences
     queries = build_similarity_queries(sentences) if sentences else []
@@ -189,7 +190,7 @@ def _build_base_queries(
 
 
 def _get_entity_ids(
-    entity_names: List[str],
+    entity_names: list[str],
     entity_type: Type,
 ) -> list[Type]:
     bigdata = bigdata_connection()
@@ -270,11 +271,11 @@ def _build_control_entity_query(
 
 
 def _build_entity_batch_queries(
-    entities: EntitiesToSearch,
-    custom_batches: List[EntitiesToSearch],
+    entities: EntitiesToSearch | None,
+    custom_batches: list[EntitiesToSearch],
     batch_size: int,
     scope: DocumentType,
-) -> List[Optional[QueryComponent]]:
+) -> list[QueryComponent] | list[None]:
     """Build entity batch queries from either custom batches or auto-batched entities."""
 
     # If no entities specified, return a single None to ensure at least one iteration
@@ -299,14 +300,14 @@ def _get_entity_type(scope: DocumentType) -> type:
 
 
 def _build_custom_batch_queries(
-    custom_batches: List[EntitiesToSearch], scope: DocumentType
-) -> List[QueryComponent]:
+    custom_batches: list[EntitiesToSearch], scope: DocumentType
+) -> list[QueryComponent] | list[None]:
     """Build entity queries from a list of EntitiesToSearch objects."""
     entity_type_map = EntitiesToSearch.get_entity_type_map()
 
     def get_entity_ids_for_attr(
         entity_config: EntitiesToSearch, attr_name: str, entity_class
-    ) -> List[int]:
+    ) -> list[int]:
         """Get entity IDs for a specific attribute."""
         entity_names = getattr(entity_config, attr_name, None)
         if not entity_names:
@@ -337,7 +338,7 @@ def _auto_batch_entities(
     entities: EntitiesToSearch,
     batch_size: int,
     scope: DocumentType = DocumentType.ALL,
-) -> List[QueryComponent]:
+) -> list[QueryComponent]:
     """Auto-batch entities by type using the specified batch size."""
 
     # Create batches for each entity type
@@ -374,14 +375,14 @@ def _auto_batch_entities(
 
 
 def _expand_queries(
-    base_queries_tuple: Tuple[
-        List[QueryComponent], Optional[QueryComponent], Optional[QueryComponent]
+    base_queries_tuple: tuple[
+        list[QueryComponent], QueryComponent | None, QueryComponent | None
     ],
-    entity_batch_queries: Optional[List[Optional[QueryComponent]]] = None,
-    control_query: Optional[QueryComponent] = None,
-    source_query: Optional[QueryComponent] = None,
-    fiscal_year: Optional[int] = None,
-) -> List[QueryComponent]:
+    entity_batch_queries: list[QueryComponent] | None = None,
+    control_query: QueryComponent | None = None,
+    source_query: QueryComponent | None = None,
+    fiscal_year: int | None = None,
+) -> list[QueryComponent]:
     """Expand all query components into the final list of queries."""
     base_queries, keyword_query, source_query = base_queries_tuple
     queries_expanded = []
@@ -425,7 +426,7 @@ def _expand_queries(
 
 def create_date_intervals(
     start_date: str, end_date: str, frequency: str
-) -> List[Tuple[pd.Timestamp, pd.Timestamp]]:
+) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
     """
     Generates date intervals based on a specified frequency within a given start and end date range.
 
@@ -465,8 +466,8 @@ def create_date_intervals(
         - For invalid frequencies, a `ValueError` is raised to indicate the issue.
     """
     # Convert start and end dates to pandas Timestamps
-    start_date = pd.Timestamp(start_date)
-    end_date = pd.Timestamp(end_date)
+    start_date_pd = pd.Timestamp(start_date)
+    end_date_pd = pd.Timestamp(end_date)
 
     # Adjust frequency for yearly and monthly to use appropriate start markers
     # 'AS' for year start, 'MS' for month start
@@ -475,7 +476,7 @@ def create_date_intervals(
     # Generate date range based on the adjusted frequency
     try:
         date_range = pd.date_range(
-            start=start_date, end=end_date, frequency=adjusted_freq
+            start=start_date_pd, end=end_date_pd, freq=adjusted_freq
         )
     except ValueError:
         raise ValueError("Invalid frequency. Use 'Y', 'M', 'W', or 'D'.")
@@ -496,7 +497,7 @@ def create_date_intervals(
     intervals.append(
         (
             date_range[-1].replace(hour=0, minute=0, second=0),
-            end_date.replace(hour=23, minute=59, second=59),
+            end_date_pd.replace(hour=23, minute=59, second=59),
         )
     )
 
@@ -504,8 +505,8 @@ def create_date_intervals(
 
 
 def create_date_ranges(
-    start_date: str, end_date: str, frequency: str
-) -> List[AbsoluteDateRange]:
+    start_date: str, end_date: str, frequency: str, return_datetime: bool = False
+) -> list[AbsoluteDateRange | tuple[datetime, datetime]]:
     """
     Generates a list of `AbsoluteDateRange` objects based on the specified frequency.
 
@@ -520,6 +521,8 @@ def create_date_ranges(
                 - 'M': Monthly.
                 - 'W': Weekly.
                 - 'D': Daily.
+        return_datetime (bool):
+            If True, returns a list of start datetime objects instead of AbsoluteDateRange objects. Defaults to False.
 
     Returns:
         List[AbsoluteDateRange]:
@@ -532,4 +535,9 @@ def create_date_ranges(
         3. Returns a list of these `AbsoluteDateRange` objects.
     """
     intervals = create_date_intervals(start_date, end_date, frequency=frequency)
+
+    if return_datetime:
+        return [
+            (start.to_pydatetime(), end.to_pydatetime()) for start, end in intervals
+        ]
     return [AbsoluteDateRange(start, end) for start, end in intervals]

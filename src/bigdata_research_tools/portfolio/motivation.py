@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import pandas as pd
 from tqdm import tqdm
@@ -13,7 +13,9 @@ class Motivation:
     A class for generating motivation statements for companies based on thematic analysis.
     """
 
-    def __init__(self, model: str = None, model_config: Dict[str, Any] = None):
+    def __init__(
+        self, model: str | None = None, model_config: dict[str, Any] | None = None
+    ):
         """
         Initialize the Motivation class.
 
@@ -25,7 +27,7 @@ class Motivation:
         self.llm_engine = LLMEngine(model=model)
 
     @staticmethod
-    def _get_default_model_config() -> Dict[str, Any]:
+    def _get_default_model_config() -> dict[str, Any]:
         """Get default LLM model configuration."""
         return {
             "temperature": 0,
@@ -36,7 +38,7 @@ class Motivation:
             "seed": 42,
         }
 
-    def group_quotes_by_company(self, filtered_df: pd.DataFrame) -> Dict:
+    def group_quotes_by_company(self, filtered_df: pd.DataFrame) -> dict:
         """
         Group quotes and labels by company.
 
@@ -120,7 +122,7 @@ class Motivation:
         return motivation.strip()
 
     def generate_company_motivations(
-        self, df: pd.DataFrame, theme_name: str, word_range: Tuple[int, int]
+        self, df: pd.DataFrame, theme_name: str, word_range: tuple[int, int]
     ) -> pd.DataFrame:
         """
         Generates motivation statement with specified verbosity for companies in a thematic watchlist.
@@ -167,6 +169,6 @@ class Motivation:
             .reset_index(drop=True)
         )
 
-    def update_model_config(self, config: Dict[str, Any]):
+    def update_model_config(self, config: dict[str, Any]):
         """Update the model configuration."""
         self.model_config.update(config)
