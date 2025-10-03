@@ -29,7 +29,7 @@ def search_by_companies(
     start_date: str,
     end_date: str,
     scope: DocumentType = DocumentType.ALL,
-    fiscal_year: int | None = None,
+    fiscal_year: int | list[int] | None = None,
     sources: list[str] | None = None,
     keywords: list[str] | None = None,
     control_entities: dict | None = None,
@@ -50,7 +50,7 @@ def search_by_companies(
         end_date (str): The end date for the search.
         scope (DocumentType): The document type scope
             (e.g., `DocumentType.ALL`, `DocumentType.TRANSCRIPTS`).
-        fiscal_year (int): The fiscal year to filter queries.
+        fiscal_year (int | list[int] | None): The fiscal year to filter queries.
             If None, no fiscal year filter is applied.
         sources (Optional[List[str]]): List of sources to filter on. If none, we search across all sources.
         keywords (List[str]): A list of keywords for constructing keyword queries.

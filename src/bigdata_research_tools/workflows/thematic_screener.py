@@ -26,7 +26,7 @@ class ThematicScreener(Workflow):
         start_date: str,
         end_date: str,
         document_type: DocumentType,
-        fiscal_year: int | None = None,
+        fiscal_year: int | list[int] | None = None,
         sources: list[str] | None = None,
         rerank_threshold: float | None = None,
         focus: str = "",
@@ -45,7 +45,7 @@ class ThematicScreener(Workflow):
             end_date (str): The end date for searching relevant documents.
                 Format: YYYY-MM-DD.
             document_type (DocumentType): Specifies the type of documents to search over
-            fiscal_year (int): The fiscal year that will be analyzed.
+            fiscal_year (int | list[int] | None): The fiscal year that will be analyzed.
             sources (Optional[List[str]]): Used to filter search results by the sources of the documents.
                 If not provided, the search is run across all available sources.
             rerank_threshold (Optional[float]): The threshold for reranking the search results.

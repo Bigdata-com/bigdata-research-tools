@@ -21,7 +21,7 @@ class NarrativeMiner(Workflow):
         end_date: str,
         llm_model: str,
         document_type: DocumentType,
-        fiscal_year: int | None,
+        fiscal_year: int | list[int] | None = None,
         sources: list[str] | None = None,
         rerank_threshold: float | None = None,
     ):

@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.99.0] - Unreleased
 Preparation for a first stable release.
 
+## Added
+- Added support for providing several fiscal years to any workflow or search function that
+  accepts a `fiscal_year` parameter. The parameter can now be a single integer or a list
+  of integers. When a list is provided, the workflow or function will search for the union
+  of all values provided.
+
 ### Changed
 - Refactor the `themes` submodule to `tree`, allowing for a more generic tree structure
   that can be re-used accross different workflows.

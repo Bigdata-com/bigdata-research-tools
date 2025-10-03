@@ -25,7 +25,7 @@ def search_narratives(
     start_date: str,
     end_date: str,
     scope: DocumentType,
-    fiscal_year: int | None = None,
+    fiscal_year: int | list[int] = None,
     sources: list[str] | None = None,
     keywords: list[str] | None = None,
     control_entities: list[str] | None = None,
@@ -45,7 +45,7 @@ def search_narratives(
         end_date (str): The end date for the search.
         scope (DocumentType): The document type scope
             (e.g., `DocumentType.NEWS`, `DocumentType.TRANSCRIPTS`).
-        fiscal_year (Optional[int]): The fiscal year to filter queries.
+        fiscal_year (int | list[int] | None): The fiscal year to filter queries.
             If None, no fiscal year filter is applied.
         sources (Optional[List[str]]): List of sources to filter on. If none, we search across all sources.
         keywords (Optional[List[str]]): A list of keywords for constructing keyword queries.

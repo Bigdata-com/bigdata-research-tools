@@ -78,7 +78,7 @@ def build_batched_query(
     control_entities: EntitiesToSearch | None,
     sources: list[str] | None,
     batch_size: int,
-    fiscal_year: int | None,
+    fiscal_year: int | list[int],
     scope: DocumentType,
     custom_batches: list[EntitiesToSearch] | None,
 ) -> list[QueryComponent]:
@@ -98,7 +98,7 @@ def build_batched_query(
             Config of entities of different types (people, companies, organisations..)
         batch_size (int, optional):
             Number of entities per batch when auto-batching. Defaults to 10.
-        fiscal_year (int, optional):
+        fiscal_year (int | list[int], optional):
             Fiscal year to filter queries.
         scope (DocumentType, optional):
             Document type scope (e.g., ALL, TRANSCRIPTS). Defaults to ALL.
@@ -147,7 +147,7 @@ def build_batched_query(
 
 
 def _validate_parameters(
-    document_scope: DocumentType | None = None, fiscal_year: int | None = None
+    document_scope: DocumentType | None = None, fiscal_year: int | list[int] = None,
 ) -> None:
     """
     Validates parameters based on predefined rules.
@@ -159,7 +159,7 @@ def _validate_parameters(
         return
 
     if document_scope in [DocumentType.FILINGS, DocumentType.TRANSCRIPTS]:
-        if fiscal_year is None:
+        if fiscal_year is None or (isinstance(fiscal_year, list) and len(fiscal_year) == 0):
             raise ValueError(
                 f"`fiscal_year` is required when `document_scope` is `{document_scope.value}`"
             )
@@ -381,7 +381,7 @@ def _expand_queries(
     entity_batch_queries: list[QueryComponent] | None = None,
     control_query: QueryComponent | None = None,
     source_query: QueryComponent | None = None,
-    fiscal_year: int | None = None,
+    fiscal_year: int | list[int] = None,
 ) -> list[QueryComponent]:
     """Expand all query components into the final list of queries."""
     base_queries, keyword_query, source_query = base_queries_tuple
@@ -414,9 +414,21 @@ def _expand_queries(
 
             # Add fiscal year filter if provided
             if fiscal_year:
-                expanded_query = (
-                    expanded_query & FiscalYear(fiscal_year) if expanded_query else None
-                )
+                if isinstance(fiscal_year, list):
+                    fiscal_year_queries = [
+                        FiscalYear(year) for year in fiscal_year if isinstance(year, int)
+                    ]
+                    if fiscal_year_queries:
+                        fiscal_year_query = Any(fiscal_year_queries)
+                        expanded_query = (
+                            expanded_query & fiscal_year_query
+                            if expanded_query
+                            else fiscal_year_query
+                        )
+                else:
+                    expanded_query = (
+                        expanded_query & FiscalYear(fiscal_year) if expanded_query else None
+                    )
 
             # Append the expanded query to the final list
             queries_expanded.append(expanded_query)
