@@ -134,10 +134,12 @@ class NarrativeLabeler(Labeler):
                 "entity": "Entity",
                 "country_code": "Country Code",
                 "entity_type": "Entity Type",
+                "entity_id": "Entity ID",
+                "entity_ticker": "Entity Ticker",
             }
         )
 
-        df = df.explode(["Entity", "Entity Type", "Country Code"], ignore_index=True)
+        df = df.explode(["Entity", "Entity Type", "Country Code", "Entity ID", "Entity Ticker"], ignore_index=True)
 
         # Select and order columns
         export_columns = [
@@ -150,6 +152,8 @@ class NarrativeLabeler(Labeler):
             "Motivation",
             "Label",
             "Entity",
+            "Entity ID",
+            "Entity Ticker",
             "Country Code",
             "Entity Type",
         ]
