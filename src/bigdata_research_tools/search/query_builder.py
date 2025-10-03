@@ -1,23 +1,13 @@
-"""
-Copyright (C) 2025 RavenPack | Bigdata.com. All rights reserved.
-Author: Alessandro Bouchs (abouchs@ravenpack.com), Jelena Starovic (jstarovic@ravenpack.com)
-"""
-
 from dataclasses import dataclass
-from itertools import chain,zip_longest
-from typing import List, Optional, Tuple, Type, Dict  
+from datetime import datetime
+from itertools import chain, zip_longest
+from typing import Type
+
 import pandas as pd
 from bigdata_client.daterange import AbsoluteDateRange
 from bigdata_client.models.advanced_search_query import QueryComponent
+from bigdata_client.models.entities import Concept, Organization, Person, Place, Product
 from bigdata_client.models.search import DocumentType
-from bigdata_client.models.entities import (
-    Person, 
-    Place,
-    Organization, 
-    Product, 
-    Concept
-)
-
 from bigdata_client.query import (
     Any,
     Entity,
@@ -26,35 +16,36 @@ from bigdata_client.query import (
     ReportingEntity,
     Similarity,
     Source,
-    Topic
+    Topic,
 )
 
 from bigdata_research_tools.client import bigdata_connection
 
+
 @dataclass
 class EntitiesToSearch:
-    people: Optional[List[str]] = None
-    product: Optional[List[str]] = None
-    org: Optional[List[str]] = None
-    place: Optional[List[str]] = None
-    topic: Optional[List[str]] = None
-    concepts: Optional[List[str]] = None
-    companies: Optional[List[str]] = None
+    people: list[str] | None = None
+    product: list[str] | None = None
+    org: list[str] | None = None
+    place: list[str] | None = None
+    topic: list[str] | None = None
+    concepts: list[str] | None = None
+    companies: list[str] | None = None
 
     @staticmethod
-    def get_entity_type_map() -> Dict[str, Type]:
+    def get_entity_type_map() -> dict[str, Type]:
         return {
-            'people': Person,
-            'product': Product,
-            'org': Organization,
-            'place': Place,
-            'topic': Topic,
-            'concepts': Concept, 
-            'companies': Entity
+            "people": Person,
+            "product": Product,
+            "org": Organization,
+            "place": Place,
+            "topic": Topic,
+            "concepts": Concept,
+            "companies": Entity,
         }
 
 
-def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
+def build_similarity_queries(sentences: list[str]) -> list[Similarity]:
     """
     Processes a list of sentences to create a list of Similarity query objects, ensuring no duplicates.
 
@@ -81,16 +72,16 @@ def build_similarity_queries(sentences: List[str]) -> List[Similarity]:
 
 
 def build_batched_query(
-    sentences: List[str], 
-    keywords: Optional[List[str]],
-    entities: Optional[EntitiesToSearch],
-    control_entities: Optional[EntitiesToSearch],
-    sources: Optional[List[str]],
+    sentences: list[str],
+    keywords: list[str] | None,
+    entities: EntitiesToSearch | None,
+    control_entities: EntitiesToSearch | None,
+    sources: list[str] | None,
     batch_size: int,
-    fiscal_year: Optional[int],
+    fiscal_year: int | None,
     scope: DocumentType,
-    custom_batches: Optional[List[EntitiesToSearch]],
-) -> List[QueryComponent]:
+    custom_batches: list[EntitiesToSearch] | None,
+) -> list[QueryComponent]:
     """
     Builds a list of batched query objects based on the provided parameters.
 
@@ -115,37 +106,48 @@ def build_batched_query(
             Config of custom entity batches of different types (people, companies, organisations..)
 
     Returns:
-        List[QueryComponent]: List of expanded query components.    
+        List[QueryComponent]: List of expanded query components.
     """
 
     # Early validation: ensure only one of entities or custom_batches is used
     if entities and custom_batches:
-        raise ValueError("Only one of `entities` or `custom_batches` should be provided, not both.")
+        raise ValueError(
+            "Only one of `entities` or `custom_batches` should be provided, not both."
+        )
 
     _validate_parameters(document_scope=scope, fiscal_year=fiscal_year)
 
     # Step 1: Build base queries (similarity, keyword, source)
-    base_queries, keyword_query, source_query = _build_base_queries(sentences, keywords, sources)
-    
+    base_queries, keyword_query, source_query = _build_base_queries(
+        sentences, keywords, sources
+    )
+
     # Step 2: Build control entity query
-    control_query = _build_control_entity_query(control_entities, scope=scope) if control_entities else None
-    
+    control_query = (
+        _build_control_entity_query(control_entities, scope=scope)
+        if control_entities
+        else None
+    )
+
     # Step 3: Build entity batch queries
-    entity_batch_queries = _build_entity_batch_queries(entities, custom_batches, batch_size, scope)
-    
+    entity_batch_queries = _build_entity_batch_queries(
+        entities, custom_batches, batch_size, scope
+    )
+
     # Step 4: Combine everything into expanded queries
     queries_expanded = _expand_queries(
-        (base_queries, keyword_query, source_query), 
-        entity_batch_queries, 
+        (base_queries, keyword_query, source_query),
+        entity_batch_queries,
         control_query,
         source_query,
-        fiscal_year
+        fiscal_year,
     )
-    
+
     return queries_expanded
 
+
 def _validate_parameters(
-    document_scope: DocumentType = None, fiscal_year: int = None
+    document_scope: DocumentType | None = None, fiscal_year: int | None = None
 ) -> None:
     """
     Validates parameters based on predefined rules.
@@ -167,27 +169,29 @@ def _validate_parameters(
             raise ValueError(
                 f"`fiscal_year` must be None when `document_scope` is `{document_scope.value}`"
             )
-        
+
+
 def _build_base_queries(
-    sentences: Optional[List[str]], 
-    keywords: Optional[List[str]],
-    sources: Optional[List[str]]
-) -> Tuple[List[QueryComponent], Optional[QueryComponent], Optional[QueryComponent]]:
+    sentences: list[str] | None,
+    keywords: list[str] | None,
+    sources: list[str] | None,
+) -> tuple[list[QueryComponent], QueryComponent | None, QueryComponent | None]:
     """Build the base queries from sentences, keywords, and sources."""
     # Create similarity queries from sentences
     queries = build_similarity_queries(sentences) if sentences else []
-    
+
     # Create keyword query
     keyword_query = Any([Keyword(word) for word in keywords]) if keywords else None
-    
+
     # Create source query
     source_query = Any([Source(source) for source in sources]) if sources else None
-    
+
     return queries, keyword_query, source_query
 
+
 def _get_entity_ids(
-        entity_names: List[str],
-        entity_type: Type,  
+    entity_names: list[str],
+    entity_type: Type,
 ) -> list[Type]:
     bigdata = bigdata_connection()
     entity_ids = []
@@ -198,9 +202,9 @@ def _get_entity_ids(
         Person: bigdata.knowledge_graph.find_people,
         Organization: bigdata.knowledge_graph.find_organizations,
         Topic: bigdata.knowledge_graph.find_topics,
-        Concept: bigdata.knowledge_graph.find_concepts, 
-        Entity: bigdata.knowledge_graph.find_companies,  
-        ReportingEntity: bigdata.knowledge_graph.find_companies, 
+        Concept: bigdata.knowledge_graph.find_concepts,
+        Entity: bigdata.knowledge_graph.find_companies,
+        ReportingEntity: bigdata.knowledge_graph.find_companies,
     }
 
     lookup_func = lookup_map.get(entity_type)
@@ -217,71 +221,74 @@ def _get_entity_ids(
 
     return entity_ids
 
+
 def _build_control_entity_query(
     control_entities: EntitiesToSearch,
     scope: DocumentType = DocumentType.ALL,
 ) -> QueryComponent:
     """Build a query for control entities."""
-    
+
     entity_ids = []
     comp_ids = []
     if control_entities.people:
         people_ids = _get_entity_ids(control_entities.people, Person)
-        if people_ids: 
+        if people_ids:
             entity_ids.extend(people_ids)
-        
-    if control_entities.product: 
+
+    if control_entities.product:
         prod_ids = _get_entity_ids(control_entities.product, Product)
-        if prod_ids: 
+        if prod_ids:
             entity_ids.extend(prod_ids)
 
     if control_entities.companies:
         entity_type = _get_entity_type(scope)
-        comp_ids = _get_entity_ids(control_entities.companies,entity_type)
-        if comp_ids: 
+        comp_ids = _get_entity_ids(control_entities.companies, entity_type)
+        if comp_ids:
             entity_ids.extend(comp_ids)
 
     if control_entities.place:
         place_ids = _get_entity_ids(control_entities.place, Place)
-        if place_ids: 
+        if place_ids:
             entity_ids.extend(place_ids)
 
     if control_entities.org:
         orga_ids = _get_entity_ids(control_entities.org, Organization)
-        if orga_ids: 
+        if orga_ids:
             entity_ids.extend(orga_ids)
 
     if control_entities.topic:
         topic_ids = _get_entity_ids(control_entities.topic, Topic)
-        if topic_ids: 
+        if topic_ids:
             entity_ids.extend(topic_ids)
-    
+
     if control_entities.concepts:
         concept_ids = _get_entity_ids(control_entities.concepts, Concept)
-        if concept_ids: 
+        if concept_ids:
             entity_ids.extend(concept_ids)
 
     control_query = Any(entity_ids)
     return control_query
 
+
 def _build_entity_batch_queries(
-    entities: EntitiesToSearch, 
-    custom_batches: List[EntitiesToSearch],
+    entities: EntitiesToSearch | None,
+    custom_batches: list[EntitiesToSearch],
     batch_size: int,
     scope: DocumentType,
-) -> List[Optional[QueryComponent]]:
+) -> list[QueryComponent] | list[None]:
     """Build entity batch queries from either custom batches or auto-batched entities."""
 
     # If no entities specified, return a single None to ensure at least one iteration
     if not entities and not custom_batches:
         return [None]
-    
+
     # If using custom batches, process them
     if custom_batches:
         return _build_custom_batch_queries(custom_batches, scope)
-    
+
     # Otherwise, auto-batch the entities
     return _auto_batch_entities(entities, batch_size, scope)
+
 
 def _get_entity_type(scope: DocumentType) -> type:
     """Determine the entity type based on document scope."""
@@ -291,62 +298,74 @@ def _get_entity_type(scope: DocumentType) -> type:
         else Entity
     )
 
+
 def _build_custom_batch_queries(
-    custom_batches: List[EntitiesToSearch],
-    scope: DocumentType
-) -> List[QueryComponent]:
+    custom_batches: list[EntitiesToSearch], scope: DocumentType
+) -> list[QueryComponent] | list[None]:
     """Build entity queries from a list of EntitiesToSearch objects."""
     entity_type_map = EntitiesToSearch.get_entity_type_map()
-    
-    def get_entity_ids_for_attr(entity_config: EntitiesToSearch, attr_name: str, entity_class) -> List[int]:
+
+    def get_entity_ids_for_attr(
+        entity_config: EntitiesToSearch, attr_name: str, entity_class
+    ) -> list[int]:
         """Get entity IDs for a specific attribute."""
         entity_names = getattr(entity_config, attr_name, None)
         if not entity_names:
             return []
-        
-        entity_type = _get_entity_type(scope) if entity_class == Entity else entity_class
+
+        entity_type = (
+            _get_entity_type(scope) if entity_class == Entity else entity_class
+        )
         return _get_entity_ids(entity_names, entity_type)
-    
+
     batch_queries = []
     for entity_config in custom_batches:
         # Use chain to flatten all entity IDs from all attributes
-        all_entities = list(chain.from_iterable(
-            get_entity_ids_for_attr(entity_config, attr_name, entity_class)
-            for attr_name, entity_class in entity_type_map.items()
-        ))
-        
+        all_entities = list(
+            chain.from_iterable(
+                get_entity_ids_for_attr(entity_config, attr_name, entity_class)
+                for attr_name, entity_class in entity_type_map.items()
+            )
+        )
+
         if all_entities:
             batch_queries.append(Any(all_entities))
-    
+
     return batch_queries if batch_queries else [None]
+
 
 def _auto_batch_entities(
     entities: EntitiesToSearch,
     batch_size: int,
     scope: DocumentType = DocumentType.ALL,
-) -> List[QueryComponent]:
+) -> list[QueryComponent]:
     """Auto-batch entities by type using the specified batch size."""
-    
+
     # Create batches for each entity type
     all_entity_batches = []
-    
+
     for attr_name, entity_class in EntitiesToSearch.get_entity_type_map().items():
         entity_names = getattr(entities, attr_name, None)
         if not entity_names:
             continue
-            
+
         # Get valid entity IDs
-        entity_type = _get_entity_type(scope) if entity_class == Entity else entity_class
+        entity_type = (
+            _get_entity_type(scope) if entity_class == Entity else entity_class
+        )
         entity_ids = _get_entity_ids(entity_names, entity_type)
-        
+
         # Split into batches and add to collection
         if entity_ids:
-            batches = [entity_ids[i:i + batch_size] for i in range(0, len(entity_ids), batch_size)]
+            batches = [
+                entity_ids[i : i + batch_size]
+                for i in range(0, len(entity_ids), batch_size)
+            ]
             all_entity_batches.append(batches)
-    
+
     if not all_entity_batches:
         return []
-    
+
     # Combine batches across entity types using zip_longest
     return [
         Any([entity for batch in batch_group for entity in batch])
@@ -354,13 +373,16 @@ def _auto_batch_entities(
         if any(batch for batch in batch_group)  # Skip empty batch groups
     ]
 
+
 def _expand_queries(
-    base_queries_tuple: Tuple[List[QueryComponent], Optional[QueryComponent], Optional[QueryComponent]],
-    entity_batch_queries: Optional[List[Optional[QueryComponent]]] = None,  
-    control_query: Optional[QueryComponent] = None,
-    source_query: Optional[QueryComponent] = None,
-    fiscal_year: Optional[int] = None
-) -> List[QueryComponent]:
+    base_queries_tuple: tuple[
+        list[QueryComponent], QueryComponent | None, QueryComponent | None
+    ],
+    entity_batch_queries: list[QueryComponent] | None = None,
+    control_query: QueryComponent | None = None,
+    source_query: QueryComponent | None = None,
+    fiscal_year: int | None = None,
+) -> list[QueryComponent]:
     """Expand all query components into the final list of queries."""
     base_queries, keyword_query, source_query = base_queries_tuple
     queries_expanded = []
@@ -400,10 +422,11 @@ def _expand_queries(
             queries_expanded.append(expanded_query)
 
     return queries_expanded
-    
+
+
 def create_date_intervals(
-    start_date: str, end_date: str, freq: str
-) -> List[Tuple[pd.Timestamp, pd.Timestamp]]:
+    start_date: str, end_date: str, frequency: str
+) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
     """
     Generates date intervals based on a specified frequency within a given start and end date range.
 
@@ -412,7 +435,7 @@ def create_date_intervals(
             The start date in 'YYYY-MM-DD' format.
         end_date (str):
             The end date in 'YYYY-MM-DD' format.
-        freq (str):
+        frequency (str):
             The frequency for intervals. Supported values:
                 - 'Y': Yearly intervals.
                 - 'M': Monthly intervals.
@@ -443,16 +466,18 @@ def create_date_intervals(
         - For invalid frequencies, a `ValueError` is raised to indicate the issue.
     """
     # Convert start and end dates to pandas Timestamps
-    start_date = pd.Timestamp(start_date)
-    end_date = pd.Timestamp(end_date)
+    start_date_pd = pd.Timestamp(start_date)
+    end_date_pd = pd.Timestamp(end_date)
 
     # Adjust frequency for yearly and monthly to use appropriate start markers
     # 'AS' for year start, 'MS' for month start
-    adjusted_freq = freq.replace("Y", "AS").replace("M", "MS")
+    adjusted_freq = frequency.replace("Y", "AS").replace("M", "MS")
 
     # Generate date range based on the adjusted frequency
     try:
-        date_range = pd.date_range(start=start_date, end=end_date, freq=adjusted_freq)
+        date_range = pd.date_range(
+            start=start_date_pd, end=end_date_pd, freq=adjusted_freq
+        )
     except ValueError:
         raise ValueError("Invalid frequency. Use 'Y', 'M', 'W', or 'D'.")
 
@@ -472,7 +497,7 @@ def create_date_intervals(
     intervals.append(
         (
             date_range[-1].replace(hour=0, minute=0, second=0),
-            end_date.replace(hour=23, minute=59, second=59),
+            end_date_pd.replace(hour=23, minute=59, second=59),
         )
     )
 
@@ -480,8 +505,8 @@ def create_date_intervals(
 
 
 def create_date_ranges(
-    start_date: str, end_date: str, freq: str
-) -> List[AbsoluteDateRange]:
+    start_date: str, end_date: str, frequency: str, return_datetime: bool = False
+) -> list[AbsoluteDateRange | tuple[datetime, datetime]]:
     """
     Generates a list of `AbsoluteDateRange` objects based on the specified frequency.
 
@@ -490,12 +515,14 @@ def create_date_ranges(
             The start date in 'YYYY-MM-DD' format.
         end_date (str):
             The end date in 'YYYY-MM-DD' format.
-        freq (str):
+        frequency (str):
             The frequency for dividing the date range. Supported values:
                 - 'Y': Yearly.
                 - 'M': Monthly.
                 - 'W': Weekly.
                 - 'D': Daily.
+        return_datetime (bool):
+            If True, returns a list of start datetime objects instead of AbsoluteDateRange objects. Defaults to False.
 
     Returns:
         List[AbsoluteDateRange]:
@@ -507,5 +534,10 @@ def create_date_ranges(
         2. Converts each interval (start and end tuple) into an `AbsoluteDateRange` object.
         3. Returns a list of these `AbsoluteDateRange` objects.
     """
-    intervals = create_date_intervals(start_date, end_date, freq=freq)
+    intervals = create_date_intervals(start_date, end_date, frequency=frequency)
+
+    if return_datetime:
+        return [
+            (start.to_pydatetime(), end.to_pydatetime()) for start, end in intervals
+        ]
     return [AbsoluteDateRange(start, end) for start, end in intervals]

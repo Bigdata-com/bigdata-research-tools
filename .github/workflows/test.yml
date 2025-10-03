@@ -1,0 +1,49 @@
+name: Lint, format and run unit tests
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Install dependencies
+        run: uv sync --locked --dev
+# Disable type checking for now, the project is not mature enough to pass all checks
+#      - name: Type check the code
+#        run: make type-check
+      - name: Lint the code
+        run: make lint-check
+      - name: Format the code
+        run: make format
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --locked --dev
+# Disable type checking for now, the project is not mature enough to pass all checks
+#      - name: Test with pytest
+#        run: make tests

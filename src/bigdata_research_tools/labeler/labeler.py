@@ -1,14 +1,8 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 import re
 from itertools import zip_longest
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from json_repair import repair_json
 from pandas import DataFrame
@@ -45,7 +39,7 @@ class Labeler:
         self.unknown_label = unknown_label
 
     def _deserialize_label_responses(
-        self, responses: List[Dict[str, Any]]
+        self, responses: list[dict[str, Any]]
     ) -> DataFrame:
         """
         Deserialize labeling responses into a DataFrame.
@@ -62,7 +56,6 @@ class Labeler:
         """
         response_mapping = {}
         for response in responses:
-
             if not response or not isinstance(response, dict):
                 continue
 
@@ -95,8 +88,8 @@ class Labeler:
         return df_labels
 
     def _run_labeling_prompts(
-        self, prompts: List[str], system_prompt: str, max_workers: int = 100
-    ) -> List:
+        self, prompts: list[str], system_prompt: str, max_workers: int = 100
+    ) -> list:
         """
         Get the labels from the prompts.
 
@@ -132,9 +125,9 @@ class Labeler:
 
 
 def get_prompts_for_labeler(
-    texts: List[str],
-    textsconfig: Optional[List[Dict[str, Any]]] = [],
-) -> List[str]:
+    texts: list[str],
+    textsconfig: list[dict[str, Any]] | None = None,
+) -> list[str]:
     """
     Generate a list of user messages for each text to be labelled by the labeling system.
 
@@ -148,6 +141,7 @@ def get_prompts_for_labeler(
     Returns:
         A list of prompts for the labeling system.
     """
+    textsconfig = textsconfig or []
     return [
         dumps({"sentence_id": i, **config, "text": text})
         for i, (config, text) in enumerate(
@@ -156,7 +150,7 @@ def get_prompts_for_labeler(
     ]
 
 
-def parse_labeling_response(response: str) -> Dict:
+def parse_labeling_response(response: str) -> dict:
     """
     Parse the response from the LLM model used for labeling.
 

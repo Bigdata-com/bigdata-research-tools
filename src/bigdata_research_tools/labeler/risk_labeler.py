@@ -1,11 +1,5 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 from logging import Logger, getLogger
-from typing import List, Optional, Any, Dict
+from typing import Any
 
 from pandas import DataFrame, Series
 
@@ -16,8 +10,8 @@ from bigdata_research_tools.labeler.labeler import (
 )
 from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
-    get_target_entity_placeholder,
     get_risk_system_prompt,
+    get_target_entity_placeholder,
 )
 
 logger: Logger = getLogger(__name__)
@@ -29,7 +23,7 @@ class RiskLabeler(Labeler):
     def __init__(
         self,
         llm_model: str,
-        label_prompt: Optional[str] = None,
+        label_prompt: str | None = None,
         # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
         #  Changing it here would break the process.
         unknown_label: str = "unclear",
@@ -50,10 +44,10 @@ class RiskLabeler(Labeler):
     def get_labels(
         self,
         main_theme: str,
-        labels: List[str],
-        texts: List[str],
+        labels: list[str],
+        texts: list[str],
         max_workers: int = 50,
-        textsconfig: Optional[List[Dict[str, Any]]] = [],
+        textsconfig: list[dict[str, Any]] | None = None,
     ) -> DataFrame:
         """
         Process thematic labels for texts.
@@ -86,7 +80,9 @@ class RiskLabeler(Labeler):
 
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame, extra_fields: dict, extra_columns: List[str]) -> DataFrame:
+    def post_process_dataframe(
+        self, df: DataFrame, extra_fields: dict, extra_columns: list[str]
+    ) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -153,31 +149,33 @@ class RiskLabeler(Labeler):
         df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
         df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
 
-        df["Document ID"] = df["document_id"] if "document_id" in df.columns else df["rp_document_id"]
-        
+        df["Document ID"] = (
+            df["document_id"] if "document_id" in df.columns else df["rp_document_id"]
+        )
+
         columns_map = {
-                "entity_name": "Company",
-                "entity_sector": "Sector",
-                "entity_industry": "Industry",
-                "entity_country": "Country",
-                "entity_ticker": "Ticker",
-                "headline": "Headline",
-                "text": "Quote",
-                "motivation": "Motivation",
-                "label": "Sub-Scenario"
-            }
+            "entity_name": "Company",
+            "entity_sector": "Sector",
+            "entity_industry": "Industry",
+            "entity_country": "Country",
+            "entity_ticker": "Ticker",
+            "headline": "Headline",
+            "text": "Quote",
+            "motivation": "Motivation",
+            "label": "Sub-Scenario",
+        }
 
         if extra_fields:
             columns_map.update(extra_fields)
             if "quotes" in extra_fields.keys():
                 if "quotes" in df.columns:
-                    df["quotes"] = df.apply(replace_company_placeholders, axis=1, col_name = 'quotes')
+                    df["quotes"] = df.apply(
+                        replace_company_placeholders, axis=1, col_name="quotes"
+                    )
                 else:
                     print("quotes column not in df")
 
-        df = df.rename(
-            columns=columns_map
-        )
+        df = df.rename(columns=columns_map)
 
         # Select and order columns
         export_columns = [
@@ -194,15 +192,14 @@ class RiskLabeler(Labeler):
             "Motivation",
             "Sub-Scenario",
         ]
-        
+
         if extra_columns:
             export_columns += extra_columns
 
         return df[export_columns]
 
 
-def replace_company_placeholders(row: Series, col_name: str = 'motivation') -> str:
-
+def replace_company_placeholders(row: Series, col_name: str = "motivation") -> str:
     """
     Replace company placeholders in text.
 
@@ -220,16 +217,25 @@ def replace_company_placeholders(row: Series, col_name: str = 'motivation') -> s
         if row.get("other_entities_map"):
             for entity_id, entity_name in row["other_entities_map"]:
                 text = text.replace(
-                    f"{get_other_entity_placeholder()}_{entity_id}", entity_name)
-    
+                    f"{get_other_entity_placeholder()}_{entity_id}", entity_name
+                )
+
     elif isinstance(text, list):
-        text = [t.replace(get_target_entity_placeholder(), row["entity_name"]) for t in text]
+        text = [
+            t.replace(get_target_entity_placeholder(), row["entity_name"]) for t in text
+        ]
         if row.get("other_entities_map"):
             for entity_id, entity_name in row["other_entities_map"]:
-                text = [t.replace(f"{get_other_entity_placeholder()}_{entity_id}", entity_name) for t in text]
+                text = [
+                    t.replace(
+                        f"{get_other_entity_placeholder()}_{entity_id}", entity_name
+                    )
+                    for t in text
+                ]
 
     return text
 
+
 # Function to map risk_factor to risk_category
 def map_risk_category(risk_factor, mapping):
-    return mapping.get(risk_factor, 'Not Applicable')
+    return mapping.get(risk_factor, "Not Applicable")

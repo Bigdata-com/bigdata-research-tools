@@ -1,11 +1,4 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 from logging import Logger, getLogger
-from typing import List, Optional
 
 from pandas import DataFrame, Series
 
@@ -29,7 +22,7 @@ class ScreenerLabeler(Labeler):
     def __init__(
         self,
         llm_model: str,
-        label_prompt: Optional[str] = None,
+        label_prompt: str | None = None,
         unknown_label: str = "unclear",
         temperature: float = 0,
     ):
@@ -48,8 +41,8 @@ class ScreenerLabeler(Labeler):
     def get_labels(
         self,
         main_theme: str,
-        labels: List[str],
-        texts: List[str],
+        labels: list[str],
+        texts: list[str],
         max_workers: int = 50,
     ) -> DataFrame:
         """
@@ -177,9 +170,16 @@ class ScreenerLabeler(Labeler):
             "Theme",
         ]
 
-        sort_columns = ["Date", "Time Period", "Company", "Document ID", "Headline", "Quote"]
-        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)        
-        
+        sort_columns = [
+            "Date",
+            "Time Period",
+            "Company",
+            "Document ID",
+            "Headline",
+            "Quote",
+        ]
+        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)
+
         return df
 
 

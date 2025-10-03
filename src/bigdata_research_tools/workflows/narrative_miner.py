@@ -1,16 +1,14 @@
 from logging import Logger, getLogger
-from typing import Dict, List, Optional
 
 from bigdata_client.models.search import DocumentType
-from bigdata_research_tools.client import init_bigdata_client
 from pandas import merge
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
-from bigdata_research_tools.workflows.base import Workflow
-from bigdata_research_tools.excel import check_excel_dependencies
+from bigdata_research_tools.client import init_bigdata_client
+from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
 from bigdata_research_tools.search import search_narratives
-from bigdata_research_tools.workflows.utils import save_to_excel
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
+from bigdata_research_tools.workflows.base import Workflow
 
 logger: Logger = getLogger(__name__)
 
@@ -18,14 +16,14 @@ logger: Logger = getLogger(__name__)
 class NarrativeMiner(Workflow):
     def __init__(
         self,
-        narrative_sentences: List[str],
+        narrative_sentences: list[str],
         start_date: str,
         end_date: str,
         llm_model: str,
         document_type: DocumentType,
-        fiscal_year: Optional[int],
-        sources: Optional[List[str]] = None,
-        rerank_threshold: Optional[float] = None,
+        fiscal_year: int | None,
+        sources: list[str] | None = None,
+        rerank_threshold: float | None = None,
     ):
         """
         This class will track a set of user-defined narratives (specified in narrative_sentences) over
@@ -57,16 +55,16 @@ class NarrativeMiner(Workflow):
         self,
         document_limit: int = 10,
         batch_size: int = 10,
-        freq: str = "3M",
-        export_path: Optional[str] = None,
-    ) -> Dict:
+        frequency: str = "3M",
+        export_path: str | None = None,
+    ) -> dict:
         """
         Mine narratives
 
         Args:
             document_limit: Maximum number of documents to analyze.
             batch_size: Size of batches for processing.
-            freq: Frequency for analysis ('M' for monthly).
+            frequency: Frequency for analysis ('M' for monthly).
             export_path: Optional path to export results to an Excel file.
 
         Returns:
@@ -88,27 +86,29 @@ class NarrativeMiner(Workflow):
             end_date=self.end_date,
             rerank_threshold=self.rerank_threshold,
             llm_model=self.llm_model,
-            frequency=freq,
+            frequency=frequency,
             workflow_start_date=Trace.get_time_now(),
         )
         try:
             # Run a search via BigData API with our mining parameters
-            self.notify_observers(f"Searching documents for relevant content")
+            self.notify_observers("Searching documents for relevant content")
             df_sentences = search_narratives(
                 sentences=self.narrative_sentences,
                 sources=self.sources,
                 rerank_threshold=self.rerank_threshold,
                 start_date=self.start_date,
                 end_date=self.end_date,
-                freq=freq,
+                frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
                 scope=self.document_type,
                 current_trace=current_trace,
-                bigdata_client=bigdata_client,
                 fiscal_year=self.fiscal_year,
+                bigdata_client=bigdata_client,
             )
-            self.notify_observers(f"Search completed. {len(df_sentences)} chunks found.")
+            self.notify_observers(
+                f"Search completed. {len(df_sentences)} chunks found."
+            )
             self.notify_observers("Labelling search results")
             # Label the search results with our narrative sentences
             labeler = NarrativeLabeler(llm_model=self.llm_model)
@@ -116,7 +116,9 @@ class NarrativeMiner(Workflow):
                 self.narrative_sentences,
                 texts=df_sentences["text"].tolist(),
             )
-            self.notify_observers(f"Labelling completed. {len(df_labels)} labels generated.")
+            self.notify_observers(
+                f"Labelling completed. {len(df_labels)} labels generated."
+            )
             self.notify_observers("Post-processing results")
             # Merge and process results
             df_labeled = merge(
@@ -131,11 +133,11 @@ class NarrativeMiner(Workflow):
                 return {}
             # Export to Excel if path provided
             if export_path:
-                self.notify_observers(f"Exporting results to excel")
+                self.notify_observers("Exporting results to excel")
                 save_to_excel(
                     export_path, tables={"Semantic Labels": (df_labeled, (0, 0))}
                 )
-                self.notify_observers(f"Results exported")
+                self.notify_observers("Results exported")
 
         except Exception:
             execution_result = "error"

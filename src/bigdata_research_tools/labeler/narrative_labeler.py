@@ -1,11 +1,4 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 from logging import Logger, getLogger
-from typing import List, Optional
 
 from pandas import DataFrame
 
@@ -25,7 +18,7 @@ class NarrativeLabeler(Labeler):
     def __init__(
         self,
         llm_model: str,
-        label_prompt: Optional[str] = None,
+        label_prompt: str | None = None,
         unknown_label: str = "unclear",
         temperature: float = 0,
     ):
@@ -44,8 +37,8 @@ class NarrativeLabeler(Labeler):
 
     def get_labels(
         self,
-        theme_labels: List[str],
-        texts: List[str],
+        theme_labels: list[str],
+        texts: list[str],
         max_workers: int = 50,
     ) -> DataFrame:
         """
@@ -159,6 +152,6 @@ class NarrativeLabeler(Labeler):
         ]
 
         sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Chunk Text"]
-        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True) 
-        
+        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)
+
         return df

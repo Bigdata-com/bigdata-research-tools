@@ -1,11 +1,11 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from bigdata_research_tools.settings import check_libraries_installed
+from bigdata_research_tools.utils.files import check_libraries_installed
 
 
 def check_plotly_dependencies() -> bool:
@@ -54,7 +54,7 @@ class ExposureDashboard:
         "industry_margin": {"l": 60, "r": 50, "t": 80, "b": 50},
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the dashboard with configuration parameters.
 
@@ -69,8 +69,8 @@ class ExposureDashboard:
         self,
         df_company: pd.DataFrame,
         n_companies: int = 10,
-        theme_columns: Optional[List[str]] = None,
-    ) -> Tuple[go.Figure, go.Figure]:
+        theme_columns: list[str] | None = None,
+    ) -> tuple[go.Figure, go.Figure]:
         """
         Creates a comprehensive dashboard for analyzing thematic exposure of companies.
 
@@ -129,7 +129,7 @@ class ExposureDashboard:
         if missing_cols:
             raise ValueError(f"Missing required columns: {missing_cols}")
 
-    def _extract_theme_columns(self, df: pd.DataFrame) -> List[str]:
+    def _extract_theme_columns(self, df: pd.DataFrame) -> list[str]:
         """Extract theme column names from the dataframe."""
         start_idx = self.config["theme_start_col"]
         end_idx = self.config["theme_end_col"]
@@ -160,7 +160,7 @@ class ExposureDashboard:
         )
 
     def _add_raw_scores_heatmap(
-        self, fig: go.Figure, df: pd.DataFrame, theme_columns: List[str]
+        self, fig: go.Figure, df: pd.DataFrame, theme_columns: list[str]
     ) -> None:
         """Add a heatmap of raw thematic scores to the dashboard."""
         company_col = self.config["company_column"]
@@ -215,7 +215,7 @@ class ExposureDashboard:
         )
 
     def _add_top_themes_by_company_scatter(
-        self, fig: go.Figure, df: pd.DataFrame, theme_columns: List[str]
+        self, fig: go.Figure, df: pd.DataFrame, theme_columns: list[str]
     ) -> None:
         """Add a scatter plot showing the top thematic exposures for each company."""
         company_col = self.config["company_column"]
@@ -276,7 +276,7 @@ class ExposureDashboard:
                 )
 
     def _add_dominant_themes_barchart(
-        self, fig: go.Figure, df: pd.DataFrame, theme_columns: List[str]
+        self, fig: go.Figure, df: pd.DataFrame, theme_columns: list[str]
     ) -> None:
         """Add a horizontal bar chart showing the most dominant themes across all companies."""
         # Calculate totals for each theme across all companies
@@ -308,7 +308,7 @@ class ExposureDashboard:
         )
 
     def _create_industry_analysis(
-        self, df: pd.DataFrame, theme_columns: List[str]
+        self, df: pd.DataFrame, theme_columns: list[str]
     ) -> go.Figure:
         """Create a separate heatmap showing average thematic scores by industry."""
         industry_col = self.config["industry_column"]

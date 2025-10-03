@@ -1,4 +1,5 @@
-import pandas as pd 
+import pandas as pd
+
 
 def generate_prompt_template() -> str:
     """
@@ -28,7 +29,10 @@ def generate_prompt_template() -> str:
     8. Keeps the statement concise ({min_words}-{max_words} words)
     """
 
-def get_motivation_prompt(company: str, data: pd.DataFrame, theme_name: str, min_words: int, max_words: int) -> str:
+
+def get_motivation_prompt(
+    company: str, data: pd.DataFrame, theme_name: str, min_words: int, max_words: int
+) -> str:
     """
     Formats the motivation prompt using company data and the prompt template.
 
@@ -42,21 +46,22 @@ def get_motivation_prompt(company: str, data: pd.DataFrame, theme_name: str, min
     Returns:
     - str: Fully formatted motivation prompt
     """
-    label_summary = "\n".join([f"- {label}: {count} quotes" for label, count in data['label_counts']])
+    label_summary = "\n".join(
+        [f"- {label}: {count} quotes" for label, count in data["label_counts"]]
+    )
 
     quotes_text = ""
-    for i, item in enumerate(data['quotes_and_labels']):
-        quotes_text += f"{i+1}. \"{item['quote']}\" [Label: {item['label']}]\n"
+    for i, item in enumerate(data["quotes_and_labels"]):
+        quotes_text += f'{i + 1}. "{item["quote"]}" [Label: {item["label"]}]\n'
 
     prompt_template = generate_prompt_template()
 
     return prompt_template.format(
         theme=theme_name,
         company=company,
-        total_quotes=data['total_quotes'],
+        total_quotes=data["total_quotes"],
         label_summary=label_summary,
         quotes_and_labels=quotes_text,
         min_words=min_words,
-        max_words=max_words
+        max_words=max_words,
     )
-

@@ -354,7 +354,7 @@ Parameters to run the analysis end-to-end.
 |-----------|------|---------|-------------|
 | `document_limit` | `int` | `10` | Documents per query  (see [Document Limit Guide](#document-limit))|
 | `batch_size` | `int` | `10` | Batch size for processing  (see [Batch Size Parameter Guide](#batch-size))|
-| `freq` | `str` | `"3M"` | Date range frequency  (see [Frequency Parameter Guide](#frequency))|
+| `frequency` | `str` | `"3M"` | Date range frequency  (see [Frequency Parameter Guide](#frequency))|
 | `export_path` | `str` | `None` | Excel export path |
 
 #### Return Values
@@ -477,7 +477,7 @@ results = run_search(
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `queries` | `List[QueryComponent]` |  | List of search queries |
-| `date_ranges` | `DATE_RANGE_TYPE` | `None` | Date range specifications |
+| `date_ranges` | `INPUT_DATE_RANGE` |  | Date range specifications |
 | `limit` | `int` | `10` | Results per query |
 | `only_results` | `bool` | `True` | Return format control |
 | `scope` | `DocumentType` | `ALL` | Document type filter |
@@ -1197,6 +1197,15 @@ INFO:__main__:  Bloomberg: 8 documents
 - **Issues**: Report issues through [support@bigdata.com](mailto:support@bigdata.com)
 
 ---
+
+
+## Tooling
+This project uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting and [ty](https://docs.astral.sh/ty/) for a type checker. To ensure your code adheres to the project's style guidelines, run the following commands before committing your changes:
+```bash
+make type-check
+make lint
+make format
+```
 
 ## License
 

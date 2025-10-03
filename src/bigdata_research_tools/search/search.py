@@ -12,7 +12,8 @@ import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Optional, Tuple, Union
+from datetime import datetime
+from typing import Union
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
@@ -24,13 +25,13 @@ from tqdm import tqdm
 from bigdata_research_tools.client import bigdata_connection, init_bigdata_client
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
-DATE_RANGE_TYPE = Union[
-    AbsoluteDateRange,
+INPUT_DATE_RANGE = Union[
+    tuple[datetime, datetime],
     RollingDateRange,
-    List[Union[AbsoluteDateRange, RollingDateRange]],
+    list[tuple[datetime, datetime] | RollingDateRange],
 ]
-SEARCH_QUERY_RESULTS_TYPE = Dict[
-    Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]
+SEARCH_QUERY_RESULTS_TYPE = dict[
+    tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], list[Document]
 ]
 
 REQUESTS_PER_MINUTE_LIMIT = 300
@@ -49,8 +50,8 @@ class SearchManager:
     def __init__(
         self,
         rpm: int = REQUESTS_PER_MINUTE_LIMIT,
-        bucket_size: int = None,
-        bigdata: Bigdata = None,
+        bucket_size: int | None = None,
+        bigdata: Bigdata | None = None,
         **kwargs,
     ):
         """
@@ -85,7 +86,7 @@ class SearchManager:
                 self.tokens = min(self.bucket_size, self.tokens + new_tokens)
                 self.last_refill = now
 
-    def _acquire_token(self, timeout: float = None) -> bool:
+    def _acquire_token(self, timeout: float | None = None) -> bool:
         """
         Attempt to acquire a token for executing a search request.
 
@@ -112,14 +113,14 @@ class SearchManager:
     def _search(
         self,
         query: QueryComponent,
-        date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
+        date_range: Union[tuple[datetime, datetime], RollingDateRange],
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
-        timeout: float = None,
-        rerank_threshold: float = None,
+        timeout: float | None = None,
+        rerank_threshold: float | None = None,
         **kwargs,
-    ) -> Optional[List[Document]]:
+    ) -> list[Document] | None:
         """
         Execute a single search with rate limiting.
 
@@ -147,13 +148,20 @@ class SearchManager:
             logging.warning("Timed out attempting to acquire rate limit token")
             return None
 
-        if isinstance(date_range, tuple):
-            date_range = AbsoluteDateRange(*date_range)
+        date_filter: AbsoluteDateRange | RollingDateRange
+
+        if date_range and isinstance(date_range, tuple):
+            date_filter = AbsoluteDateRange(
+                start=date_range[0],
+                end=date_range[1],
+            )
+        else:
+            date_filter = date_range
 
         try:
             query_obj = self.bigdata.search.new(
                 query=query,
-                date_range=date_range,
+                date_range=date_filter,
                 sortby=sortby,
                 scope=scope,
                 rerank_threshold=rerank_threshold,
@@ -163,19 +171,20 @@ class SearchManager:
                 kwargs["current_trace"].add_query_units(query_obj.get_usage())
             return results
         except Exception as e:
+            raise e
             logging.error(f"Search error: {e}")
             return None
 
     def concurrent_search(
         self,
-        queries: List[QueryComponent],
-        date_ranges: DATE_RANGE_TYPE = None,
+        queries: list[QueryComponent],
+        date_ranges: list[tuple[datetime, datetime] | RollingDateRange],
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
         max_workers: int = MAX_WORKERS,
-        timeout: float = None,
-        rerank_threshold: float = None,
+        timeout: float | None = None,
+        rerank_threshold: float | None = None,
         **kwargs,
     ) -> SEARCH_QUERY_RESULTS_TYPE:
         """
@@ -231,30 +240,29 @@ class SearchManager:
                 try:
                     results[(query, date_range)] = future.result()
                 except Exception as e:
+                    raise e
                     logging.error(f"Error in search {query, date_range}: {e}")
 
         return results
 
 
-def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
+def normalize_date_range(
+    date_ranges: INPUT_DATE_RANGE,
+) -> list[tuple[datetime, datetime] | RollingDateRange]:
     if not isinstance(date_ranges, list):
         date_ranges = [date_ranges]
 
-    # Convert mutable AbsoluteDateRange into hashable objects
-    for i, dr in enumerate(date_ranges):
-        if isinstance(dr, AbsoluteDateRange):
-            date_ranges[i] = (dr.start_dt.strftime("%Y-%m-%d %H:%M:%S"), dr.end_dt.strftime("%Y-%m-%d %H:%M:%S"))
     return date_ranges
 
 
 def run_search(
-    queries: List[QueryComponent],
-    date_ranges: DATE_RANGE_TYPE = None,
+    queries: list[QueryComponent],
+    date_ranges: INPUT_DATE_RANGE = None,
     sortby: SortBy = SortBy.RELEVANCE,
     scope: DocumentType = DocumentType.ALL,
     limit: int = 10,
     only_results: bool = True,
-    rerank_threshold: float = None,
+    rerank_threshold: float | None = None,
     **kwargs,
 ) -> Union[SEARCH_QUERY_RESULTS_TYPE, list[list[Document]]]:
     """
@@ -262,7 +270,7 @@ def run_search(
 
     Args:
         queries (list[QueryComponent]): A list of QueryComponent objects.
-        date_ranges (Optional[Union[AbsoluteDateRange, RollingDateRange, List[Union[AbsoluteDateRange, RollingDateRange]]]]):
+        date_ranges (Union[tuple[datetime, datetime], RollingDateRange, list[tuple[datetime, datetime] | RollingDateRange],]):
             Date range filter for the search results.
         sortby (SortBy): The sorting criterion for the search results. Defaults to SortBy.RELEVANCE.
         scope (DocumentType): The scope of the documents to include. Defaults to DocumentType.ALL.
@@ -284,13 +292,13 @@ def run_search(
 
     if not kwargs.get("current_trace"):
         start_date = date_ranges[0][0] if date_ranges else None
-        end_date = date_ranges[-1][1] if date_ranges else None     
+        end_date = date_ranges[-1][1] if date_ranges else None
 
         current_trace = Trace(
             event_name=TraceEventNames.RUN_SEARCH,
             document_type=scope,
-            start_date=start_date,
-            end_date=end_date,
+            start_date=start_date.isoformat() if start_date else None,
+            end_date=end_date.isoformat() if end_date else None,
             rerank_threshold=rerank_threshold,
             llm_model=None,
             frequency=None,
@@ -299,7 +307,7 @@ def run_search(
 
         kwargs["current_trace"] = current_trace
 
-    try: 
+    try:
         manager = SearchManager(**kwargs)
         query_results = manager.concurrent_search(
             queries=queries,
@@ -321,7 +329,6 @@ def run_search(
             current_trace.workflow_end_date = Trace.get_time_now()
             current_trace.result = execution_result  # noqa
             send_trace(bigdata_connection(), current_trace)
-
 
     if only_results:
         return list(query_results.values())

@@ -7,6 +7,25 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.0] - Unreleased
+Preparation for a first stable release.
+
+### Changed
+- Refactor the `themes` submodule to `tree`, allowing for a more generic tree structure
+  that can be re-used accross different workflows.
+- Moved `workflows.utils.save_to_excel` to `excel.save_to_excel`, grouping all optional
+  features related to Excel in one place.
+- Renamed `settings` to `utils` to better reflect its purpose as a utility module and free
+  the name for future use.
+- Renamed all `freq` parameters to `frequency` for better clarity and consistency accross workflows.
+
+### Fixed
+- Changed build system to use `uv_build` instead of `setuptools` to avoid issues with package data inclusion.
+- Fix duplicate dependencies in main vs optional dependencies. `openai` is now only optional while `graphviz`, `openpyxl` and `Pillow` is now only in main dependencies.
+
+### Removed
+- Removed support for Python 3.9 as it has reached its end of life. The minimum supported version is now Python 3.10.
+
 ## [0.20.1] - 2025-09-16
 
 ### Fix

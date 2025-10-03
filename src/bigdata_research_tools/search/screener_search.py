@@ -1,9 +1,7 @@
 from logging import Logger, getLogger
-from typing import List, Optional, Dict
 
 from bigdata_client.document import Document
-from bigdata_client.models.advanced_search_query import ListQueryComponent
-from bigdata_client.models.entities import Company
+from bigdata_client.models.entities import Company, Concept
 from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
@@ -14,31 +12,30 @@ from bigdata_research_tools.prompts.labeler import (
     get_target_entity_placeholder,
 )
 from bigdata_research_tools.search.query_builder import (
-    build_batched_query,
     EntitiesToSearch,
+    build_batched_query,
     create_date_ranges,
 )
 from bigdata_research_tools.search.search import run_search
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.search.search_utils import filter_search_results
-
+from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 
 logger: Logger = getLogger(__name__)
 
 
 def search_by_companies(
-    companies: List[Company],
-    sentences: List[str],
+    companies: list[Company],
+    sentences: list[str],
     start_date: str,
     end_date: str,
     scope: DocumentType = DocumentType.ALL,
-    fiscal_year: Optional[int] = None,
-    sources: Optional[List[str]] = None,
-    keywords: Optional[List[str]] = None,
-    control_entities: Optional[Dict] = None,
-    freq: str = "M",
+    fiscal_year: int | None = None,
+    sources: list[str] | None = None,
+    keywords: list[str] | None = None,
+    control_entities: dict | None = None,
+    frequency: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
-    rerank_threshold: Optional[float] = None,
+    rerank_threshold: float | None = None,
     document_limit: int = 50,
     batch_size: int = 10,
     **kwargs,
@@ -59,7 +56,7 @@ def search_by_companies(
         keywords (List[str]): A list of keywords for constructing keyword queries.
             If None, no keyword queries are created.
         control_entities (Dict): A dictionary of control entities of different types for creating co-mentions queries.
-        freq (str): The frequency of the date ranges. Defaults to '3M'.
+        frequency (str): The frequency of the date ranges. Defaults to '3M'.
         sort_by (SortBy): The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
         rerank_threshold (Optional[float]): The threshold for reranking the search results.
@@ -103,7 +100,7 @@ def search_by_companies(
             end_date=end_date,
             rerank_threshold=rerank_threshold,
             llm_model=None,
-            frequency=freq,
+            frequency=frequency,
             workflow_start_date=Trace.get_time_now(),
         )
 
@@ -113,9 +110,9 @@ def search_by_companies(
         # Extract entities for search querying
         entity_keys = [entity.id for entity in companies]
 
-    # Create entity configs
+        # Create entity configs
         entities_config = EntitiesToSearch(companies=entity_keys)
-        
+
         # If control_entities are provided, create a control EntityConfig
         # For this example, assuming control_entities are all company entities
         control_entities_config = None
@@ -136,7 +133,9 @@ def search_by_companies(
         )
 
         # Create list of date ranges
-        date_ranges = create_date_ranges(start_date, end_date, freq)
+        date_ranges = create_date_ranges(
+            start_date, end_date, frequency, return_datetime=True
+        )
 
         no_queries = len(batched_query)
         no_dates = len(date_ranges)
@@ -158,7 +157,7 @@ def search_by_companies(
         results, entities = filter_search_results(results)
         # Filter entities to only include COMPANY entities
         entities = filter_company_entities(entities)
-        
+
         # Determine whether to filter by companies based on document type
         # For filings and transcripts, we don't need to filter as we use reporting entities
         # For news, we need to check against our original universe of companies as a news article
@@ -188,27 +187,29 @@ def search_by_companies(
 
     return df_sentences
 
+
 def filter_company_entities(
-    entities: List[ListQueryComponent],
-) -> List[ListQueryComponent]:
+    entities: list[Concept],
+) -> list[Concept]:
     """
     Filter only COMPANY entities from the list of entities.
 
     Args:
-        entities (List[ListQueryComponent]): A list of entities to filter.
+        entities (List[Concept]): A list of entities to filter.
     Returns:
-        List[ListQueryComponent]: A list of COMPANY entities.
+        List[Concept]: A list of COMPANY entities.
     """
     return [
         entity
         for entity in entities
-        if hasattr(entity, "entity_type") and getattr(entity, "entity_type") == "COMP"
+        if hasattr(entity, "entity_type") and entity.entity_type == "COMP"
     ]
 
+
 def process_screener_search_results(
-    results: List[Document],
-    entities: List[ListQueryComponent],
-    companies: Optional[List[Company]] = None,
+    results: list[Document],
+    entities: list[Concept],
+    companies: list[Company] | None = None,
     document_type: DocumentType = DocumentType.NEWS,
 ) -> DataFrame:
     """
@@ -216,7 +217,7 @@ def process_screener_search_results(
 
     Args:
         results (List[Document]): A list of Bigdata search results.
-        entities (List[ListQueryComponent]): A list of entities.
+        entities (List[Entity]): A list of entities.
         companies (Optional[List[Company]]): A list of companies to filter for.
             Only used for non-reporting entity documents.
         document_type (DocumentType): The type of documents being processed.
@@ -315,7 +316,7 @@ def process_screener_search_results(
 
                     if not entity_key:
                         continue  # Skip if entity is not found
-                    
+
                     # # if entity isn't in our original watchlist, skip
                     if companies and entity_key not in companies:
                         continue
@@ -362,9 +363,7 @@ def process_screener_search_results(
     return df.reset_index(drop=True)
 
 
-def mask_sentences(
-    df: DataFrame
-) -> DataFrame:
+def mask_sentences(df: DataFrame) -> DataFrame:
     """
     Mask the target entity and other entities in the text.
 

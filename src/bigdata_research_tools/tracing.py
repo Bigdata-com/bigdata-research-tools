@@ -19,19 +19,20 @@ class TraceEventNames(Enum):
     COMPANY_SEARCH = "CompanySearchRun"
     RUN_SEARCH = "SearchRun"
 
+
 @dataclasses.dataclass
 class Trace:
-    event_name: TraceEventNames = None
-    document_type: str = None
-    start_date: str = None
-    end_date: str = None
-    rerank_threshold: float = None
-    llm_model: str = None
-    frequency: str = None
-    result: str = None
-    workflow_start_date: datetime = None
-    workflow_end_date: datetime = None
-    workflow_usage: str = None
+    event_name: TraceEventNames
+    document_type: str
+    workflow_start_date: datetime
+    start_date: str | None = None
+    end_date: str | None = None
+    rerank_threshold: float | None = None
+    llm_model: str | None = None
+    frequency: str | None = None
+    result: str | None = None
+    workflow_end_date: datetime | None = None
+    workflow_usage: str | None = None
 
     _query_units_queue: Queue = Queue()  # To protect against concurrent access issues
 

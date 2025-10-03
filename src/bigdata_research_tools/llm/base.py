@@ -9,7 +9,7 @@ logger: Logger = getLogger(__name__)
 
 
 class AsyncLLMProvider(ABC):
-    def __init__(self, model: str = None):
+    def __init__(self, model: str | None = None):
         self.model = model
 
     @abstractmethod
@@ -57,9 +57,9 @@ class AsyncLLMProvider(ABC):
 
 
 class AsyncLLMEngine:
-    def __init__(self, model: str = None):
+    def __init__(self, model: str | None = None):
         if model is None:
-            model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM")
+            model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM", "openai::gpt-4o-mini")
             source = "Environment"
         else:
             source = "Argument"
@@ -136,7 +136,7 @@ class AsyncLLMEngine:
 
 
 class LLMProvider(ABC):
-    def __init__(self, model: str = None):
+    def __init__(self, model: str | None = None):
         self.model = model
 
     @abstractmethod
@@ -184,9 +184,9 @@ class LLMProvider(ABC):
 
 
 class LLMEngine:
-    def __init__(self, model: str = None):
+    def __init__(self, model: str | None = None):
         if model is None:
-            model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM")
+            model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM", "openai::gpt-4o-mini")
             source = "Environment"
         else:
             source = "Argument"
