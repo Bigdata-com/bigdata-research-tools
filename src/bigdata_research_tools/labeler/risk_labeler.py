@@ -199,7 +199,9 @@ class RiskLabeler(Labeler):
         return df[export_columns]
 
 
-def replace_company_placeholders(row: Series, col_name: str = "motivation") -> str:
+def replace_company_placeholders(
+    row: Series, col_name: str = "motivation"
+) -> str | list[str]:
     """
     Replace company placeholders in text.
 

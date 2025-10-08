@@ -4,7 +4,7 @@ from json import loads
 from typing import AsyncGenerator, Generator
 
 try:
-    from openai import AsyncOpenAI, OpenAI
+    from openai import AsyncOpenAI, OpenAI  # ty: ignore[unresolved-import]
 except ImportError:
     raise ImportError(
         "Missing optional dependency for LLM OpenAI provider, "

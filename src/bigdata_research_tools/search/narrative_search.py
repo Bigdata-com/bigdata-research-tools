@@ -25,7 +25,7 @@ def search_narratives(
     start_date: str,
     end_date: str,
     scope: DocumentType,
-    fiscal_year: int | list[int] = None,
+    fiscal_year: int | list[int] | None = None,
     sources: list[str] | None = None,
     keywords: list[str] | None = None,
     control_entities: list[str] | None = None,

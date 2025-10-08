@@ -29,7 +29,7 @@ class ThematicScreener(Workflow):
         fiscal_year: int | list[int] | None = None,
         sources: list[str] | None = None,
         rerank_threshold: float | None = None,
-        focus: str = "",
+        focus: str | None = None,
     ):
         """
         This class will screen a universe's (specified in 'companies') exposure to a given theme ('main_theme').
@@ -56,14 +56,26 @@ class ThematicScreener(Workflow):
         super().__init__()
         self.llm_model = llm_model
         self.main_theme = main_theme
+        if not companies:
+            raise ValueError(
+                "Thematic screener parameter `companies` cannot be None or an empty list"
+            )
         self.companies = companies
+        if not start_date:
+            raise ValueError(
+                "Thematic screener parameter `start_date` cannot be None or an empty string"
+            )
         self.start_date = start_date
+        if not end_date:
+            raise ValueError(
+                "Thematic screener parameter `end_date` cannot be None or an empty string"
+            )
         self.end_date = end_date
         self.fiscal_year = fiscal_year
         self.document_type = document_type
         self.sources = sources
         self.rerank_threshold = rerank_threshold
-        self.focus = focus
+        self.focus = focus or ""
 
     def screen_companies(
         self,

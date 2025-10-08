@@ -113,7 +113,7 @@ class SearchManager:
     def _search(
         self,
         query: QueryComponent,
-        date_range: Union[tuple[datetime, datetime], RollingDateRange],
+        date_range: tuple[datetime, datetime] | RollingDateRange,
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
@@ -257,7 +257,7 @@ def normalize_date_range(
 
 def run_search(
     queries: list[QueryComponent],
-    date_ranges: INPUT_DATE_RANGE = None,
+    date_ranges: INPUT_DATE_RANGE,
     sortby: SortBy = SortBy.RELEVANCE,
     scope: DocumentType = DocumentType.ALL,
     limit: int = 10,

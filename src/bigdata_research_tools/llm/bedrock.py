@@ -2,7 +2,7 @@ from os import environ
 from typing import Any, Generator
 
 try:
-    from boto3 import Session
+    from boto3 import Session  # ty: ignore[unresolved-import]
 except ImportError:
     raise ImportError(
         "Missing optional dependency for LLM Bedrock provider, "
@@ -33,14 +33,16 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 region_name=self.region or environ.get("AWS_DEFAULT_REGION")
             )
 
+    def _get_bedrock_client(self) -> Session:
+        return self._client.client("bedrock-runtime")
+
     def _get_bedrock_input(
         self, chat_history: list[dict[str, str]], **kwargs
-    ) -> tuple[Session, dict[str, Any], str]:
+    ) -> tuple[dict[str, Any], str]:
         """
         Get the input for the Bedrock API.
         :param chat_history: the chat history to get the input from.
         """
-        bedrock_client = self._client.client("bedrock-runtime")
         default_kwargs = {
             "temperature": 0.01,
             "max_tokens": 2048,
@@ -76,7 +78,7 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 "latency": "optimized" if kwargs.get("low_latency") else "standard"
             },
         }
-        return bedrock_client, model_kwargs, response_prefix
+        return model_kwargs, response_prefix
 
     async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
         """
@@ -94,9 +96,8 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                     Only implemented for a few models. See
                     https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
-            chat_history, **kwargs
-        )
+        bedrock_client = self._get_bedrock_client()
+        model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
         response = bedrock_client.converse(**model_kwargs)
 
         output_message = (
@@ -129,9 +130,8 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
-            chat_history, **kwargs
-        )
+        bedrock_client = self._get_bedrock_client()
+        model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
         if tools:
             model_kwargs["toolConfig"] = {"tools": tools}
         response = bedrock_client.converse(**model_kwargs)
@@ -196,12 +196,11 @@ class BedrockProvider(LLMProvider):
 
     def _get_bedrock_input(
         self, chat_history: list[dict[str, str]], **kwargs
-    ) -> tuple[Session, dict[str, Any]]:
+    ) -> tuple[dict[str, Any], str]:
         """
         Get the input for the Bedrock API.
         :param chat_history: the chat history to get the input from.
         """
-        bedrock_client = self._client.client("bedrock-runtime")
         default_kwargs = {
             "temperature": 0.01,
             "max_tokens": 2048,
@@ -237,7 +236,7 @@ class BedrockProvider(LLMProvider):
                 "latency": "optimized" if kwargs.get("low_latency") else "standard"
             },
         }
-        return bedrock_client, model_kwargs, response_prefix
+        return model_kwargs, response_prefix
 
     def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
         """

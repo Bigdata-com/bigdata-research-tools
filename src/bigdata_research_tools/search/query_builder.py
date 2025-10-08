@@ -78,7 +78,7 @@ def build_batched_query(
     control_entities: EntitiesToSearch | None,
     sources: list[str] | None,
     batch_size: int,
-    fiscal_year: int | list[int],
+    fiscal_year: int | list[int] | None,
     scope: DocumentType,
     custom_batches: list[EntitiesToSearch] | None,
 ) -> list[QueryComponent]:
@@ -147,7 +147,8 @@ def build_batched_query(
 
 
 def _validate_parameters(
-    document_scope: DocumentType | None = None, fiscal_year: int | list[int] = None,
+    document_scope: DocumentType | None = None,
+    fiscal_year: int | list[int] | None = None,
 ) -> None:
     """
     Validates parameters based on predefined rules.
@@ -159,7 +160,9 @@ def _validate_parameters(
         return
 
     if document_scope in [DocumentType.FILINGS, DocumentType.TRANSCRIPTS]:
-        if fiscal_year is None or (isinstance(fiscal_year, list) and len(fiscal_year) == 0):
+        if fiscal_year is None or (
+            isinstance(fiscal_year, list) and len(fiscal_year) == 0
+        ):
             raise ValueError(
                 f"`fiscal_year` is required when `document_scope` is `{document_scope.value}`"
             )
@@ -272,22 +275,20 @@ def _build_control_entity_query(
 
 def _build_entity_batch_queries(
     entities: EntitiesToSearch | None,
-    custom_batches: list[EntitiesToSearch],
+    custom_batches: list[EntitiesToSearch] | None,
     batch_size: int,
     scope: DocumentType,
 ) -> list[QueryComponent] | list[None]:
     """Build entity batch queries from either custom batches or auto-batched entities."""
 
-    # If no entities specified, return a single None to ensure at least one iteration
-    if not entities and not custom_batches:
-        return [None]
-
-    # If using custom batches, process them
+    # Prioritize custom batches if provided, else auto-batch entities
     if custom_batches:
         return _build_custom_batch_queries(custom_batches, scope)
-
-    # Otherwise, auto-batch the entities
-    return _auto_batch_entities(entities, batch_size, scope)
+    elif entities:
+        return _auto_batch_entities(entities, batch_size, scope)
+    else:
+        # If no entities specified, return a single None to ensure at least one iteration
+        return [None]
 
 
 def _get_entity_type(scope: DocumentType) -> type:
@@ -381,7 +382,7 @@ def _expand_queries(
     entity_batch_queries: list[QueryComponent] | None = None,
     control_query: QueryComponent | None = None,
     source_query: QueryComponent | None = None,
-    fiscal_year: int | list[int] = None,
+    fiscal_year: int | list[int] | None = None,
 ) -> list[QueryComponent]:
     """Expand all query components into the final list of queries."""
     base_queries, keyword_query, source_query = base_queries_tuple
@@ -416,7 +417,9 @@ def _expand_queries(
             if fiscal_year:
                 if isinstance(fiscal_year, list):
                     fiscal_year_queries = [
-                        FiscalYear(year) for year in fiscal_year if isinstance(year, int)
+                        FiscalYear(year)
+                        for year in fiscal_year
+                        if isinstance(year, int)
                     ]
                     if fiscal_year_queries:
                         fiscal_year_query = Any(fiscal_year_queries)
@@ -427,7 +430,9 @@ def _expand_queries(
                         )
                 else:
                     expanded_query = (
-                        expanded_query & FiscalYear(fiscal_year) if expanded_query else None
+                        expanded_query & FiscalYear(fiscal_year)
+                        if expanded_query
+                        else None
                     )
 
             # Append the expanded query to the final list
@@ -480,6 +485,14 @@ def create_date_intervals(
     # Convert start and end dates to pandas Timestamps
     start_date_pd = pd.Timestamp(start_date)
     end_date_pd = pd.Timestamp(end_date)
+
+    # Invalid dates will be pd.NaT, which can be tested as a NA value
+    if pd.isna(start_date_pd):
+        raise ValueError("Invalid start_date format. Use 'YYYY-MM-DD'.")
+    if pd.isna(end_date_pd):
+        raise ValueError("Invalid end_date format. Use 'YYYY-MM-DD'.")
+    if start_date_pd > end_date_pd:
+        raise ValueError("start_date must be earlier than or equal to end_date.")
 
     # Adjust frequency for yearly and monthly to use appropriate start markers
     # 'AS' for year start, 'MS' for month start
