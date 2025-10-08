@@ -107,6 +107,7 @@ def search_narratives(
         limit=document_limit,
         scope=scope,
         sortby=sort_by,
+        only_results=True,
         rerank_threshold=rerank_threshold,
         **kwargs,
     )

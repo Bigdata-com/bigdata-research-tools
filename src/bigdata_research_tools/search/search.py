@@ -13,7 +13,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Union
+from typing import Literal, Union, overload
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
@@ -254,6 +254,31 @@ def normalize_date_range(
 
     return date_ranges
 
+@overload
+def run_search(
+    queries: list[QueryComponent],
+    date_ranges: INPUT_DATE_RANGE,
+    sortby: SortBy = SortBy.RELEVANCE,
+    scope: DocumentType = DocumentType.ALL,
+    limit: int = 10,
+    only_results: Literal[False] = False,
+    rerank_threshold: float | None = None,
+    **kwargs,
+) -> SEARCH_QUERY_RESULTS_TYPE:
+    ...
+
+@overload
+def run_search(
+    queries: list[QueryComponent],
+    date_ranges: INPUT_DATE_RANGE,
+    sortby: SortBy = SortBy.RELEVANCE,
+    scope: DocumentType = DocumentType.ALL,
+    limit: int = 10,
+    only_results: Literal[True] = True,
+    rerank_threshold: float | None = None,
+    **kwargs,
+) -> list[list[Document]]:
+    ...
 
 def run_search(
     queries: list[QueryComponent],
@@ -264,7 +289,7 @@ def run_search(
     only_results: bool = True,
     rerank_threshold: float | None = None,
     **kwargs,
-) -> Union[SEARCH_QUERY_RESULTS_TYPE, list[list[Document]]]:
+) -> SEARCH_QUERY_RESULTS_TYPE | list[list[Document]]:
     """
     Execute multiple searches concurrently using the Bigdata client, with rate limiting.
 
