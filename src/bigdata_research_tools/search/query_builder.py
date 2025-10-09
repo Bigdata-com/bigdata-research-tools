@@ -332,7 +332,7 @@ def _build_custom_batch_queries(
         if all_entities:
             batch_queries.append(Any(all_entities))
 
-    return batch_queries if batch_queries else [None]
+    return batch_queries if batch_queries else None
 
 
 def _auto_batch_entities(

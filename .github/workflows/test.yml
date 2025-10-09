@@ -18,9 +18,8 @@ jobs:
         uses: astral-sh/setup-uv@v6
       - name: Install dependencies
         run: uv sync --locked --dev
-# Disable type checking for now, the project is not mature enough to pass all checks
-#      - name: Type check the code
-#        run: make type-check
+      - name: Type check the code
+        run: make type-check
       - name: Lint the code
         run: make lint-check
       - name: Format the code
@@ -44,6 +43,6 @@ jobs:
           enable-cache: true
       - name: Install dependencies
         run: uv sync --locked --dev
-# Disable type checking for now, the project is not mature enough to pass all checks
+# Disable type checking for now, v1 is not mature enough to pass all tests
 #      - name: Test with pytest
 #        run: make tests
