@@ -4,7 +4,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger, getLogger
 from typing import Any, Coroutine
 
-from openai import APITimeoutError, RateLimitError
 from tqdm import tqdm
 
 from bigdata_research_tools.llm.base import AsyncLLMEngine
@@ -74,15 +73,19 @@ async def _fetch_with_semaphore(
     async with semaphore:
         retry_delay = 1  # Initial delay in seconds
         max_retries = 5
+        last_exception = None
         for attempt in range(max_retries):
             try:
                 response = await llm_engine.get_response(chat_history, **kwargs)
                 return idx, response
-            except (APITimeoutError, RateLimitError):
+            except Exception as e:
+                last_exception = e
                 await asyncio.sleep(retry_delay)
                 # Exponential backoff
                 retry_delay = min(retry_delay * 2, 60)
-        logger.error(f"Failed to get response for prompt: {prompt}")
+        logger.error(
+            f"Failed to get response for prompt: {prompt} Error: {last_exception}"
+        )
         return idx, ""
 
 
@@ -131,14 +134,18 @@ def run_parallel_prompts(
         ]
         retry_delay = 1
         max_retries = 5
+        last_exception = None
         for attempt in range(max_retries):
             try:
                 response = llm_engine.get_response(chat_history, **kwargs)
                 return idx, response
-            except (APITimeoutError, RateLimitError):
+            except Exception as e:
+                last_exception = e
                 time.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, 60)
-        logger.error(f"Failed to get response for prompt: {prompt}")
+        logger.error(
+            f"Failed to get response for prompt: {prompt} Error: {last_exception}"
+        )
         return idx, ""
 
     results = [""] * len(prompts)
