@@ -45,7 +45,7 @@ class EntitiesToSearch:
         }
 
 
-def build_similarity_queries(sentences: list[str]) -> list[Similarity]:
+def build_similarity_queries(sentences: list[str]) -> list[QueryComponent]:
     """
     Processes a list of sentences to create a list of Similarity query objects, ensuring no duplicates.
 
@@ -178,10 +178,10 @@ def _build_base_queries(
     sentences: list[str] | None,
     keywords: list[str] | None,
     sources: list[str] | None,
-) -> tuple[list[QueryComponent], QueryComponent | None, QueryComponent | None]:
+) -> tuple[list[QueryComponent] | None, QueryComponent | None, QueryComponent | None]:
     """Build the base queries from sentences, keywords, and sources."""
     # Create similarity queries from sentences
-    queries = build_similarity_queries(sentences) if sentences else []
+    queries = build_similarity_queries(sentences) if sentences else None
 
     # Create keyword query
     keyword_query = Any([Keyword(word) for word in keywords]) if keywords else None
@@ -195,7 +195,7 @@ def _build_base_queries(
 def _get_entity_ids(
     entity_names: list[str],
     entity_type: Type,
-) -> list[Type]:
+) -> list[QueryComponent]:
     bigdata = bigdata_connection()
     entity_ids = []
 
@@ -278,7 +278,7 @@ def _build_entity_batch_queries(
     custom_batches: list[EntitiesToSearch] | None,
     batch_size: int,
     scope: DocumentType,
-) -> list[QueryComponent] | list[None]:
+) -> list[QueryComponent] | None:
     """Build entity batch queries from either custom batches or auto-batched entities."""
 
     # Prioritize custom batches if provided, else auto-batch entities
@@ -287,11 +287,11 @@ def _build_entity_batch_queries(
     elif entities:
         return _auto_batch_entities(entities, batch_size, scope)
     else:
-        # If no entities specified, return a single None to ensure at least one iteration
-        return [None]
+        # If no entities specified, return None
+        return None
 
 
-def _get_entity_type(scope: DocumentType) -> type:
+def _get_entity_type(scope: DocumentType) -> Type[Entity | ReportingEntity]:
     """Determine the entity type based on document scope."""
     return (
         ReportingEntity
@@ -302,13 +302,13 @@ def _get_entity_type(scope: DocumentType) -> type:
 
 def _build_custom_batch_queries(
     custom_batches: list[EntitiesToSearch], scope: DocumentType
-) -> list[QueryComponent] | list[None]:
+) -> list[QueryComponent] | None:
     """Build entity queries from a list of EntitiesToSearch objects."""
     entity_type_map = EntitiesToSearch.get_entity_type_map()
 
     def get_entity_ids_for_attr(
         entity_config: EntitiesToSearch, attr_name: str, entity_class
-    ) -> list[int]:
+    ) -> list[QueryComponent]:
         """Get entity IDs for a specific attribute."""
         entity_names = getattr(entity_config, attr_name, None)
         if not entity_names:
@@ -377,7 +377,7 @@ def _auto_batch_entities(
 
 def _expand_queries(
     base_queries_tuple: tuple[
-        list[QueryComponent], QueryComponent | None, QueryComponent | None
+        list[QueryComponent] | None, QueryComponent | None, QueryComponent | None
     ],
     entity_batch_queries: list[QueryComponent] | None = None,
     control_query: QueryComponent | None = None,

@@ -254,6 +254,7 @@ def normalize_date_range(
 
     return date_ranges
 
+
 @overload
 def run_search(
     queries: list[QueryComponent],
@@ -264,8 +265,8 @@ def run_search(
     only_results: Literal[False] = False,
     rerank_threshold: float | None = None,
     **kwargs,
-) -> SEARCH_QUERY_RESULTS_TYPE:
-    ...
+) -> SEARCH_QUERY_RESULTS_TYPE: ...
+
 
 @overload
 def run_search(
@@ -277,8 +278,8 @@ def run_search(
     only_results: Literal[True] = True,
     rerank_threshold: float | None = None,
     **kwargs,
-) -> list[list[Document]]:
-    ...
+) -> list[list[Document]]: ...
+
 
 def run_search(
     queries: list[QueryComponent],
