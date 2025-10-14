@@ -11,6 +11,7 @@ Prerequisites:
 """
 
 import logging
+from pathlib import Path
 
 import pandas as pd
 from bigdata_client.models.search import DocumentType
@@ -28,7 +29,9 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main(
+    output_file: str = "run_search_results.xlsx",
+):
     """Basic example of run_search usage."""
 
     # Load environment variables
@@ -115,7 +118,6 @@ def main():
             logger.info(f"  - {headline}")
 
         # Export to Excel
-        output_file = "run_search_results.xlsx"
         results_df.to_excel(output_file, index=False)
         logger.info(f"Results exported to {output_file}")
 
@@ -124,4 +126,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    output_path = Path("outputs/run_search_results.xlsx")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    main(output_file=str(output_path))

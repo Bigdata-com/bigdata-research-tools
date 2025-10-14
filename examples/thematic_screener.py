@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.client import bigdata_connection
@@ -50,7 +52,10 @@ if __name__ == "__main__":
     logging.basicConfig()
     logging.getLogger("bigdata_research_tools").setLevel(logging.INFO)
 
-    x = thematic_screener_example("Chip Manufacturers")
+    output_path = Path("outputs/thematic_screener_results.xlsx")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    x = thematic_screener_example("Chip Manufacturers", export_path=str(output_path))
     custom_config = {
         "company_column": "Company",
         "heatmap_colorscale": "Plasma",

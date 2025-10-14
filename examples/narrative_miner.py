@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.utils.observer import OberserverNotification, Observer
@@ -53,4 +55,7 @@ if __name__ == "__main__":
     logging.basicConfig()
     logging.getLogger("bigdata_research_tools").setLevel(logging.INFO)
 
-    narrative_miner_example()
+    output_path = Path("outputs/narrative_miner_sample.xlsx")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    narrative_miner_example(export_path=str(output_path))

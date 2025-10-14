@@ -11,6 +11,7 @@ Prerequisites:
 """
 
 import logging
+from pathlib import Path
 
 from bigdata_client.models.search import DocumentType
 from dotenv import load_dotenv
@@ -23,7 +24,9 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main(
+    output_file: str = "search_by_companies_results.xlsx",
+):
     """Basic example of search_by_companies usage."""
 
     # Load environment variables
@@ -89,7 +92,6 @@ def main():
             logger.info(f"  - {headline}")
 
         # Export to Excel (fix timezone issues)
-        output_file = "search_by_companies_results.xlsx"
 
         # Create a copy for Excel export with timezone-naive timestamps
         excel_df = results_df.copy()
@@ -108,4 +110,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    output_path = Path("outputs/run_search_results.xlsx")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    main(output_file=str(output_path))

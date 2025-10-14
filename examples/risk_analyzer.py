@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.client import bigdata_connection
@@ -54,9 +56,13 @@ if __name__ == "__main__":
     logging.basicConfig()
     logging.getLogger("bigdata_research_tools").setLevel(logging.INFO)
 
+    output_path = Path("outputs/risk_analyzer_results.xlsx")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     x = risk_analyzer_example(
         "US Import Tariffs against Canada and Mexico",
         focus="Provide a detailed taxonomy of risks describing how new American import tariffs against Canada and Mexico will impact US companies, their operations and strategy. Cover trade-relations risks, foreign market access risks, supply chain risks, US market sales and revenue risks (including price impacts), and intellectual property risks, provide at least 4 sub-scenarios for each risk factor.",
+        export_path=str(output_path),
     )
     # custom_config = {
     #     'company_column': 'Company',
