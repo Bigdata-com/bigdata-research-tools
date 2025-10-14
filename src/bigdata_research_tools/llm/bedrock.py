@@ -61,6 +61,7 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 system.append({"text": message["content"]})
         if (
             "response_format" in kwargs
+            and isinstance(kwargs["response_format"], dict)
             and kwargs["response_format"].get("type") == "json"
         ):
             formatted_history.append({"role": "assistant", "content": [{"text": "{"}]})
@@ -219,6 +220,7 @@ class BedrockProvider(LLMProvider):
                 system.append({"text": message["content"]})
         if (
             "response_format" in kwargs
+            and isinstance(kwargs["response_format"], dict)
             and kwargs["response_format"].get("type") == "json"
         ):
             formatted_history.append({"role": "assistant", "content": [{"text": "{"}]})
