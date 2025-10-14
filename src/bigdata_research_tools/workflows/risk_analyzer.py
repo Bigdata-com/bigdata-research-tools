@@ -8,6 +8,7 @@ from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_category
 from bigdata_research_tools.portfolio.motivation import Motivation
+from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.tree import SemanticTree, generate_risk_tree
@@ -243,6 +244,7 @@ class RiskAnalyzer(Workflow):
             df=df_labeled.rename(columns={"Sub-Scenario": "Theme"}),
             theme_name=self.main_theme,
             word_range=word_range,
+            use_case=MotivationType.RISK_ANALYZER,
         )
 
         return df_company, df_industry, motivation_df

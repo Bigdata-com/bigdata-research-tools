@@ -8,6 +8,7 @@ from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
 from bigdata_research_tools.portfolio.motivation import Motivation
+from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.tree import generate_theme_tree
@@ -218,7 +219,10 @@ class ThematicScreener(Workflow):
             )
             motivation_generator = Motivation(model=self.llm_model)
             motivation_df = motivation_generator.generate_company_motivations(
-                df=df, theme_name=self.main_theme, word_range=word_range
+                df=df,
+                theme_name=self.main_theme,
+                word_range=word_range,
+                use_case=MotivationType.THEMATIC_SCREENER,
             )
             self.notify_observers("Motivations generated")
 

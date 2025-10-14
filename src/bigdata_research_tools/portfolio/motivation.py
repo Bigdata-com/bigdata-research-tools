@@ -5,7 +5,10 @@ import pandas as pd
 from tqdm import tqdm
 
 from bigdata_research_tools.llm.base import LLMEngine
-from bigdata_research_tools.prompts.motivation import get_motivation_prompt
+from bigdata_research_tools.prompts.motivation import (
+    MotivationType,
+    get_motivation_prompt,
+)
 
 
 class Motivation:
@@ -122,7 +125,11 @@ class Motivation:
         return motivation.strip()
 
     def generate_company_motivations(
-        self, df: pd.DataFrame, theme_name: str, word_range: tuple[int, int]
+        self,
+        df: pd.DataFrame,
+        theme_name: str,
+        word_range: tuple[int, int],
+        use_case: MotivationType = MotivationType.THEMATIC_SCREENER,
     ) -> pd.DataFrame:
         """
         Generates motivation statement with specified verbosity for companies in a thematic watchlist.
@@ -148,7 +155,12 @@ class Motivation:
         ):
             # Create prompt for this word range
             prompt = get_motivation_prompt(
-                company, data, theme_name, word_range[0], word_range[1]
+                company,
+                data,
+                theme_name,
+                word_range[0],
+                word_range[1],
+                use_case=use_case,
             )
 
             # Generate motivation with this word range

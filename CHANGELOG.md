@@ -24,6 +24,7 @@ Preparation for a first stable release.
 - Renamed `settings` to `utils` to better reflect its purpose as a utility module and free
   the name for future use.
 - Renamed all `freq` parameters to `frequency` for better clarity and consistency accross workflows.
+- Implement custom motivation prompts for different use cases, including thematic screening and risk analysis.
 
 ### Fixed
 - Changed build system to use `uv_build` instead of `setuptools` to avoid issues with package data inclusion.
