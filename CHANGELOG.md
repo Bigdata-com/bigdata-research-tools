@@ -32,6 +32,7 @@ Preparation for a first stable release.
 
 ### Removed
 - Removed support for Python 3.9 as it has reached its end of life. The minimum supported version is now Python 3.10.
+- Removed `ipython` from main dependencies and removed unused function `bigdata_research_tools.workflows.utils.display_output_chunks_dataframe`.
 
 ## [0.20.1] - 2025-09-16
 
