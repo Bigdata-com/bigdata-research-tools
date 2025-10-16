@@ -470,7 +470,7 @@ def create_date_intervals(
     Operation:
         1. Converts the `start_date` and `end_date` strings to `pd.Timestamp` objects.
         2. Adjusts the frequency for yearly ('Y') and monthly ('M') intervals to align with period starts:
-           - 'Y' → 'AS' (Year Start).
+           - 'Y' → 'YS' (Year Start).
            - 'M' → 'MS' (Month Start).
         3. Uses `pd.date_range` to generate a range of dates based on the frequency.
         4. Creates tuples representing start and end times for each interval:
@@ -495,8 +495,8 @@ def create_date_intervals(
         raise ValueError("start_date must be earlier than or equal to end_date.")
 
     # Adjust frequency for yearly and monthly to use appropriate start markers
-    # 'AS' for year start, 'MS' for month start
-    adjusted_freq = frequency.replace("Y", "AS").replace("M", "MS")
+    # 'YS' for year start, 'MS' for month start
+    adjusted_freq = frequency.replace("Y", "YS").replace("M", "MS")
 
     # Generate date range based on the adjusted frequency
     try:
