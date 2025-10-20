@@ -465,13 +465,12 @@ def create_date_intervals(
             start_date.replace(hour=0, minute=0, second=0),
             end_date.replace(hour=23, minute=59, second=59)
         )]
-    
     # Check if we need a partial first interval (if first generated date is after start_date)
     if date_range[0].replace(hour=0, minute=0, second=0) > start_date.replace(hour=0, minute=0, second=0):
         intervals.append(
             (
                 start_date.replace(hour=0, minute=0, second=0),
-                (date_range[0] - pd.Timedelta(seconds=1)).replace(hour=23, minute=59, second=59),
+                date_range[0] - pd.Timedelta(seconds=1),
             )
         )
     
@@ -479,9 +478,7 @@ def create_date_intervals(
         intervals.append(
             (
                 date_range[i].replace(hour=0, minute=0, second=0),
-                (date_range[i + 1] - pd.Timedelta(seconds=1)).replace(
-                    hour=23, minute=59, second=59
-                ),
+                date_range[i + 1] - pd.Timedelta(seconds=1),
             )
         )
 
