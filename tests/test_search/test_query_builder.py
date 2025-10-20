@@ -1,13 +1,6 @@
 """
 Tests for query_builder date interval functions.
 """
-import sys
-from pathlib import Path
-
-# Add src to path to import from local source instead of installed package
-src_path = Path(__file__).parent.parent.parent / "src"
-sys.path.insert(0, str(src_path))
-
 import pytest
 import pandas as pd
 from bigdata_research_tools.search.query_builder import create_date_intervals, create_date_ranges
