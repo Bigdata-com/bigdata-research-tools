@@ -7,6 +7,7 @@ search requests efficiently while respecting request-per-minute (RPM) limits
 of the Bigdata API.
 """
 
+from datetime import datetime
 import itertools
 import logging
 import threading
@@ -22,7 +23,7 @@ from bigdata_client.models.search import DocumentType, SortBy
 from tqdm import tqdm
 
 from bigdata_research_tools.client import bigdata_connection, init_bigdata_client
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
+from bigdata_research_tools.tracing import ReportSearchUsageTraceEvent, WorkflowTraceEvent, send_trace, WorkflowStatus
 
 DATE_RANGE_TYPE = Union[
     AbsoluteDateRange,
@@ -70,6 +71,8 @@ class SearchManager:
         self.tokens = self.bucket_size
         self.last_refill = time.time()
         self._lock = threading.Lock()
+        self._quota_lock = threading.Lock()
+        self.quota_consumed = 0
 
     def _refill_tokens(self):
         """
@@ -159,8 +162,8 @@ class SearchManager:
                 rerank_threshold=rerank_threshold,
             )
             results = query_obj.run(limit=limit)
-            if kwargs.get("current_trace"):
-                kwargs["current_trace"].add_query_units(query_obj.get_usage())
+            with self._quota_lock:
+                self.quota_consumed += query_obj.get_usage()
             return results
         except Exception as e:
             logging.error(f"Search error: {e}")
@@ -235,6 +238,15 @@ class SearchManager:
 
         return results
 
+    def get_quota_consumed(self) -> float:
+        """
+        Get the total query units consumed during searches.
+
+        :return:
+            The total query units consumed.
+        """
+        with self._quota_lock:
+            return self.quota_consumed
 
 def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
     if not isinstance(date_ranges, list):
@@ -246,6 +258,7 @@ def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
             date_ranges[i] = (dr.start_dt.strftime("%Y-%m-%d %H:%M:%S"), dr.end_dt.strftime("%Y-%m-%d %H:%M:%S"))
     return date_ranges
 
+RUN_SEARCH_NAME: str = "RunSearch"
 
 def run_search(
     queries: List[QueryComponent],
@@ -255,6 +268,7 @@ def run_search(
     limit: int = 10,
     only_results: bool = True,
     rerank_threshold: float = None,
+    workflow_name: str = RUN_SEARCH_NAME,
     **kwargs,
 ) -> Union[SEARCH_QUERY_RESULTS_TYPE, list[list[Document]]]:
     """
@@ -282,22 +296,9 @@ def run_search(
     date_ranges = normalize_date_range(date_ranges)
     date_ranges.sort(key=lambda x: x[0])
 
-    if not kwargs.get("current_trace"):
-        start_date = date_ranges[0][0] if date_ranges else None
-        end_date = date_ranges[-1][1] if date_ranges else None     
-
-        current_trace = Trace(
-            event_name=TraceEventNames.RUN_SEARCH,
-            document_type=scope,
-            start_date=start_date,
-            end_date=end_date,
-            rerank_threshold=rerank_threshold,
-            llm_model=None,
-            frequency=None,
-            workflow_start_date=Trace.get_time_now(),
-        )
-
-        kwargs["current_trace"] = current_trace
+    workflow_start = datetime.now()
+    start_date = date_ranges[0][0] if date_ranges else None
+    end_date = date_ranges[-1][1] if date_ranges else None     
 
     try: 
         manager = SearchManager(**kwargs)
@@ -310,17 +311,31 @@ def run_search(
             rerank_threshold=rerank_threshold,
             **kwargs,
         )
+
+        send_trace(
+            bigdata_connection(), ReportSearchUsageTraceEvent(
+                workflow_name=workflow_name,
+                document_type=scope.value,
+                start_date=start_date,
+                end_date=end_date,
+                llm_model=None,
+                query_units=manager.get_quota_consumed(),
+            )
+        )
     except Exception:
-        execution_result = "error"
+        workflow_status = WorkflowStatus.FAILED
         raise
     else:
-        execution_result = "success"
+        workflow_status = WorkflowStatus.SUCCESS
     finally:
-        current_trace = kwargs.get("current_trace")
-        if current_trace and current_trace.event_name == TraceEventNames.RUN_SEARCH:
-            current_trace.workflow_end_date = Trace.get_time_now()
-            current_trace.result = execution_result  # noqa
-            send_trace(bigdata_connection(), current_trace)
+        if workflow_name == RUN_SEARCH_NAME:
+            send_trace(bigdata_connection(), WorkflowTraceEvent(
+                name=workflow_name,
+                start_date=workflow_start,
+                end_date=datetime.now(),
+                llm_model=None,
+                status=workflow_status,
+            ))
 
 
     if only_results:
