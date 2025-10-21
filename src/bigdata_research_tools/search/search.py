@@ -312,22 +312,22 @@ def run_search(
             **kwargs,
         )
 
-        send_trace(
-            bigdata_connection(), ReportSearchUsageTraceEvent(
-                workflow_name=workflow_name,
-                document_type=scope.value,
-                start_date=start_date,
-                end_date=end_date,
-                llm_model=None,
-                query_units=manager.get_quota_consumed(),
-            )
-        )
     except Exception:
         workflow_status = WorkflowStatus.FAILED
         raise
     else:
         workflow_status = WorkflowStatus.SUCCESS
     finally:
+        if manager:
+            send_trace(
+                bigdata_connection(), ReportSearchUsageTraceEvent(
+                    workflow_name=workflow_name,
+                    document_type=scope.value,
+                    start_date=start_date,
+                    end_date=end_date,
+                    query_units=manager.get_quota_consumed(),
+                )
+            )
         if workflow_name == RUN_SEARCH_NAME:
             send_trace(bigdata_connection(), WorkflowTraceEvent(
                 name=workflow_name,
