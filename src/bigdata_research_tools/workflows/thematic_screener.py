@@ -108,6 +108,7 @@ class ThematicScreener(Workflow):
             )
         bigdata_client = init_bigdata_client()
         workflow_start = datetime.now()
+        workflow_status = WorkflowStatus.UNKNOWN
 
         try:
             self.provider, self.model = self.llm_model.split("::")
@@ -194,11 +195,10 @@ class ThematicScreener(Workflow):
                     },
                 )
                 self.notify_observers(f"Results exported.")
-        except Exception:
+            workflow_status = WorkflowStatus.SUCCESS
+        except BaseException:
             workflow_status = WorkflowStatus.FAILED
             raise
-        else:
-            workflow_status = WorkflowStatus.SUCCESS
         finally:
             send_trace(bigdata_client, WorkflowTraceEvent(
                 name=ThematicScreener.name,
