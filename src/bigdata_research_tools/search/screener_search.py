@@ -19,11 +19,16 @@ from bigdata_research_tools.search.query_builder import (
 )
 from bigdata_research_tools.search.search import run_search
 from bigdata_research_tools.search.search_utils import filter_search_results
-from bigdata_research_tools.tracing import WorkflowTraceEvent, WorkflowStatus, send_trace
+from bigdata_research_tools.tracing import (
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
 
 logger: Logger = getLogger(__name__)
 
 SEARCH_BY_COMPANIES_NAME: str = "SearchByCompanies"
+
 
 def search_by_companies(
     companies: list[Company],
@@ -40,7 +45,7 @@ def search_by_companies(
     rerank_threshold: float | None = None,
     document_limit: int = 50,
     batch_size: int = 10,
-    workflow_name: str | None = SEARCH_BY_COMPANIES_NAME,
+    workflow_name: str = SEARCH_BY_COMPANIES_NAME,
     **kwargs,
 ) -> DataFrame:
     """
@@ -172,13 +177,14 @@ def search_by_companies(
     finally:
         if workflow_name == SEARCH_BY_COMPANIES_NAME:
             send_trace(
-                bigdata_connection(), WorkflowTraceEvent(
+                bigdata_connection(),
+                WorkflowTraceEvent(
                     name=workflow_name,
                     start_date=workflow_start,
                     end_date=datetime.now(),
                     llm_model=None,
                     status=workflow_status,
-                )
+                ),
             )
 
     return df_sentences

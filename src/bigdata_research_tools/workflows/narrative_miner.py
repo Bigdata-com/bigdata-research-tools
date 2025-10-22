@@ -8,7 +8,11 @@ from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
 from bigdata_research_tools.search import search_narratives
-from bigdata_research_tools.tracing import WorkflowTraceEvent, WorkflowStatus, send_trace
+from bigdata_research_tools.tracing import (
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
 from bigdata_research_tools.workflows.base import Workflow
 
 logger: Logger = getLogger(__name__)
@@ -16,6 +20,7 @@ logger: Logger = getLogger(__name__)
 
 class NarrativeMiner(Workflow):
     name: str = "NarrativeMiner"
+
     def __init__(
         self,
         narrative_sentences: list[str],
@@ -139,12 +144,15 @@ class NarrativeMiner(Workflow):
             workflow_status = WorkflowStatus.FAILED
             raise
         finally:
-            send_trace(bigdata_client, WorkflowTraceEvent(
-                name=NarrativeMiner.name,
-                start_date=workflow_start,
-                end_date=datetime.now(),
-                llm_model=self.llm_model,
-                status=workflow_status,
-            ))
+            send_trace(
+                bigdata_client,
+                WorkflowTraceEvent(
+                    name=NarrativeMiner.name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=self.llm_model,
+                    status=workflow_status,
+                ),
+            )
 
         return {"df_labeled": df_labeled}

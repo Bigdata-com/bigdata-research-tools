@@ -508,22 +508,26 @@ def create_date_intervals(
 
     # Create intervals
     intervals = []
-    
+
     # If no dates were generated (range shorter than frequency), return single interval
     if len(date_range) == 0:
-        return [(
-            start_date.replace(hour=0, minute=0, second=0),
-            end_date.replace(hour=23, minute=59, second=59)
-        )]
+        return [
+            (
+                start_date_pd.replace(hour=0, minute=0, second=0),
+                end_date_pd.replace(hour=23, minute=59, second=59),
+            )
+        ]
     # Check if we need a partial first interval (if first generated date is after start_date)
-    if date_range[0].replace(hour=0, minute=0, second=0) > start_date.replace(hour=0, minute=0, second=0):
+    if date_range[0].replace(hour=0, minute=0, second=0) > start_date_pd.replace(
+        hour=0, minute=0, second=0
+    ):
         intervals.append(
             (
-                start_date.replace(hour=0, minute=0, second=0),
+                start_date_pd.replace(hour=0, minute=0, second=0),
                 date_range[0] - pd.Timedelta(seconds=1),
             )
         )
-    
+
     for i in range(len(date_range) - 1):
         intervals.append(
             (

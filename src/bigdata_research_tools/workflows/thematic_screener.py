@@ -11,7 +11,11 @@ from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.tracing import WorkflowTraceEvent, WorkflowStatus, send_trace
+from bigdata_research_tools.tracing import (
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
 from bigdata_research_tools.tree import generate_theme_tree
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
@@ -21,6 +25,7 @@ logger: Logger = getLogger(__name__)
 
 class ThematicScreener(Workflow):
     name: str = "ThematicScreener"
+
     def __init__(
         self,
         llm_model: str,
@@ -232,19 +237,22 @@ class ThematicScreener(Workflow):
                         "Motivations": (motivation_df, (0, 0)),
                     },
                 )
-                self.notify_observers(f"Results exported.")
+                self.notify_observers("Results exported.")
             workflow_status = WorkflowStatus.SUCCESS
         except BaseException:
             workflow_status = WorkflowStatus.FAILED
             raise
         finally:
-            send_trace(bigdata_client, WorkflowTraceEvent(
-                name=ThematicScreener.name,
-                start_date=workflow_start,
-                end_date=datetime.now(),
-                llm_model=self.llm_model,
-                status=workflow_status,
-            ))
+            send_trace(
+                bigdata_client,
+                WorkflowTraceEvent(
+                    name=ThematicScreener.name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=self.llm_model,
+                    status=workflow_status,
+                ),
+            )
 
         return {
             "df_labeled": df,

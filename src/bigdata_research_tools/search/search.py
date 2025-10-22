@@ -7,7 +7,6 @@ search requests efficiently while respecting request-per-minute (RPM) limits
 of the Bigdata API.
 """
 
-from datetime import datetime
 import itertools
 import logging
 import threading
@@ -24,7 +23,12 @@ from bigdata_client.models.search import DocumentType, SortBy
 from tqdm import tqdm
 
 from bigdata_research_tools.client import bigdata_connection, init_bigdata_client
-from bigdata_research_tools.tracing import ReportSearchUsageTraceEvent, WorkflowTraceEvent, send_trace, WorkflowStatus
+from bigdata_research_tools.tracing import (
+    ReportSearchUsageTraceEvent,
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
 
 INPUT_DATE_RANGE = Union[
     tuple[datetime, datetime],
@@ -258,6 +262,7 @@ class SearchManager:
         with self._quota_lock:
             return self.quota_consumed
 
+
 def normalize_date_range(
     date_ranges: INPUT_DATE_RANGE,
 ) -> list[tuple[datetime, datetime] | RollingDateRange]:
@@ -266,7 +271,9 @@ def normalize_date_range(
 
     return date_ranges
 
+
 RUN_SEARCH_NAME: str = "RunSearch"
+
 
 @overload
 def run_search(
@@ -332,10 +339,8 @@ def run_search(
 
     workflow_start = datetime.now()
     workflow_status = WorkflowStatus.UNKNOWN
-    start_date = date_ranges[0][0] if date_ranges else None
-    end_date = date_ranges[-1][1] if date_ranges else None     
     manager = None
-    try: 
+    try:
         manager = SearchManager(**kwargs)
         query_results = manager.concurrent_search(
             queries=queries,
@@ -352,24 +357,40 @@ def run_search(
         workflow_status = WorkflowStatus.FAILED
         raise
     finally:
-        if manager:
-            send_trace(
-                bigdata_connection(), ReportSearchUsageTraceEvent(
-                    workflow_name=workflow_name,
-                    document_type=scope.value,
-                    start_date=start_date,
-                    end_date=end_date,
-                    query_units=manager.get_quota_consumed(),
+        start_date = "Unknown"
+        end_date = "Unknown"
+        try:
+            # We only know the exact start and end date if date_ranges is a list of tuples
+            # With rolling date ranges we cannot determine the exact dates or if empty list
+            if date_ranges and all(isinstance(dr, tuple) for dr in date_ranges):
+                start_date = date_ranges[0][0]
+                end_date = date_ranges[-1][1]
+
+            if manager:
+                send_trace(
+                    bigdata_connection(),
+                    ReportSearchUsageTraceEvent(
+                        workflow_name=workflow_name,
+                        document_type=scope.value,
+                        start_date=start_date,
+                        end_date=end_date,
+                        query_units=manager.get_quota_consumed(),
+                    ),
                 )
-            )
+        except Exception:
+            # Failed to send trace event, however in a try - finally block we should not raise exceptions
+            pass
         if workflow_name == RUN_SEARCH_NAME:
-            send_trace(bigdata_connection(), WorkflowTraceEvent(
-                name=workflow_name,
-                start_date=workflow_start,
-                end_date=datetime.now(),
-                llm_model=None,
-                status=workflow_status,
-            ))
+            send_trace(
+                bigdata_connection(),
+                WorkflowTraceEvent(
+                    name=workflow_name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=None,
+                    status=workflow_status,
+                ),
+            )
 
     if only_results:
         return list(query_results.values())

@@ -11,7 +11,11 @@ from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_ca
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.tracing import WorkflowTraceEvent, WorkflowStatus, send_trace
+from bigdata_research_tools.tracing import (
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
 from bigdata_research_tools.tree import SemanticTree, generate_risk_tree
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
@@ -21,6 +25,7 @@ logger: Logger = getLogger(__name__)
 
 class RiskAnalyzer(Workflow):
     name: str = "RiskAnalyzer"
+
     def __init__(
         self,
         llm_model: str,
@@ -394,19 +399,22 @@ class RiskAnalyzer(Workflow):
                     risk_tree,
                     export_path=export_path,
                 )
-                self.notify_observers(f"Results exported")
+                self.notify_observers("Results exported")
             workflow_status = WorkflowStatus.SUCCESS
         except BaseException:
             workflow_status = WorkflowStatus.FAILED
             raise
         finally:
-            send_trace(bigdata_client, WorkflowTraceEvent(
-                name=RiskAnalyzer.name,
-                start_date=workflow_start,
-                end_date=datetime.now(),
-                llm_model=self.llm_model,
-                status=workflow_status,
-            ))
+            send_trace(
+                bigdata_client,
+                WorkflowTraceEvent(
+                    name=RiskAnalyzer.name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=self.llm_model,
+                    status=workflow_status,
+                ),
+            )
         return {
             "df_labeled": df_labeled,
             "df_company": df_company,
