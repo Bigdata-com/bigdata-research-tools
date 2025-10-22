@@ -1,3 +1,4 @@
+from datetime import datetime
 from logging import Logger, getLogger
 
 from bigdata_client.models.search import DocumentType
@@ -7,13 +8,14 @@ from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
 from bigdata_research_tools.search import search_narratives
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
+from bigdata_research_tools.tracing import WorkflowTraceEvent, WorkflowStatus, send_trace
 from bigdata_research_tools.workflows.base import Workflow
 
 logger: Logger = getLogger(__name__)
 
 
 class NarrativeMiner(Workflow):
+    name: str = "NarrativeMiner"
     def __init__(
         self,
         narrative_sentences: list[str],
@@ -79,16 +81,9 @@ class NarrativeMiner(Workflow):
                 f"path `{export_path}`."
             )
         bigdata_client = init_bigdata_client()
-        current_trace = Trace(
-            event_name=TraceEventNames.NARRATIVE_MINER,
-            document_type=self.document_type,
-            start_date=self.start_date,
-            end_date=self.end_date,
-            rerank_threshold=self.rerank_threshold,
-            llm_model=self.llm_model,
-            frequency=frequency,
-            workflow_start_date=Trace.get_time_now(),
-        )
+        workflow_start = datetime.now()
+        workflow_status = WorkflowStatus.UNKNOWN
+
         try:
             # Run a search via BigData API with our mining parameters
             self.notify_observers("Searching documents for relevant content")
@@ -102,9 +97,9 @@ class NarrativeMiner(Workflow):
                 document_limit=document_limit,
                 batch_size=batch_size,
                 scope=self.document_type,
-                current_trace=current_trace,
-                fiscal_year=self.fiscal_year,
                 bigdata_client=bigdata_client,
+                fiscal_year=self.fiscal_year,
+                workflow_name=NarrativeMiner.name,
             )
             self.notify_observers(
                 f"Search completed. {len(df_sentences)} chunks found."
@@ -139,14 +134,17 @@ class NarrativeMiner(Workflow):
                 )
                 self.notify_observers("Results exported")
 
-        except Exception:
-            execution_result = "error"
+            workflow_status = WorkflowStatus.SUCCESS
+        except BaseException:
+            workflow_status = WorkflowStatus.FAILED
             raise
-        else:
-            execution_result = "success"
         finally:
-            current_trace.workflow_end_date = Trace.get_time_now()
-            current_trace.result = execution_result  # noqa
-            send_trace(bigdata_client, current_trace)
+            send_trace(bigdata_client, WorkflowTraceEvent(
+                name=NarrativeMiner.name,
+                start_date=workflow_start,
+                end_date=datetime.now(),
+                llm_model=self.llm_model,
+                status=workflow_status,
+            ))
 
         return {"df_labeled": df_labeled}

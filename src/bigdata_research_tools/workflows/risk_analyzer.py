@@ -1,3 +1,4 @@
+from datetime import datetime
 from logging import Logger, getLogger
 
 from bigdata_client.models.entities import Company
@@ -10,7 +11,7 @@ from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_ca
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
+from bigdata_research_tools.tracing import WorkflowTraceEvent, WorkflowStatus, send_trace
 from bigdata_research_tools.tree import SemanticTree, generate_risk_tree
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
@@ -19,6 +20,7 @@ logger: Logger = getLogger(__name__)
 
 
 class RiskAnalyzer(Workflow):
+    name: str = "RiskAnalyzer"
     def __init__(
         self,
         llm_model: str,
@@ -324,16 +326,8 @@ class RiskAnalyzer(Workflow):
             )
 
         bigdata_client = init_bigdata_client()
-        current_trace = Trace(
-            event_name=TraceEventNames.RISK_ANALYZER,
-            document_type=self.document_type,
-            start_date=self.start_date,
-            end_date=self.end_date,
-            rerank_threshold=self.rerank_threshold,
-            llm_model=self.llm_model,
-            frequency=frequency,
-            workflow_start_date=Trace.get_time_now(),
-        )
+        workflow_start = datetime.now()
+        workflow_status = WorkflowStatus.UNKNOWN
 
         try:
             self.notify_observers("Generating risk taxonomy")
@@ -400,16 +394,19 @@ class RiskAnalyzer(Workflow):
                     risk_tree,
                     export_path=export_path,
                 )
-                self.notify_observers("Results exported")
-        except Exception as e:
-            execution_result = "error"
-            raise e
-        else:
-            execution_result = "success"
+                self.notify_observers(f"Results exported")
+            workflow_status = WorkflowStatus.SUCCESS
+        except BaseException:
+            workflow_status = WorkflowStatus.FAILED
+            raise
         finally:
-            current_trace.workflow_end_date = Trace.get_time_now()
-            current_trace.result = execution_result  # noqa
-            send_trace(bigdata_client, current_trace)
+            send_trace(bigdata_client, WorkflowTraceEvent(
+                name=RiskAnalyzer.name,
+                start_date=workflow_start,
+                end_date=datetime.now(),
+                llm_model=self.llm_model,
+                status=workflow_status,
+            ))
         return {
             "df_labeled": df_labeled,
             "df_company": df_company,

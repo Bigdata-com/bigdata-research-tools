@@ -1,74 +1,79 @@
-import dataclasses
-from datetime import datetime, timezone
+from abc import ABC, abstractmethod
+from datetime import datetime
 from enum import Enum
 from importlib.metadata import version
 from logging import Logger, getLogger
-from queue import Queue
 
 from bigdata_client import Bigdata, tracking_services
+from pydantic import BaseModel, computed_field
 
 from bigdata_research_tools import __version__
 
 logger: Logger = getLogger(__name__)
 
 
+class WorkflowStatus(Enum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    UNKNOWN = "UNKNOWN"
+
+
 class TraceEventNames(Enum):
-    NARRATIVE_MINER = "NarrativeMinersRun"
-    THEMATIC_SCREENER = "ThematicScreenerRun"
-    RISK_ANALYZER = "RiskAnalyzerRun"
-    COMPANY_SEARCH = "CompanySearchRun"
-    RUN_SEARCH = "SearchRun"
+    WORKFLOW_EXECUTION = "BigdataResearchToolsWorkflowExecution"
+    QUERY_UNITS_CONSUMPTION = "BigdataResearchToolsQueryUnitsConsumption"
 
+class TraceEventABC(ABC):
+    @abstractmethod
+    def to_trace_event(self) -> tracking_services.TraceEvent:
+        ...
 
-@dataclasses.dataclass
-class Trace:
-    event_name: TraceEventNames
-    document_type: str
-    workflow_start_date: datetime
-    start_date: str | None = None
-    end_date: str | None = None
-    rerank_threshold: float | None = None
-    llm_model: str | None = None
-    frequency: str | None = None
-    result: str | None = None
-    workflow_end_date: datetime | None = None
-    workflow_usage: str | None = None
+class WorkflowTraceEvent(BaseModel, TraceEventABC):
+    start_date: datetime
+    end_date: datetime
+    name: str
+    llm_model: str | None
+    status: WorkflowStatus
 
-    _query_units_queue: Queue = Queue()  # To protect against concurrent access issues
+    @computed_field
+    def duration(self) -> float:
+        return (self.end_date - self.start_date).total_seconds()
 
-    @staticmethod
-    def get_time_now():
-        """Called when initializing the workflow start and end date to have the same format."""
-        return datetime.now(timezone.utc)
-
-    def add_query_units(self, query_units: int):
-        self._query_units_queue.put(query_units)
-
-    def to_trace_event(self):
+    def to_trace_event(self) -> tracking_services.TraceEvent:
         return tracking_services.TraceEvent(
-            event_name=self.event_name.value,
+            event_name=TraceEventNames.WORKFLOW_EXECUTION.value,
             properties={
-                "platform": "sdk",
-                "documentType": self.document_type,
-                "queryStartDate": self.start_date,
-                "queryEndDate": self.end_date,
-                "rerankThreshold": self.rerank_threshold,
-                "llmModel": self.llm_model,
-                "frequency": self.frequency,
-                "bigdataResearchToolsVersion": __version__,
-                "bigdataClientVersion": version("bigdata-client"),
-                "result": self.result,
-                "workflowStartDate": self.workflow_start_date.isoformat(
-                    timespec="seconds"
-                ),
-                "workflowEndDate": self.workflow_end_date.isoformat(timespec="seconds"),
-                "workflowUsage": sum(self._query_units_queue.queue),
-            },
+                "workflow_name": self.name,
+                "workflow_start_date": self.start_date.isoformat(),
+                "workflow_end_date": self.end_date.isoformat(),
+                "workflow_status": self.status.value,
+                "llm_model": self.llm_model,
+                "workflow_duration_seconds": self.duration,
+                "bigdata_research_tools_version": __version__,
+                "bigdata_client_version": version("bigdata-client"),
+            }
+        )
+    
+
+class ReportSearchUsageTraceEvent(BaseModel, TraceEventABC):
+    workflow_name: str
+    document_type: str
+    start_date: str
+    end_date: str
+    query_units: float
+
+    def to_trace_event(self) -> tracking_services.TraceEvent:
+        return tracking_services.TraceEvent(
+            event_name=TraceEventNames.QUERY_UNITS_CONSUMPTION.value,
+            properties={
+                "workflow_name": self.workflow_name,
+                "document_type": self.document_type,
+                "start_date": self.start_date,
+                "end_date": self.end_date,
+                "query_units": self.query_units,
+                "bigdata_research_tools_version": __version__,
+                "bigdata_client_version": version("bigdata-client"),
+            }
         )
 
-
-def send_trace(bigdata: Bigdata, trace: Trace):
-    try:
-        tracking_services.send_trace(bigdata, trace.to_trace_event())
-    except Exception:  # noqa
-        logger.warning("Trace event could not be sent to BigData.")
+def send_trace(bigdata: Bigdata, trace: TraceEventABC):
+    tracking_services.send_trace(bigdata, trace.to_trace_event())

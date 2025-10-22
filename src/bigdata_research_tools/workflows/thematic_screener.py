@@ -1,3 +1,4 @@
+from datetime import datetime
 from logging import Logger, getLogger
 
 from bigdata_client.models.entities import Company
@@ -10,7 +11,7 @@ from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
+from bigdata_research_tools.tracing import WorkflowTraceEvent, WorkflowStatus, send_trace
 from bigdata_research_tools.tree import generate_theme_tree
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
@@ -19,6 +20,7 @@ logger: Logger = getLogger(__name__)
 
 
 class ThematicScreener(Workflow):
+    name: str = "ThematicScreener"
     def __init__(
         self,
         llm_model: str,
@@ -117,16 +119,8 @@ class ThematicScreener(Workflow):
                 f"path `{export_path}`."
             )
         bigdata_client = init_bigdata_client()
-        current_trace = Trace(
-            event_name=TraceEventNames.THEMATIC_SCREENER,
-            document_type=self.document_type,
-            start_date=self.start_date,
-            end_date=self.end_date,
-            rerank_threshold=self.rerank_threshold,
-            llm_model=self.llm_model,
-            frequency=frequency,
-            workflow_start_date=Trace.get_time_now(),
-        )
+        workflow_start = datetime.now()
+        workflow_status = WorkflowStatus.UNKNOWN
 
         try:
             self.provider, self.model = self.llm_model.split("::")
@@ -156,7 +150,7 @@ class ThematicScreener(Workflow):
                 frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
-                current_trace=current_trace,
+                workflow_name=ThematicScreener.name,
                 bigdata_client=bigdata_client,
             )
             self.notify_observers(
@@ -238,16 +232,19 @@ class ThematicScreener(Workflow):
                         "Motivations": (motivation_df, (0, 0)),
                     },
                 )
-                self.notify_observers("Results exported.")
-        except Exception:
-            execution_result = "error"
+                self.notify_observers(f"Results exported.")
+            workflow_status = WorkflowStatus.SUCCESS
+        except BaseException:
+            workflow_status = WorkflowStatus.FAILED
             raise
-        else:
-            execution_result = "success"
         finally:
-            current_trace.workflow_end_date = Trace.get_time_now()
-            current_trace.result = execution_result  # noqa
-            send_trace(bigdata_client, current_trace)
+            send_trace(bigdata_client, WorkflowTraceEvent(
+                name=ThematicScreener.name,
+                start_date=workflow_start,
+                end_date=datetime.now(),
+                llm_model=self.llm_model,
+                status=workflow_status,
+            ))
 
         return {
             "df_labeled": df,

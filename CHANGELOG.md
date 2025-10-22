@@ -27,12 +27,18 @@ Preparation for a first stable release.
 - Implement custom motivation prompts for different use cases, including thematic screening and risk analysis.
 
 ### Fixed
-- Changed build system to use `uv_build` instead of `setuptools` to avoid issues with package data inclusion.
 - Fix duplicate dependencies in main vs optional dependencies. `openai` is now only optional while `graphviz`, `openpyxl` and `Pillow` is now only in main dependencies.
 
 ### Removed
 - Removed support for Python 3.9 as it has reached its end of life. The minimum supported version is now Python 3.10.
 - Removed `ipython` from main dependencies and removed unused function `bigdata_research_tools.workflows.utils.display_output_chunks_dataframe`.
+
+## [0.20.2] - 2025-10-21
+
+### Fix
+- Fix the function `create_date_intervals` in file `query_builder.py`. It now creates proper weekly/monthly/yearly intervals without losing any day before the first interval.
+- Fix `uv sync` not properly installing the `bigdata_research_tools` package.
+- Fix tracing reporting incorrect query usage.
 
 ## [0.20.1] - 2025-09-16
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 from logging import Logger, getLogger
 
 from bigdata_client.document import Document
@@ -18,10 +19,11 @@ from bigdata_research_tools.search.query_builder import (
 )
 from bigdata_research_tools.search.search import run_search
 from bigdata_research_tools.search.search_utils import filter_search_results
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
+from bigdata_research_tools.tracing import WorkflowTraceEvent, WorkflowStatus, send_trace
 
 logger: Logger = getLogger(__name__)
 
+SEARCH_BY_COMPANIES_NAME: str = "SearchByCompanies"
 
 def search_by_companies(
     companies: list[Company],
@@ -38,6 +40,7 @@ def search_by_companies(
     rerank_threshold: float | None = None,
     document_limit: int = 50,
     batch_size: int = 10,
+    workflow_name: str | None = SEARCH_BY_COMPANIES_NAME,
     **kwargs,
 ) -> DataFrame:
     """
@@ -91,21 +94,8 @@ def search_by_companies(
             - masked_text: str
             - other_entities_map: List[Tuple[int, str]]
     """
-
-    if not kwargs.get("current_trace"):
-        current_trace = Trace(
-            event_name=TraceEventNames.COMPANY_SEARCH,
-            document_type=scope,
-            start_date=start_date,
-            end_date=end_date,
-            rerank_threshold=rerank_threshold,
-            llm_model=None,
-            frequency=frequency,
-            workflow_start_date=Trace.get_time_now(),
-        )
-
-        kwargs["current_trace"] = current_trace
-
+    workflow_start = datetime.now()
+    workflow_status = WorkflowStatus.UNKNOWN
     try:
         # Extract entities for search querying
         entity_keys = [entity.id for entity in companies]
@@ -152,6 +142,7 @@ def search_by_companies(
             sortby=sort_by,
             only_results=True,
             rerank_threshold=rerank_threshold,
+            workflow_name=workflow_name,
             **kwargs,
         )
 
@@ -174,17 +165,21 @@ def search_by_companies(
             companies=companies if needs_company_filtering else None,
             document_type=scope,
         )
-    except Exception:
-        execution_result = "error"
+        workflow_status = WorkflowStatus.SUCCESS
+    except BaseException:
+        workflow_status = WorkflowStatus.FAILED
         raise
-    else:
-        execution_result = "success"
     finally:
-        current_trace = kwargs.get("current_trace")
-        if current_trace and current_trace.event_name == TraceEventNames.COMPANY_SEARCH:
-            current_trace.workflow_end_date = Trace.get_time_now()
-            current_trace.result = execution_result  # noqa
-            send_trace(bigdata_connection(), current_trace)
+        if workflow_name == SEARCH_BY_COMPANIES_NAME:
+            send_trace(
+                bigdata_connection(), WorkflowTraceEvent(
+                    name=workflow_name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=None,
+                    status=workflow_status,
+                )
+            )
 
     return df_sentences
 
