@@ -15,6 +15,7 @@ logger: Logger = getLogger(__name__)
 class WorkflowStatus(Enum):
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
+    UNKNOWN = "UNKNOWN"
 
 
 class TraceEventNames(Enum):

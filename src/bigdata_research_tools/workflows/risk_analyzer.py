@@ -324,6 +324,7 @@ class RiskAnalyzer(Workflow):
 
         bigdata_client = init_bigdata_client()
         workflow_start = datetime.now()
+        workflow_status = WorkflowStatus.UNKNOWN
 
         try:
             self.notify_observers(f"Generating risk taxonomy")
@@ -370,17 +371,15 @@ class RiskAnalyzer(Workflow):
                     export_path=export_path,
                 )
                 self.notify_observers(f"Results exported")
-        except Exception as e:
-            workflow_status = WorkflowStatus.FAILED
-            raise e
-        else:
             workflow_status = WorkflowStatus.SUCCESS
+        except BaseException:
+            workflow_status = WorkflowStatus.FAILED
+            raise
         finally:
-            workflow_end = datetime.now()
             send_trace(bigdata_client, WorkflowTraceEvent(
                 name=RiskAnalyzer.name,
                 start_date=workflow_start,
-                end_date=workflow_end,
+                end_date=datetime.now(),
                 llm_model=self.llm_model,
                 status=workflow_status,
             ))

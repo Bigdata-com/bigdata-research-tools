@@ -98,6 +98,7 @@ def search_by_companies(
             - other_entities_map: List[Tuple[int, str]]
     """
     workflow_start = datetime.now()
+    workflow_status = WorkflowStatus.UNKNOWN
     try:
         # Extract entities for search querying
         entity_keys = [entity.id for entity in companies]
@@ -164,11 +165,10 @@ def search_by_companies(
             companies=companies if needs_company_filtering else None,
             document_type=scope,
         )
-    except Exception:
+        workflow_status = WorkflowStatus.SUCCESS
+    except BaseException:
         workflow_status = WorkflowStatus.FAILED
         raise
-    else:
-        workflow_status = WorkflowStatus.SUCCESS
     finally:
         if workflow_name == SEARCH_BY_COMPANIES_NAME:
             send_trace(

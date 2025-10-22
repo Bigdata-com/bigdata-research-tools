@@ -297,9 +297,10 @@ def run_search(
     date_ranges.sort(key=lambda x: x[0])
 
     workflow_start = datetime.now()
+    workflow_status = WorkflowStatus.UNKNOWN
     start_date = date_ranges[0][0] if date_ranges else None
     end_date = date_ranges[-1][1] if date_ranges else None     
-
+    manager = None
     try: 
         manager = SearchManager(**kwargs)
         query_results = manager.concurrent_search(
@@ -312,11 +313,10 @@ def run_search(
             **kwargs,
         )
 
-    except Exception:
+        workflow_status = WorkflowStatus.SUCCESS
+    except BaseException:
         workflow_status = WorkflowStatus.FAILED
         raise
-    else:
-        workflow_status = WorkflowStatus.SUCCESS
     finally:
         if manager:
             send_trace(
