@@ -365,6 +365,11 @@ def run_search(
             if date_ranges and all(isinstance(dr, tuple) for dr in date_ranges):
                 start_date = date_ranges[0][0]
                 end_date = date_ranges[-1][1]
+                if isinstance(start_date, datetime):
+                    start_date = start_date.isoformat()
+                if isinstance(end_date, datetime):
+                    end_date = end_date.isoformat()
+
 
             if manager:
                 send_trace(

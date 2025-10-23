@@ -134,6 +134,7 @@ class RiskAnalyzer(Workflow):
             frequency=frequency,
             document_limit=document_limit,
             batch_size=batch_size,
+            workflow_name=RiskAnalyzer.name,
         )
 
         return df_sentences
