@@ -11,5 +11,5 @@ def test_run_concurrent_prompts(monkeypatch):
     engine = DummyAsyncLLMEngine()
     prompts = ["prompt1", "prompt2"]
     system_prompt = "system"
-    responses = run_concurrent_prompts(engine, prompts, system_prompt)
+    responses = run_concurrent_prompts(engine, prompts, system_prompt, timeout=10)
     assert responses == ["dummy response", "dummy response"]

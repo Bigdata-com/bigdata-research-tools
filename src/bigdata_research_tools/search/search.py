@@ -370,7 +370,6 @@ def run_search(
                 if isinstance(end_date, datetime):
                     end_date = end_date.isoformat()
 
-
             if manager:
                 send_trace(
                     bigdata_connection(),

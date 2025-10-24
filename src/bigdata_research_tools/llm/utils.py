@@ -16,6 +16,7 @@ def run_concurrent_prompts(
     llm_engine: AsyncLLMEngine,
     prompts: list[str],
     system_prompt: str,
+    timeout: int | None,
     max_workers: int = 30,
     **kwargs,
 ) -> list[str]:
@@ -26,6 +27,7 @@ def run_concurrent_prompts(
         llm_engine (AsyncLLMEngine): The LLM engine to use.
         prompts (list[str]): List of prompts to run concurrently.
         system_prompt (str): The system prompt.
+        timeout (int | None): Timeout for each LLM request.
         max_workers (int): The maximum number of workers to run concurrently.
         kwargs (dict): Additional arguments to pass to the `get_response` method of the LLMEngine.
 
@@ -36,7 +38,7 @@ def run_concurrent_prompts(
     logger.info(f"Running {len(prompts)} prompts concurrently")
     tasks = [
         _fetch_with_semaphore(
-            idx, llm_engine, semaphore, system_prompt, prompt, **kwargs
+            idx, llm_engine, semaphore, system_prompt, prompt, timeout=timeout, **kwargs
         )
         for idx, prompt in enumerate(prompts)
     ]
@@ -49,6 +51,7 @@ async def _fetch_with_semaphore(
     semaphore: asyncio.Semaphore,
     system_prompt: str,
     prompt: str,
+    timeout: int | None,
     **kwargs,
 ) -> tuple[int, str]:
     """
@@ -61,6 +64,7 @@ async def _fetch_with_semaphore(
             number of concurrent requests.
         system_prompt (str): The system prompt.
         prompt (str): The prompt to run.
+        timeout (int | None): Timeout for the LLM request.
         kwargs (dict): Additional arguments to pass to the `get_response` method of the LLMEngine.
 
     Returns:
@@ -76,9 +80,21 @@ async def _fetch_with_semaphore(
         last_exception = None
         for attempt in range(max_retries):
             try:
-                response = await llm_engine.get_response(chat_history, **kwargs)
+                # Sometimes, the LLM (often OpenAI) can take up to ten minutes to respond without throwing an error,
+                # retrying after a prudential timeout avoids this situation.
+                # A first analysis show that:
+                # from 5k requests
+                # ~20 took longer than 10 seconds
+                # ~10 took longer than 30 seconds
+                # ~3 took longer than 60 seconds, with up to 600 seconds
+                async with asyncio.timeout(timeout):
+                    response = await llm_engine.get_response(chat_history, **kwargs)
                 return idx, response
             except Exception as e:
+                if isinstance(e, asyncio.TimeoutError) and attempt == 0:
+                    logger.warning(
+                        f"Timeout occurred for prompt during LLM call, current timeout configured {timeout} seconds. If this keeps happening (> 1% of your requests), consider increasing the timeout. Retrying..."
+                    )
                 last_exception = e
                 await asyncio.sleep(retry_delay)
                 # Exponential backoff

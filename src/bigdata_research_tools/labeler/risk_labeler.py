@@ -47,6 +47,7 @@ class RiskLabeler(Labeler):
         labels: list[str],
         texts: list[str],
         max_workers: int = 50,
+        timeout: int | None = 20,
         textsconfig: list[dict[str, Any]] | None = None,
     ) -> DataFrame:
         """
@@ -56,6 +57,7 @@ class RiskLabeler(Labeler):
             main_theme: The main theme to analyze.
             labels: Labels for labelling the chunks.
             texts: List of chunks to label.
+            timeout: Timeout for each LLM request.
             max_workers: Maximum number of concurrent workers.
 
         Returns:
@@ -74,7 +76,7 @@ class RiskLabeler(Labeler):
         prompts = get_prompts_for_labeler(texts, textsconfig)
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers
+            prompts, system_prompt, max_workers=max_workers, timeout=timeout
         )
         responses = [parse_labeling_response(response) for response in responses]
 

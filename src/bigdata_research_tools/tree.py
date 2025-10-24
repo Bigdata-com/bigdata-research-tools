@@ -185,9 +185,9 @@ class SemanticTree:
                 - 'plotly': A Plotly figure object for rendering the mindmap.
         """
         if engine == "graphviz":
-            return self._visualize_graphviz()
+            self._visualize_graphviz()
         elif engine == "plotly":
-            return self._visualize_plotly()
+            self._visualize_plotly()
         else:
             raise ValueError(
                 f"Unsupported engine '{engine}'. "

@@ -88,7 +88,11 @@ class Labeler:
         return df_labels
 
     def _run_labeling_prompts(
-        self, prompts: list[str], system_prompt: str, max_workers: int = 100
+        self,
+        prompts: list[str],
+        system_prompt: str,
+        timeout: int | None,
+        max_workers: int = 100,
     ) -> list:
         """
         Get the labels from the prompts.
@@ -96,6 +100,7 @@ class Labeler:
         Args:
             prompts: List of prompts to process
             system_prompt: System prompt for the LLM
+            timeout: Timeout for each LLM request for concurrent calls
             max_workers: Maximum number of concurrent workers
 
         Returns:
@@ -120,7 +125,12 @@ class Labeler:
         else:
             llm = AsyncLLMEngine(model=self.llm_model)
             return run_concurrent_prompts(
-                llm, prompts, system_prompt, max_workers, **llm_kwargs
+                llm,
+                prompts,
+                system_prompt,
+                timeout,
+                max_workers=max_workers,
+                **llm_kwargs,
             )
 
 

@@ -7,7 +7,7 @@ from bigdata_research_tools.utils.observer import (
 )
 
 
-class TestObserver(Observer):
+class ExampleObserver(Observer):
     def __init__(self):
         self.notifications = []
 
@@ -25,8 +25,8 @@ def test_observer_notification_model():
 
 def test_observable_register_and_notify():
     observable = Observable()
-    observer1 = TestObserver()
-    observer2 = TestObserver()
+    observer1 = ExampleObserver()
+    observer2 = ExampleObserver()
     observable.register_observer(observer1)
     observable.register_observer(observer2)
     message = "test message"
@@ -40,7 +40,7 @@ def test_observable_register_and_notify():
 
 def test_observable_unregister():
     observable = Observable()
-    observer = TestObserver()
+    observer = ExampleObserver()
     observable.register_observer(observer)
     observable.notify_observers("first message")
     assert len(observer.notifications) == 1

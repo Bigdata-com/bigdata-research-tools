@@ -40,6 +40,7 @@ class NarrativeLabeler(Labeler):
         theme_labels: list[str],
         texts: list[str],
         max_workers: int = 50,
+        timeout: int | None = 20,
     ) -> DataFrame:
         """
         Process thematic labels for texts.
@@ -47,6 +48,7 @@ class NarrativeLabeler(Labeler):
         Args:
             theme_labels: The main theme to analyze.
             texts: List of texts to label.
+            timeout: Timeout for each LLM request.
             max_workers: Maximum number of concurrent workers.
 
         Returns:
@@ -64,7 +66,7 @@ class NarrativeLabeler(Labeler):
         prompts = get_prompts_for_labeler(texts)
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers
+            prompts, system_prompt, max_workers=max_workers, timeout=timeout
         )
         responses = [parse_labeling_response(response) for response in responses]
         return self._deserialize_label_responses(responses)
