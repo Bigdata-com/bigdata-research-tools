@@ -9,8 +9,9 @@ logger: Logger = getLogger(__name__)
 
 
 class AsyncLLMProvider(ABC):
-    def __init__(self, model: str = None):
+    def __init__(self, model: str = None, **connection_config):
         self.model = model
+        self.connection_config = connection_config or {}
 
     @abstractmethod
     async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
@@ -57,7 +58,7 @@ class AsyncLLMProvider(ABC):
 
 
 class AsyncLLMEngine:
-    def __init__(self, model: str = None):
+    def __init__(self, model: str = None, **connection_config):
         if model is None:
             model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM")
             source = "Environment"
@@ -65,6 +66,7 @@ class AsyncLLMEngine:
             source = "Argument"
 
         try:
+            self.connection_config = connection_config or {}
             self.provider, self.model = model.split("::")
         except (ValueError, AttributeError):
             logger.error(
@@ -83,16 +85,16 @@ class AsyncLLMEngine:
         if provider == "openai":
             from bigdata_research_tools.llm.openai import AsyncOpenAIProvider
 
-            return AsyncOpenAIProvider(model=self.model)
+            return AsyncOpenAIProvider(model=self.model, **self.connection_config)
 
         elif provider == "bedrock":
             from bigdata_research_tools.llm.bedrock import AsyncBedrockProvider
 
-            return AsyncBedrockProvider(model=self.model)
+            return AsyncBedrockProvider(model=self.model, **self.connection_config)
         elif provider == "azure":
             from bigdata_research_tools.llm.azure import AsyncAzureProvider
 
-            return AsyncAzureProvider(model=self.model)
+            return AsyncAzureProvider(model=self.model, **self.connection_config)
         else:
             logger.error(f"Invalid provider: `{self.provider}`")
 
@@ -136,8 +138,9 @@ class AsyncLLMEngine:
 
 
 class LLMProvider(ABC):
-    def __init__(self, model: str = None):
+    def __init__(self, model: str = None, **connection_config):
         self.model = model
+        self.connection_config = connection_config or {}
 
     @abstractmethod
     def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
@@ -184,7 +187,7 @@ class LLMProvider(ABC):
 
 
 class LLMEngine:
-    def __init__(self, model: str = None):
+    def __init__(self, model: str = None, **connection_config):
         if model is None:
             model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM")
             source = "Environment"
@@ -202,7 +205,7 @@ class LLMEngine:
             raise ValueError(
                 "Invalid model format. It should be `<provider>::<model>`."
             )
-
+        self.connection_config = connection_config or {}
         self.provider = self.load_provider()
 
     def load_provider(self) -> LLMProvider:
@@ -210,15 +213,15 @@ class LLMEngine:
         if provider == "openai":
             from bigdata_research_tools.llm.openai import OpenAIProvider
 
-            return OpenAIProvider(model=self.model)
+            return OpenAIProvider(model=self.model, **self.connection_config)
         elif provider == "bedrock":
             from bigdata_research_tools.llm.bedrock import BedrockProvider
 
-            return BedrockProvider(model=self.model)
+            return BedrockProvider(model=self.model, **self.connection_config)
         elif provider == "azure":
             from bigdata_research_tools.llm.azure import AzureProvider
 
-            return AzureProvider(model=self.model)
+            return AzureProvider(model=self.model, **self.connection_config)
         else:
             logger.error(f"Invalid provider: `{self.provider}`")
 

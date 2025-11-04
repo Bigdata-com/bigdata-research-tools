@@ -18,9 +18,11 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
     def __init__(
         self,
         model: str,
+        **connection_config,
     ):
-        super().__init__(model)
+        super().__init__(model, **connection_config)
         self._client = None
+        self.connection_config = connection_config or {}
         self.configure_openai_client()
 
     def configure_openai_client(self) -> None:
@@ -33,7 +35,7 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
             OpenAI: The OpenAI client.
         """
         if not self._client:
-            self._client = AsyncOpenAI()
+            self._client = AsyncOpenAI(**self.connection_config)
 
     async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
         """
@@ -122,9 +124,11 @@ class OpenAIProvider(LLMProvider):
     def __init__(
         self,
         model: str,
+        **connection_config,
     ):
-        super().__init__(model)
+        super().__init__(model, **connection_config)
         self._client = None
+        self.connection_config = connection_config or {}
         self.configure_openai_client()
 
     def configure_openai_client(self) -> None:
@@ -137,7 +141,7 @@ class OpenAIProvider(LLMProvider):
             OpenAI: The OpenAI client.
         """
         if not self._client:
-            self._client = OpenAI()
+            self._client = OpenAI(**self.connection_config)
 
     def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
         """
