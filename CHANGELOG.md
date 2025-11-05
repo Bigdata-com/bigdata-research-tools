@@ -7,6 +7,12 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2025-11-05
+
+### Added
+- Now the LLMEngine accepts sending keywords that will be used for initializing the client
+- NarrativeMiner, NarrativeLabeler, ScreenerLabeler and Labeler benefit from being able to send an LLMEngine already initialized instead of the provider::model string
+
 ## [0.20.2] - 2025-10-21
 
 ### Fix

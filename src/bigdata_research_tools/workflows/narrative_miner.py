@@ -3,14 +3,19 @@ from logging import Logger, getLogger
 from typing import Dict, List, Optional
 
 from bigdata_client.models.search import DocumentType
-from bigdata_research_tools.client import init_bigdata_client
 from pandas import merge
 
-from bigdata_research_tools.workflows.base import Workflow
+from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
+from bigdata_research_tools.llm.base import LLMEngine
 from bigdata_research_tools.search import search_narratives
-from bigdata_research_tools.tracing import WorkflowTraceEvent, send_trace, WorkflowStatus
+from bigdata_research_tools.tracing import (
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
+from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import save_to_excel
 
 logger: Logger = getLogger(__name__)
@@ -18,12 +23,13 @@ logger: Logger = getLogger(__name__)
 
 class NarrativeMiner(Workflow):
     name: str = "NarrativeMiner"
+
     def __init__(
         self,
         narrative_sentences: List[str],
         start_date: str,
         end_date: str,
-        llm_model: str,
+        llm_model: str | LLMEngine,
         document_type: DocumentType,
         fiscal_year: Optional[int],
         sources: Optional[List[str]] = None,
@@ -38,7 +44,7 @@ class NarrativeMiner(Workflow):
                                These will be used in both the search and the labelling of the search result chunks.
             start_date:        The start date for searching relevant documents (format: YYYY-MM-DD).
             end_date:          The end date for searching relevant documents (format: YYYY-MM-DD).
-            llm_model:         Specifies the LLM to be used in text processing and analysis.
+            llm_model:         Specifies the LLM to be used in text processing and analysis. Also accepts an instance of LLMEngine.
             document_type:     Specifies the type of documents to search over.
             fiscal_year:       The fiscal year for which filings or transcripts should be analyzed.
             sources:           Used to filter search results by the sources of the documents.
@@ -103,7 +109,9 @@ class NarrativeMiner(Workflow):
                 fiscal_year=self.fiscal_year,
                 workflow_name=NarrativeMiner.name,
             )
-            self.notify_observers(f"Search completed. {len(df_sentences)} chunks found.")
+            self.notify_observers(
+                f"Search completed. {len(df_sentences)} chunks found."
+            )
             self.notify_observers("Labelling search results")
             # Label the search results with our narrative sentences
             labeler = NarrativeLabeler(llm_model=self.llm_model)
@@ -111,7 +119,9 @@ class NarrativeMiner(Workflow):
                 self.narrative_sentences,
                 texts=df_sentences["text"].tolist(),
             )
-            self.notify_observers(f"Labelling completed. {len(df_labels)} labels generated.")
+            self.notify_observers(
+                f"Labelling completed. {len(df_labels)} labels generated."
+            )
             self.notify_observers("Post-processing results")
             # Merge and process results
             df_labeled = merge(
@@ -137,12 +147,19 @@ class NarrativeMiner(Workflow):
             workflow_status = WorkflowStatus.FAILED
             raise
         finally:
-            send_trace(bigdata_client, WorkflowTraceEvent(
-                name=NarrativeMiner.name,
-                start_date=workflow_start,
-                end_date=datetime.now(),
-                llm_model=self.llm_model,
-                status=workflow_status,
-            ))
+            if isinstance(self.llm_model, LLMEngine):
+                llm_model_str = self.llm_model.model
+            else:
+                llm_model_str = self.llm_model
+            send_trace(
+                bigdata_client,
+                WorkflowTraceEvent(
+                    name=NarrativeMiner.name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=llm_model_str,
+                    status=workflow_status,
+                ),
+            )
 
         return {"df_labeled": df_labeled}

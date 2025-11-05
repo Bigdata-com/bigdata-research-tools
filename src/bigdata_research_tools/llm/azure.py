@@ -19,11 +19,14 @@ from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
 
 
 class AsyncAzureProvider(AsyncLLMProvider):
+    provider_name = "azure"
+
     def __init__(
         self,
         model: str,
+        **connection_config,
     ):
-        super().__init__(model)
+        super().__init__(model, **connection_config)
         self._client = None
         self.configure_azure_client()
 
@@ -38,7 +41,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
         """
         if not self._client:
             try:
-                self._client = AsyncAzureOpenAI()
+                self._client = AsyncAzureOpenAI(**self.connection_config)
             except OpenAIError:
                 token_provider = get_bearer_token_provider(
                     DefaultAzureCredential(),
@@ -144,11 +147,14 @@ class AsyncAzureProvider(AsyncLLMProvider):
 
 
 class AzureProvider(LLMProvider):
+    provider_name = "azure"
+
     def __init__(
         self,
         model: str,
+        **connection_config,
     ):
-        super().__init__(model)
+        super().__init__(model, **connection_config)
         self._client = None
         self.configure_azure_client()
 
@@ -163,7 +169,7 @@ class AzureProvider(LLMProvider):
         """
         if not self._client:
             try:
-                self._client = AzureOpenAI()
+                self._client = AzureOpenAI(**self.connection_config)
             except OpenAIError:
                 token_provider = get_bearer_token_provider(
                     DefaultAzureCredential(),

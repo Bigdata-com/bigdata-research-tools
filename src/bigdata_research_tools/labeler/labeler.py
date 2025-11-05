@@ -27,7 +27,7 @@ class Labeler:
 
     def __init__(
         self,
-        llm_model: str,
+        llm_model: str | LLMEngine,
         # Note that his value is also used in the prompts.
         unknown_label: str = "unclear",
         temperature: float = 0,
@@ -117,15 +117,33 @@ class Labeler:
         # Currently, Bedrock does not support async calls. Its implementation uses synchronous calls.
         # In order to handle Bedrock as a provider we use a different function for running the prompts.
         # We execute parallel calls using ThreadPoolExecutor for Bedrock and async calls for other providers.
-        provider, _ = self.llm_model.split("::")
+
+        if isinstance(self.llm_model, LLMEngine):
+            engine_provided = True
+            provider = self.llm_model.provider.provider_name
+            model = self.llm_model.provider.model
+            provider_model = f"{provider}::{model}"
+        else:
+            engine_provided = False
+            provider, _ = self.llm_model.split("::")
 
         if provider == "bedrock":
-            llm = LLMEngine(model=self.llm_model)
+            if engine_provided:
+                llm = LLMEngine(
+                    model=provider_model, **self.llm_model.provider.connection_config
+                )
+            else:
+                llm = LLMEngine(model=self.llm_model)
             return run_parallel_prompts(
                 llm, prompts, system_prompt, max_workers, **llm_kwargs
             )
         else:
-            llm = AsyncLLMEngine(model=self.llm_model)
+            if engine_provided:
+                llm = AsyncLLMEngine(
+                    model=provider_model, **self.llm_model.provider.connection_config
+                )
+            else:
+                llm = AsyncLLMEngine(model=self.llm_model)
             return run_concurrent_prompts(
                 llm, prompts, system_prompt, max_workers, **llm_kwargs
             )
