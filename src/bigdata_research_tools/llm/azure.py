@@ -19,6 +19,8 @@ from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
 
 
 class AsyncAzureProvider(AsyncLLMProvider):
+    provider_name = "azure"
+
     def __init__(
         self,
         model: str,
@@ -145,6 +147,8 @@ class AsyncAzureProvider(AsyncLLMProvider):
 
 
 class AzureProvider(LLMProvider):
+    provider_name = "azure"
+
     def __init__(
         self,
         model: str,

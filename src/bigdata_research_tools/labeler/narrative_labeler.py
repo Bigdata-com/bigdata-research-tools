@@ -14,6 +14,7 @@ from bigdata_research_tools.labeler.labeler import (
     get_prompts_for_labeler,
     parse_labeling_response,
 )
+from bigdata_research_tools.llm.base import LLMEngine
 from bigdata_research_tools.prompts.labeler import get_narrative_system_prompt
 
 logger: Logger = getLogger(__name__)
@@ -24,7 +25,7 @@ class NarrativeLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model: str,
+        llm_model: str | LLMEngine,
         label_prompt: Optional[str] = None,
         unknown_label: str = "unclear",
         temperature: float = 0,
@@ -155,6 +156,6 @@ class NarrativeLabeler(Labeler):
         ]
 
         sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Chunk Text"]
-        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True) 
-        
+        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)
+
         return df

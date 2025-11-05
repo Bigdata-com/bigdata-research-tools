@@ -13,6 +13,8 @@ from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
 
 
 class AsyncBedrockProvider(AsyncLLMProvider):
+    provider_name = "bedrock"
+
     # Asynchronous boto3 is tricky, for now use the synchronous client, this will not
     # provide the benefits from async, but will at least let our workflows run for now
     def __init__(self, model: str, **connection_config):
@@ -174,6 +176,8 @@ class AsyncBedrockProvider(AsyncLLMProvider):
 
 
 class BedrockProvider(LLMProvider):
+    provider_name = "bedrock"
+
     def __init__(self, model: str, **connection_config):
         super().__init__(model, **connection_config)
         self._client: Session = None

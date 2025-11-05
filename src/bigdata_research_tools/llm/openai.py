@@ -15,6 +15,8 @@ from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
 
 
 class AsyncOpenAIProvider(AsyncLLMProvider):
+    provider_name = "openai"
+
     def __init__(
         self,
         model: str,
@@ -121,6 +123,8 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
 
 
 class OpenAIProvider(LLMProvider):
+    provider_name = "openai"
+
     def __init__(
         self,
         model: str,
