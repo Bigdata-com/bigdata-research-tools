@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from bigdata_client.models.search import DocumentType
-
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.client import bigdata_connection
 from bigdata_research_tools.utils.observer import OberserverNotification, Observer
 from bigdata_research_tools.visuals import create_thematic_exposure_dashboard
@@ -10,7 +10,7 @@ from bigdata_research_tools.workflows import ThematicScreener
 
 def thematic_screener_example(
     theme_name: str,
-    llm_model: str = "openai::gpt-4o-mini",
+    llm_model_config: str | dict | LLMConfig = "openai::gpt-4o-mini",
     export_path: str = "thematic_screener_results.xlsx",
 ) -> dict:
     GRID_watchlist_ID = "a60c351a-1822-4a88-8c45-a4e78abd979a"
@@ -22,11 +22,11 @@ def thematic_screener_example(
     companies = bigdata.knowledge_graph.get_entities(watchlist_grid.items)
 
     thematic_screener = ThematicScreener(
-        llm_model=llm_model,
+        llm_model_config=llm_model_config,
         main_theme=theme_name,
         companies=companies,
         start_date="2024-01-01",
-        end_date="2024-11-15",
+        end_date="2024-02-28",
         document_type=DocumentType.TRANSCRIPTS,
         fiscal_year=2024,
     )
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     output_path = Path("outputs/thematic_screener_results.xlsx")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    x = thematic_screener_example("Chip Manufacturers", export_path=str(output_path))
+    x = thematic_screener_example("Chip Manufacturers", export_path=str(output_path), llm_model_config="openai::gpt-5-mini")
     custom_config = {
         "company_column": "Company",
         "heatmap_colorscale": "Plasma",

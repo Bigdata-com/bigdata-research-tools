@@ -8,6 +8,7 @@ from pandas import DataFrame, merge
 from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
@@ -28,7 +29,7 @@ class ThematicScreener(Workflow):
 
     def __init__(
         self,
-        llm_model: str,
+        llm_model_config: str | dict | LLMConfig,
         main_theme: str,
         companies: list[Company],
         start_date: str,
@@ -62,7 +63,6 @@ class ThematicScreener(Workflow):
                 If used, generated sub-themes will be based on this.
         """
         super().__init__()
-        self.llm_model = llm_model
         self.main_theme = main_theme
         if not companies:
             raise ValueError(
@@ -84,6 +84,17 @@ class ThematicScreener(Workflow):
         self.sources = sources
         self.rerank_threshold = rerank_threshold
         self.focus = focus or ""
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+            self.llm_model = self.llm_model_config.model
+        elif isinstance(llm_model_config, str):
+            self.llm_model_config = llm_model_config
+            self.llm_model = llm_model_config
+        elif isinstance(llm_model_config, LLMConfig):
+            self.llm_model_config = llm_model_config
+            self.llm_model = llm_model_config.model
+
+        print(llm_model_config)
 
     def screen_companies(
         self,
@@ -133,7 +144,7 @@ class ThematicScreener(Workflow):
             theme_tree = generate_theme_tree(
                 main_theme=self.main_theme,
                 focus=self.focus,
-                llm_model_config={"provider": self.provider, "model": self.model},
+                llm_model_config=self.llm_model_config,
             )
 
             theme_summaries = theme_tree.get_terminal_summaries()
@@ -176,7 +187,7 @@ class ThematicScreener(Workflow):
                 .to_markdown(index=False)
             )
             # Label the search results with our theme labels
-            labeler = ScreenerLabeler(llm_model=self.llm_model)
+            labeler = ScreenerLabeler(llm_model_config=self.llm_model_config)
             self.notify_observers(
                 f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} themes"
             )
@@ -216,7 +227,7 @@ class ThematicScreener(Workflow):
             self.notify_observers(
                 f"Generating motivations for {len(df_company)} companies"
             )
-            motivation_generator = Motivation(model=self.llm_model)
+            motivation_generator = Motivation(llm_model_config=self.llm_model_config)
             motivation_df = motivation_generator.generate_company_motivations(
                 df=df,
                 theme_name=self.main_theme,

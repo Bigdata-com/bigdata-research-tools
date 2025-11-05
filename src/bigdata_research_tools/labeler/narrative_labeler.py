@@ -7,7 +7,9 @@ from bigdata_research_tools.labeler.labeler import (
     get_prompts_for_labeler,
     parse_labeling_response,
 )
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.prompts.labeler import get_narrative_system_prompt
+from typing import Optional
 
 logger: Logger = getLogger(__name__)
 
@@ -17,10 +19,9 @@ class NarrativeLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model: str,
         label_prompt: str | None = None,
         unknown_label: str = "unclear",
-        temperature: float = 0,
+        llm_model_config: LLMConfig | dict | str = None,
     ):
         """Initialize narrative labeler.
 
@@ -30,9 +31,8 @@ class NarrativeLabeler(Labeler):
             label_prompt: Prompt provided by user to label the search result chunks.
                 If not provided, then our default labelling prompt is used.
             unknown_label: Label for unclear classifications
-            temperature: Temperature to use in the LLM model.
         """
-        super().__init__(llm_model, unknown_label, temperature)
+        super().__init__(llm_model_config, unknown_label)
         self.label_prompt = label_prompt
 
     def get_labels(

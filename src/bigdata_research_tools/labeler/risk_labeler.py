@@ -1,5 +1,5 @@
 from logging import Logger, getLogger
-from typing import Any
+from typing import Any, Optional
 
 from pandas import DataFrame, Series
 
@@ -13,6 +13,7 @@ from bigdata_research_tools.prompts.labeler import (
     get_risk_system_prompt,
     get_target_entity_placeholder,
 )
+from bigdata_research_tools.llm.base import LLMConfig, REASONING_MODELS
 
 logger: Logger = getLogger(__name__)
 
@@ -22,12 +23,11 @@ class RiskLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model: str,
+        llm_model_config: LLMConfig | dict | str = 'openai::gpt-4o-mini', 
         label_prompt: str | None = None,
         # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
         #  Changing it here would break the process.
         unknown_label: str = "unclear",
-        temperature: float = 0,
     ):
         """
         Args:
@@ -36,9 +36,8 @@ class RiskLabeler(Labeler):
             label_prompt: Prompt provided by user to label the search result chunks.
                 If not provided, then our default labelling prompt is used.
             unknown_label: Label for unclear classifications
-            temperature: Temperature to use in the LLM model.
         """
-        super().__init__(llm_model, unknown_label, temperature)
+        super().__init__(llm_model_config, unknown_label)
         self.label_prompt = label_prompt
 
     def get_labels(

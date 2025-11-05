@@ -2,12 +2,12 @@ import re
 from itertools import zip_longest
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
-from typing import Any
+from typing import Any, Optional
 
 from json_repair import repair_json
 from pandas import DataFrame
 
-from bigdata_research_tools.llm.base import AsyncLLMEngine, LLMEngine
+from bigdata_research_tools.llm.base import AsyncLLMEngine, LLMEngine, LLMConfig, REASONING_MODELS
 from bigdata_research_tools.llm.utils import (
     run_concurrent_prompts,
     run_parallel_prompts,
@@ -21,10 +21,11 @@ class Labeler:
 
     def __init__(
         self,
-        llm_model: str,
+        llm_model_config: LLMConfig | dict | str = 'openai::gpt-4o-mini',
+        #llm_model: str, ##included in the config?
         # Note that his value is also used in the prompts.
         unknown_label: str = "unclear",
-        temperature: float = 0,
+        
     ):
         """Initialize base Labeler.
 
@@ -32,11 +33,34 @@ class Labeler:
             llm_model: Name of the LLM model to use. Expected format:
                 <provider>::<model>, e.g. "openai::gpt-4o-mini"
             unknown_label: Label for unclear classifications
-            temperature: Temperature to use in the LLM model.
+
         """
-        self.llm_model = llm_model
-        self.temperature = temperature
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+        elif isinstance(llm_model_config, str):
+            self.llm_model = llm_model_config
+            self.llm_model_config = self.get_default_labeler_config(llm_model_config)
+        else:
+            self.llm_model_config = llm_model_config
+            self.llm_model = llm_model_config.model
+
+        print(llm_model_config)
+            
         self.unknown_label = unknown_label
+
+    def get_default_labeler_config(self, model) -> LLMConfig:
+        """Get default LLM model configuration for labeling."""
+        if any(rm in model for rm in REASONING_MODELS):
+            return LLMConfig(model=model, reasoning_effort='high', seed=42, response_format={"type": "json_object"})
+        else:
+            return LLMConfig(model=model,
+            temperature=0,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            seed=42,
+            response_format={"type": "json_object"},
+        )
 
     def _deserialize_label_responses(
         self, responses: list[dict[str, Any]]
@@ -101,16 +125,14 @@ class Labeler:
         Returns:
             List of responses from the LLM
         """
-        llm_kwargs = {
-            "temperature": self.temperature,
-            "response_format": {"type": "json_object"},
-        }
 
         # ADS-140
         # Currently, Bedrock does not support async calls. Its implementation uses synchronous calls.
         # In order to handle Bedrock as a provider we use a different function for running the prompts.
         # We execute parallel calls using ThreadPoolExecutor for Bedrock and async calls for other providers.
         provider, _ = self.llm_model.split("::")
+
+        llm_kwargs = self.llm_model_config.get_llm_kwargs(remove_max_tokens=True)
 
         if provider == "bedrock":
             llm = LLMEngine(model=self.llm_model)

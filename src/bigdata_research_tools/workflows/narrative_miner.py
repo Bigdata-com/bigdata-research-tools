@@ -14,6 +14,7 @@ from bigdata_research_tools.tracing import (
     send_trace,
 )
 from bigdata_research_tools.workflows.base import Workflow
+from bigdata_research_tools.llm.base import LLMConfig
 
 logger: Logger = getLogger(__name__)
 
@@ -26,7 +27,7 @@ class NarrativeMiner(Workflow):
         narrative_sentences: list[str],
         start_date: str,
         end_date: str,
-        llm_model: str,
+        llm_model_config: str | dict | LLMConfig,
         document_type: DocumentType,
         fiscal_year: int | list[int] | None = None,
         sources: list[str] | None = None,
@@ -49,7 +50,6 @@ class NarrativeMiner(Workflow):
             rerank_threshold:  Enable the cross-encoder by setting the value between [0, 1].
         """
         super().__init__()
-        self.llm_model = llm_model
         self.narrative_sentences = narrative_sentences
         self.sources = sources
         self.fiscal_year = fiscal_year
@@ -57,6 +57,18 @@ class NarrativeMiner(Workflow):
         self.start_date = start_date
         self.end_date = end_date
         self.rerank_threshold = rerank_threshold
+
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+            self.llm_model = self.llm_model_config.model
+        elif isinstance(llm_model_config, str):
+            self.llm_model_config = llm_model_config
+            self.llm_model = llm_model_config
+        elif isinstance(llm_model_config, LLMConfig):
+            self.llm_model_config = llm_model_config
+            self.llm_model = llm_model_config.model
+
+        print(self.llm_model_config)
 
     def mine_narratives(
         self,
@@ -111,7 +123,7 @@ class NarrativeMiner(Workflow):
             )
             self.notify_observers("Labelling search results")
             # Label the search results with our narrative sentences
-            labeler = NarrativeLabeler(llm_model=self.llm_model)
+            labeler = NarrativeLabeler(llm_model_config=self.llm_model_config)
             df_labels = labeler.get_labels(
                 self.narrative_sentences,
                 texts=df_sentences["text"].tolist(),
