@@ -1,5 +1,8 @@
 .PHONY: tests lint format
 
+install-pre-commit:
+	@uvx pre-commit install
+
 tests:
 	@uv run -m pytest --cov --cov-report term --cov-report xml:./coverage-reports/coverage.xml -s tests/*
 
@@ -11,6 +14,9 @@ lint-check:
 
 format:
 	@uvx ruff format src/bigdata_research_tools/ examples/ tutorial/ tests/
+
+format-check:
+	@uvx ruff format --check bigdata_thematic_screener/ tests/
 
 type-check:
 	@uvx ty check --python-version 3.13 src/bigdata_research_tools/ examples/ tests/ # tutorial/ # Fix version to 3.13 due to this issue https://github.com/astral-sh/ty/issues/1355 # Ignore tutorials, the issues come from this open issue https://github.com/astral-sh/ty/issues/1297
