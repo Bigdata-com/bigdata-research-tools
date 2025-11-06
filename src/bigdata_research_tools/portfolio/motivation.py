@@ -17,7 +17,7 @@ class Motivation:
     """
 
     def __init__(
-        self, llm_model_config: LLMConfig | dict | str = 'openai::gpt-4o-mini',
+        self, llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
     ):
         """
         Initialize the Motivation class.
@@ -30,12 +30,10 @@ class Motivation:
             self.llm_model_config = LLMConfig(**llm_model_config)
         elif isinstance(llm_model_config, str):
             self.llm_model_config = self._get_default_model_config(llm_model_config)
-            self.llm_model = llm_model_config
         else:
             self.llm_model_config = llm_model_config
-            self.llm_model = llm_model_config.model
 
-        self.llm_engine = LLMEngine(model=self.llm_model)
+        self.llm_engine = LLMEngine(model=self.llm_model_config.model)
 
     def _get_default_model_config(self, model: str) -> LLMConfig:
         """Get default LLM model configuration."""
@@ -190,7 +188,3 @@ class Motivation:
             .sort_values("Composite Score", ascending=False)
             .reset_index(drop=True)
         )
-
-    def update_model_config(self, config: dict[str, Any]):
-        """Update the model configuration."""
-        self.llm_model_config.update(config)

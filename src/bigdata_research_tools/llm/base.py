@@ -64,16 +64,6 @@ class LLMConfig(BaseModel):
             #issue here is that we were not even returning a warning if the config is wrong (i.e. asking for 4o mini with reasoning_effort). If we drop the wrong parameter, we should either setting the right one to its best value or warn that we will fallback to default model settings.
         return self
 
-    # @classmethod
-    # def tree_configuration(cls):
-    #     cls().pop('max_completion_tokens', None)  # This removes it from kwargs
-    #     return cls
-    
-    # @classmethod
-    # def labeler_configuration(cls):
-    #     cls.pop('max_completion_tokens', None)  # This removes it from kwargs
-    #     return cls
-
     def get_llm_kwargs(self, remove_max_tokens: bool = False, remove_json_formatting: bool = False) -> dict:
         config_dict = self.model_dump()
         if remove_max_tokens:

@@ -29,7 +29,7 @@ class ThematicScreener(Workflow):
 
     def __init__(
         self,
-        llm_model_config: str | dict | LLMConfig,
+        llm_model_config: str | LLMConfig | dict,
         main_theme: str,
         companies: list[Company],
         start_date: str,
@@ -86,15 +86,10 @@ class ThematicScreener(Workflow):
         self.focus = focus or ""
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
-            self.llm_model = self.llm_model_config.model
         elif isinstance(llm_model_config, str):
-            self.llm_model_config = llm_model_config
-            self.llm_model = llm_model_config
+            self.llm_model_config = llm_model_config ##resolve it to config or add string check in the trace.
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
-            self.llm_model = llm_model_config.model
-
-        print(llm_model_config)
 
     def screen_companies(
         self,
@@ -139,7 +134,6 @@ class ThematicScreener(Workflow):
         workflow_status = WorkflowStatus.UNKNOWN
 
         try:
-            self.provider, self.model = self.llm_model.split("::")
             self.notify_observers("Generating thematic tree")
             theme_tree = generate_theme_tree(
                 main_theme=self.main_theme,
@@ -260,7 +254,7 @@ class ThematicScreener(Workflow):
                     name=ThematicScreener.name,
                     start_date=workflow_start,
                     end_date=datetime.now(),
-                    llm_model=self.llm_model,
+                    llm_model=self.llm_model_config.model if isinstance(self.llm_model_config, LLMConfig) else str(self.llm_model_config),
                     status=workflow_status,
                 ),
             )

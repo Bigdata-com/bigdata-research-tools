@@ -29,7 +29,7 @@ class RiskAnalyzer(Workflow):
 
     def __init__(
         self,
-        llm_model_config: str | dict | LLMConfig,
+        llm_model_config: str | LLMConfig | dict,
         main_theme: str,
         companies: list[Company],
         start_date: str,
@@ -79,15 +79,10 @@ class RiskAnalyzer(Workflow):
 
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
-            self.llm_model = self.llm_model_config.model
         elif isinstance(llm_model_config, str):
             self.llm_model_config = llm_model_config
-            self.llm_model = llm_model_config
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
-            self.llm_model = llm_model_config.model
-
-        print(llm_model_config)
 
     def create_taxonomy(self):
         """Create a risk taxonomy based on the main theme and focus.
@@ -97,7 +92,6 @@ class RiskAnalyzer(Workflow):
             List[str]: A list of terminal labels for the risk categories.
         """
 
-        self.provider, self.model = self.llm_model.split("::")
         risk_tree = generate_risk_tree(
             main_theme=self.main_theme,
             focus=self.focus,
@@ -424,7 +418,7 @@ class RiskAnalyzer(Workflow):
                     name=RiskAnalyzer.name,
                     start_date=workflow_start,
                     end_date=datetime.now(),
-                    llm_model=self.llm_model,
+                    llm_model=self.llm_model_config.model if isinstance(self.llm_model_config, LLMConfig) else str(self.llm_model_config),
                     status=workflow_status,
                 ),
             )

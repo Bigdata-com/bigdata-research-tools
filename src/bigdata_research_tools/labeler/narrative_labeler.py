@@ -21,7 +21,7 @@ class NarrativeLabeler(Labeler):
         self,
         label_prompt: str | None = None,
         unknown_label: str = "unclear",
-        llm_model_config: LLMConfig | dict | str = None,
+        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
     ):
         """Initialize narrative labeler.
 

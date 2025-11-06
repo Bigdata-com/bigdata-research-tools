@@ -10,7 +10,7 @@ from bigdata_research_tools.workflows import ThematicScreener
 
 def thematic_screener_example(
     theme_name: str,
-    llm_model_config: str | dict | LLMConfig = "openai::gpt-4o-mini",
+    llm_model_config: str | LLMConfig | dict  = "openai::gpt-4o-mini",
     export_path: str = "thematic_screener_results.xlsx",
 ) -> dict:
     GRID_watchlist_ID = "a60c351a-1822-4a88-8c45-a4e78abd979a"

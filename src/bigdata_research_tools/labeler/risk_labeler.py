@@ -23,7 +23,7 @@ class RiskLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model_config: LLMConfig | dict | str = 'openai::gpt-4o-mini', 
+        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini', 
         label_prompt: str | None = None,
         # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
         #  Changing it here would break the process.

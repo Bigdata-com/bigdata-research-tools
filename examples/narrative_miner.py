@@ -7,7 +7,7 @@ from bigdata_research_tools.utils.observer import OberserverNotification, Observ
 from bigdata_research_tools.workflows import NarrativeMiner
 
 
-def narrative_miner_example(llm_model_config: dict | str | LLMConfig = "openai::gpt-4o-mini", export_path: str = "narrative_miner_sample.xlsx") -> dict:
+def narrative_miner_example(llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini", export_path: str = "narrative_miner_sample.xlsx") -> dict:
     narrative_miner = NarrativeMiner(
         narrative_sentences=[
             "Supervised Learning Techniques",

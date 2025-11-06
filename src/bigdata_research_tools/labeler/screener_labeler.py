@@ -25,7 +25,7 @@ class ScreenerLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model_config: LLMConfig | dict | str = 'openai::gpt-4o-mini',
+        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
         label_prompt: str | None = None,
         unknown_label: str = "unclear",
     ):

@@ -21,8 +21,7 @@ class Labeler:
 
     def __init__(
         self,
-        llm_model_config: LLMConfig | dict | str = 'openai::gpt-4o-mini',
-        #llm_model: str, ##included in the config?
+        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
         # Note that his value is also used in the prompts.
         unknown_label: str = "unclear",
         
@@ -38,13 +37,9 @@ class Labeler:
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
         elif isinstance(llm_model_config, str):
-            self.llm_model = llm_model_config
             self.llm_model_config = self.get_default_labeler_config(llm_model_config)
         else:
             self.llm_model_config = llm_model_config
-            self.llm_model = llm_model_config.model
-
-        print(llm_model_config)
             
         self.unknown_label = unknown_label
 
@@ -130,17 +125,17 @@ class Labeler:
         # Currently, Bedrock does not support async calls. Its implementation uses synchronous calls.
         # In order to handle Bedrock as a provider we use a different function for running the prompts.
         # We execute parallel calls using ThreadPoolExecutor for Bedrock and async calls for other providers.
-        provider, _ = self.llm_model.split("::")
+        provider, _ = self.llm_model_config.model.split("::")
 
         llm_kwargs = self.llm_model_config.get_llm_kwargs(remove_max_tokens=True)
 
         if provider == "bedrock":
-            llm = LLMEngine(model=self.llm_model)
+            llm = LLMEngine(model=self.llm_model_config.model)
             return run_parallel_prompts(
                 llm, prompts, system_prompt, max_workers, **llm_kwargs
             )
         else:
-            llm = AsyncLLMEngine(model=self.llm_model)
+            llm = AsyncLLMEngine(model=self.llm_model_config.model)
             return run_concurrent_prompts(
                 llm, prompts, system_prompt, max_workers, **llm_kwargs
             )

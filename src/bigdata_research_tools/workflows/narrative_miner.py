@@ -27,7 +27,7 @@ class NarrativeMiner(Workflow):
         narrative_sentences: list[str],
         start_date: str,
         end_date: str,
-        llm_model_config: str | dict | LLMConfig,
+        llm_model_config: str | LLMConfig | dict,
         document_type: DocumentType,
         fiscal_year: int | list[int] | None = None,
         sources: list[str] | None = None,
@@ -60,15 +60,10 @@ class NarrativeMiner(Workflow):
 
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
-            self.llm_model = self.llm_model_config.model
         elif isinstance(llm_model_config, str):
             self.llm_model_config = llm_model_config
-            self.llm_model = llm_model_config
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
-            self.llm_model = llm_model_config.model
-
-        print(self.llm_model_config)
 
     def mine_narratives(
         self,
@@ -162,7 +157,7 @@ class NarrativeMiner(Workflow):
                     name=NarrativeMiner.name,
                     start_date=workflow_start,
                     end_date=datetime.now(),
-                    llm_model=self.llm_model,
+                    llm_model=self.llm_model_config.model if isinstance(self.llm_model_config, LLMConfig) else str(self.llm_model_config),
                     status=workflow_status,
                 ),
             )
