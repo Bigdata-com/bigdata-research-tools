@@ -3,13 +3,14 @@ from pathlib import Path
 from bigdata_client.models.search import DocumentType
 
 from bigdata_research_tools.client import bigdata_connection
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.utils.observer import OberserverNotification, Observer
 from bigdata_research_tools.workflows.risk_analyzer import RiskAnalyzer
 
 
 def risk_analyzer_example(
     risk_scenario: str,
-    llm_model: str = "openai::gpt-4o-mini",
+    llm_model_config: str | LLMConfig | dict  = None,
     keywords: list = ["Tariffs"],
     control_entities: dict = {"place": ["Canada", "Mexico"]},
     focus: str = "",
@@ -24,7 +25,6 @@ def risk_analyzer_example(
     companies = bigdata.knowledge_graph.get_entities(watchlist_grid.items)
 
     analyzer = RiskAnalyzer(
-        llm_model=llm_model,
         main_theme=risk_scenario,
         companies=companies,
         start_date="2025-01-01",
@@ -33,6 +33,7 @@ def risk_analyzer_example(
         document_type=DocumentType.NEWS,
         control_entities=control_entities,
         focus=focus,  # Optional focus to narrow the theme,
+        llm_model_config=llm_model_config,
     )
 
     class PrintObserver(Observer):
@@ -63,6 +64,10 @@ if __name__ == "__main__":
         "US Import Tariffs against Canada and Mexico",
         focus="Provide a detailed taxonomy of risks describing how new American import tariffs against Canada and Mexico will impact US companies, their operations and strategy. Cover trade-relations risks, foreign market access risks, supply chain risks, US market sales and revenue risks (including price impacts), and intellectual property risks, provide at least 4 sub-scenarios for each risk factor.",
         export_path=str(output_path),
+        llm_model_config=LLMConfig(
+            model="openai::gpt-5-mini",
+            reasoning_effort="high",
+        ),
     )
     # custom_config = {
     #     'company_column': 'Company',

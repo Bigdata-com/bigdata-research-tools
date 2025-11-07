@@ -16,9 +16,10 @@ from bigdata_research_tools.tracing import (
     WorkflowTraceEvent,
     send_trace,
 )
-from bigdata_research_tools.tree import SemanticTree, generate_risk_tree
+from bigdata_research_tools.tree import SemanticTree, generate_risk_tree, get_default_tree_config
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
+from bigdata_research_tools.llm.base import LLMConfig
 
 logger: Logger = getLogger(__name__)
 
@@ -28,7 +29,7 @@ class RiskAnalyzer(Workflow):
 
     def __init__(
         self,
-        llm_model: str,
+        llm_model_config: str | LLMConfig | dict,
         main_theme: str,
         companies: list[Company],
         start_date: str,
@@ -64,7 +65,6 @@ class RiskAnalyzer(Workflow):
                 If used, generated sub-themes will be based on this.
         """
         super().__init__()
-        self.llm_model = llm_model
         self.main_theme = main_theme
         self.companies = companies
         self.start_date = start_date
@@ -77,6 +77,13 @@ class RiskAnalyzer(Workflow):
         self.rerank_threshold = rerank_threshold
         self.focus = focus
 
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+        elif isinstance(llm_model_config, str):
+            self.llm_model_config = llm_model_config
+        elif isinstance(llm_model_config, LLMConfig):
+            self.llm_model_config = llm_model_config
+
     def create_taxonomy(self):
         """Create a risk taxonomy based on the main theme and focus.
         Returns:
@@ -85,11 +92,10 @@ class RiskAnalyzer(Workflow):
             List[str]: A list of terminal labels for the risk categories.
         """
 
-        self.provider, self.model = self.llm_model.split("::")
         risk_tree = generate_risk_tree(
             main_theme=self.main_theme,
             focus=self.focus,
-            llm_model_config={"provider": self.provider, "model": self.model},
+            llm_model_config=self.llm_model_config,
         )
 
         risk_summaries = risk_tree.get_terminal_summaries()
@@ -185,7 +191,7 @@ class RiskAnalyzer(Workflow):
         # Label the search results with our theme labels
         ## To Do: generalize the labeler or pass it as an argument
         # to allow for different labelers to be used.
-        labeler = RiskLabeler(llm_model=self.llm_model)
+        labeler = RiskLabeler(llm_model_config=self.llm_model_config)
         df_labels = labeler.get_labels(
             main_theme=self.main_theme,
             labels=terminal_labels,
@@ -247,7 +253,7 @@ class RiskAnalyzer(Workflow):
         df_industry = get_scored_df(
             df_labeled, index_columns=["Industry"], pivot_column="Sub-Scenario"
         )
-        motivation_generator = Motivation(model=self.llm_model)
+        motivation_generator = Motivation(llm_model_config=self.llm_model_config)
         motivation_df = motivation_generator.generate_company_motivations(
             df=df_labeled.rename(columns={"Sub-Scenario": "Theme"}),
             theme_name=self.main_theme,
@@ -412,7 +418,7 @@ class RiskAnalyzer(Workflow):
                     name=RiskAnalyzer.name,
                     start_date=workflow_start,
                     end_date=datetime.now(),
-                    llm_model=self.llm_model,
+                    llm_model=self.llm_model_config.model if isinstance(self.llm_model_config, LLMConfig) else str(self.llm_model_config),
                     status=workflow_status,
                 ),
             )

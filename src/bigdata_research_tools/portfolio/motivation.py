@@ -4,7 +4,7 @@ from typing import Any
 import pandas as pd
 from tqdm import tqdm
 
-from bigdata_research_tools.llm.base import LLMEngine
+from bigdata_research_tools.llm.base import LLMConfig, LLMEngine, REASONING_MODELS
 from bigdata_research_tools.prompts.motivation import (
     MotivationType,
     get_motivation_prompt,
@@ -17,7 +17,7 @@ class Motivation:
     """
 
     def __init__(
-        self, model: str | None = None, model_config: dict[str, Any] | None = None
+        self, llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
     ):
         """
         Initialize the Motivation class.
@@ -26,20 +26,28 @@ class Motivation:
         - model: Model string in format "provider::model" (e.g., "openai::gpt-4o-mini")
         - model_config: Configuration for the LLM model
         """
-        self.model_config = model_config or self._get_default_model_config()
-        self.llm_engine = LLMEngine(model=model)
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+        elif isinstance(llm_model_config, str):
+            self.llm_model_config = self._get_default_model_config(llm_model_config)
+        else:
+            self.llm_model_config = llm_model_config
 
-    @staticmethod
-    def _get_default_model_config() -> dict[str, Any]:
+        self.llm_engine = LLMEngine(model=self.llm_model_config.model)
+
+    def _get_default_model_config(self, model: str) -> LLMConfig:
         """Get default LLM model configuration."""
-        return {
-            "temperature": 0,
-            "top_p": 1,
-            "frequency_penalty": 0,
-            "presence_penalty": 0,
-            "max_tokens": 300,
-            "seed": 42,
-        }
+        if any(rm in model for rm in REASONING_MODELS):
+            return LLMConfig(model=model, reasoning_effort='high', seed=42, max_completion_tokens=300)
+        else:
+            return LLMConfig(model=model,
+            temperature=0,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            max_completion_tokens=300,
+            seed=42,
+        )
 
     def group_quotes_by_company(self, filtered_df: pd.DataFrame) -> dict:
         """
@@ -119,7 +127,7 @@ class Motivation:
         chat_history = [{"role": "user", "content": prompt}]
 
         motivation = self.llm_engine.get_response(
-            chat_history=chat_history, **self.model_config
+            chat_history=chat_history, **self.llm_model_config.get_llm_kwargs(remove_json_formatting=True)
         )
 
         return motivation.strip()
@@ -180,7 +188,3 @@ class Motivation:
             .sort_values("Composite Score", ascending=False)
             .reset_index(drop=True)
         )
-
-    def update_model_config(self, config: dict[str, Any]):
-        """Update the model configuration."""
-        self.model_config.update(config)

@@ -3,6 +3,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from bigdata_research_tools.llm.base import LLMConfig, REASONING_MODELS
 import graphviz
 from json_repair import repair_json
 from pandas import DataFrame
@@ -330,7 +331,7 @@ class SemanticTree:
 def generate_theme_tree(
     main_theme: str,
     focus: str = "",
-    llm_model_config: dict[str, Any] | None = None,
+    llm_model_config: LLMConfig | dict | str = "openai::gpt-4o-mini",
 ) -> SemanticTree:
     """
     Generate a `SemanticTree` class from a main theme and focus.
@@ -352,8 +353,15 @@ def generate_theme_tree(
     Returns:
         SemanticTree: The generated theme tree.
     """
-    ll_model_config = llm_model_config or themes_default_llm_model_config
-    model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
+    if isinstance(llm_model_config, dict):
+        llm_model_config = LLMConfig(**llm_model_config)
+    elif isinstance(llm_model_config, str):
+        llm_model_config = get_default_tree_config(llm_model_config)
+
+    print(llm_model_config)
+    
+    model_str = llm_model_config.model
+    chat_params = llm_model_config.get_llm_kwargs(remove_max_tokens=True)
     llm = LLMEngine(model=model_str)
 
     system_prompt = compose_themes_system_prompt(main_theme, analyst_focus=focus)
@@ -363,7 +371,7 @@ def generate_theme_tree(
         {"role": "user", "content": main_theme},
     ]
 
-    tree_str = llm.get_response(chat_history, **ll_model_config.get("kwargs", {}))
+    tree_str = llm.get_response(chat_history, **chat_params)
     tree_str = repair_json(tree_str)
     tree_dict = ast.literal_eval(tree_str)
 
@@ -406,7 +414,7 @@ def stringify_label_summaries(label_summaries: dict[str, str]) -> list[str]:
 def generate_risk_tree(
     main_theme: str,
     focus: str = "",
-    llm_model_config: dict[str, Any] | None = None,
+    llm_model_config: LLMConfig | dict | str = "openai::gpt-4o-mini",
 ) -> SemanticTree:
     """
     Generate a `SemanticTree` class from a main theme and analyst focus.
@@ -429,16 +437,21 @@ def generate_risk_tree(
     Returns:
         SemanticTree: The generated theme tree.
     """
-    ll_model_config = llm_model_config or themes_default_llm_model_config
-    if "kwargs" not in ll_model_config:
-        ll_model_config["kwargs"] = {}
-    model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
+    if isinstance(llm_model_config, dict):
+        llm_model_config = LLMConfig(**llm_model_config)
+    elif isinstance(llm_model_config, str):
+        llm_model_config = get_default_tree_config(llm_model_config)
+
+    print(llm_model_config)
+
+    model_str = llm_model_config.model
+    chat_params = llm_model_config.get_llm_kwargs(remove_max_tokens=True)
     llm = LLMEngine(model=model_str)
 
     system_prompt = compose_risk_system_prompt_focus(main_theme, focus)
 
     tree_str = llm.get_response(
-        [{"role": "system", "content": system_prompt}], **ll_model_config["kwargs"]
+        [{"role": "system", "content": system_prompt}], **chat_params
     )
 
     tree_str = repair_json(tree_str)
@@ -446,3 +459,25 @@ def generate_risk_tree(
     tree_dict = ast.literal_eval(tree_str)
 
     return SemanticTree.from_dict(tree_dict)
+
+def get_default_tree_config(llm_model: str) -> LLMConfig:
+    """Get default LLM model configuration for tree generation."""
+    if any(rm in llm_model for rm in REASONING_MODELS):
+        return LLMConfig(
+            model=llm_model,
+            reasoning_effort='high',
+            seed=42,
+            max_completion_tokens=300,
+            response_format={"type": "json_object"},
+        )
+    else:
+        return LLMConfig(
+            model=llm_model,
+            temperature=0,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            max_completion_tokens=300,
+            seed=42,
+            response_format={"type": "json_object"},
+        )
