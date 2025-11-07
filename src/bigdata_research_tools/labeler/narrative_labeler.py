@@ -96,6 +96,8 @@ class NarrativeLabeler(Labeler):
                 - Motivation
                 - Label
                 - Entity
+                - Entity ID
+                - Entity Ticker
                 - Country Code
                 - Entity Type
         """
