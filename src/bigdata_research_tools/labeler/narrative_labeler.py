@@ -71,7 +71,7 @@ class NarrativeLabeler(Labeler):
         responses = [parse_labeling_response(response) for response in responses]
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame) -> DataFrame:
+    def post_process_dataframe(self, df: DataFrame, extra_fields: Optional[dict] = None, extra_columns: Optional[List[str]] = None) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -116,13 +116,7 @@ class NarrativeLabeler(Labeler):
         sort_columns = ["timestamp_utc", "label"]
         df = df.sort_values(by=sort_columns).reset_index(drop=True)
 
-        # Add formatted columns
-        df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
-        df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
-
-        df = df.rename(
-            columns={
-                "document_id": "Document ID",
+        columns_map = {"document_id": "Document ID",
                 "sentence_id": "Sentence ID",
                 "headline": "Headline",
                 "text": "Chunk Text",
@@ -134,9 +128,14 @@ class NarrativeLabeler(Labeler):
                 "entity_id": "Entity ID",
                 "entity_ticker": "Entity Ticker",
             }
-        )
 
-        df = df.explode(["Entity", "Entity Type", "Country Code", "Entity ID", "Entity Ticker"], ignore_index=True)
+        optional_fields = ['topics','source_name', 'source_rank', 'url']
+        for field in optional_fields:
+            if field in df.columns:
+                columns_map[field] = field.replace('_', ' ').title()
+
+        if extra_fields:
+            columns_map.update(extra_fields)
 
         # Select and order columns
         export_columns = [
@@ -154,6 +153,23 @@ class NarrativeLabeler(Labeler):
             "Country Code",
             "Entity Type",
         ]
+
+        if extra_columns:
+            export_columns += extra_columns
+        
+        for field in optional_fields:
+            if field in df.columns:
+                export_columns += [field.replace('_', ' ').title()]
+
+        df = df.rename(
+            columns=columns_map
+        )
+        
+        # Add formatted columns
+        df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
+        df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
+        
+        df = df.explode(["Entity", "Entity Type", "Country Code"], ignore_index=True)
 
         sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Chunk Text"]
         df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)

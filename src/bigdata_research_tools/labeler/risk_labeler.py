@@ -81,9 +81,7 @@ class RiskLabeler(Labeler):
 
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(
-        self, df: DataFrame, extra_fields: dict, extra_columns: list[str]
-    ) -> DataFrame:
+    def post_process_dataframe(self, df: DataFrame, extra_fields: Optional[dict], extra_columns: Optional[List[str]]) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -155,16 +153,20 @@ class RiskLabeler(Labeler):
         )
 
         columns_map = {
-            "entity_name": "Company",
-            "entity_sector": "Sector",
-            "entity_industry": "Industry",
-            "entity_country": "Country",
-            "entity_ticker": "Ticker",
-            "headline": "Headline",
-            "text": "Quote",
-            "motivation": "Motivation",
-            "label": "Sub-Scenario",
-        }
+                "entity_name": "Company",
+                "entity_sector": "Sector",
+                "entity_industry": "Industry",
+                "entity_country": "Country",
+                "entity_ticker": "Ticker",
+                "headline": "Headline",
+                "text": "Quote",
+                "motivation": "Motivation",
+                "label": "Sub-Scenario"
+            }
+        optional_fields = ['topics','source_name', 'source_rank', 'url']
+        for field in optional_fields:
+            if field in df.columns:
+                columns_map[field] = field.replace('_', ' ').title()
 
         if extra_fields:
             columns_map.update(extra_fields)
@@ -175,8 +177,6 @@ class RiskLabeler(Labeler):
                     )
                 else:
                     print("quotes column not in df")
-
-        df = df.rename(columns=columns_map)
 
         # Select and order columns
         export_columns = [
@@ -196,6 +196,14 @@ class RiskLabeler(Labeler):
 
         if extra_columns:
             export_columns += extra_columns
+        
+        for field in optional_fields:
+            if field in df.columns:
+                export_columns += [field.replace('_', ' ').title()]
+
+        df = df.rename(
+            columns=columns_map
+        )
 
         return df[export_columns]
 

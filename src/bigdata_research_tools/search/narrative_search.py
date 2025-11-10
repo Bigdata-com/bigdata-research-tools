@@ -163,6 +163,9 @@ def _process_narrative_search(
                     "entity_type": [entity["entity_type"] for entity in chunk_entities],
                     "entity_id": [entity["key"] for entity in chunk_entities],
                     "entity_ticker": [entity.get("ticker", '') for entity in chunk_entities],
+                    'source_name': result.source.name or None,
+                    'source_rank': result.source.rank or None,
+                    'url': result.url or None
                 }
             )
 
