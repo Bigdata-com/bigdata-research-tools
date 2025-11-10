@@ -181,8 +181,10 @@ def _build_base_queries(
     keyword_query = Any([Keyword(word) for word in keywords]) if keywords else None
     
     # Create source query
-    source_query = Any([Source(source) for source in sources]) if sources else None
-    
+    sources_ids = _get_entity_ids(sources, Source) if sources else []
+
+    source_query = Any(sources_ids) if sources_ids else None
+
     return queries, keyword_query, source_query
 
 def _get_entity_ids(
@@ -201,6 +203,7 @@ def _get_entity_ids(
         Concept: bigdata.knowledge_graph.find_concepts, 
         Entity: bigdata.knowledge_graph.find_companies,  
         ReportingEntity: bigdata.knowledge_graph.find_companies, 
+        Source: bigdata.knowledge_graph.find_sources,
     }
 
     lookup_func = lookup_map.get(entity_type)
@@ -213,6 +216,8 @@ def _get_entity_ids(
             if entity_type in (Entity, ReportingEntity):
                 entity = entity_type(entity.id)
                 entity_ids.append(entity)
+            elif entity_type == Source:
+                entity_ids.append(Source(entity.id))
             else:
                 entity_ids.append(Entity(entity.id))
 
@@ -237,9 +242,8 @@ def _build_control_entity_query(
             entity_ids.extend(prod_ids)
 
     if control_entities.companies:
-        entity_type = _get_entity_type(scope)
-        comp_ids = _get_entity_ids(control_entities.companies,entity_type)
-        if comp_ids: 
+        comp_ids = _get_entity_ids(control_entities.companies, Entity)
+        if comp_ids:
             entity_ids.extend(comp_ids)
 
     if control_entities.place:

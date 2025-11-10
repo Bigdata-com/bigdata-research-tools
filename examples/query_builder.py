@@ -59,7 +59,7 @@ def test_basic_entity_config():
             scope=DocumentType.TRANSCRIPTS,
             ).run(limit=2
         )
-        logger.info("Sample results: %s", results)
+        logger.info("Sample results: %s", results[0])
     logger.info("")
 
 
@@ -101,7 +101,7 @@ def test_control_entities():
             scope=DocumentType.TRANSCRIPTS,
             ).run(limit=2
         )
-    logger.info("Sample results: %s", results)
+    logger.info("Sample results: %s", results[0])
     logger.info("")
 
 
@@ -152,7 +152,7 @@ def test_custom_batches():
             scope=DocumentType.FILINGS,
             ).run(limit=2
         )
-    logger.info("Sample results: %s", results)
+    logger.info("Sample results: %s", results[0])
     logger.info("")
 
 
@@ -183,7 +183,7 @@ def test_mixed_configuration():
         keywords=["streaming", "content", "subscription", "audience"],
         entities=entities,
         control_entities=control_entities,
-        sources=["Bloomberg", "Variety", "Hollywood Reporter"],
+        sources=["D904DE", "9D69F1", "AA60D4"], #["MT Newswires", "Associated Press", "Hollywood Reporter", "not a source"]
         batch_size=2,
         scope=DocumentType.NEWS,
         fiscal_year=None,
@@ -198,7 +198,7 @@ def test_mixed_configuration():
             scope=DocumentType.NEWS,
             ).run(limit=2
         )
-    logger.info("Sample results: %s", results)
+    logger.info("Sample results: %s", results[0])
     logger.info("")
 
 
@@ -226,7 +226,7 @@ def test_edge_cases():
             scope=DocumentType.ALL,
             ).run(limit=2
         )
-    logger.info("Sample results: %s", results1)
+    logger.info("Sample results: %s", results1[0])
     
     # Test 2: Only keywords
     queries2 = build_batched_query(
@@ -246,7 +246,7 @@ def test_edge_cases():
             scope=DocumentType.ALL,
             ).run(limit=2
         )
-    logger.info("Sample results: %s", results2)
+    logger.info("Sample results: %s", results2[0])
     
     # Test 3: Empty EntityConfig
     empty_entities = EntitiesToSearch()
@@ -267,7 +267,7 @@ def test_edge_cases():
             scope=DocumentType.ALL,
             ).run(limit=2
         )
-    logger.info("Sample results: %s", results3)
+    logger.info("Sample results: %s", results3[0])
     
     # Test 4: Single entity type
     single_type = EntitiesToSearch(companies=["Apple Inc"])
@@ -288,7 +288,7 @@ def test_edge_cases():
             scope=DocumentType.ALL,
             ).run(limit=2
         )
-    logger.info("Sample results: %s", results4)
+    logger.info("Sample results: %s", results4[0])
     logger.info("")
 
 
@@ -328,7 +328,7 @@ def test_reporting_entities():
             scope=DocumentType.TRANSCRIPTS,
             ).run(limit=2
         )
-    logger.info("Sample results: %s", results)
+    logger.info("Sample results: %s", results[0])
     logger.info("")
 
 def main():
