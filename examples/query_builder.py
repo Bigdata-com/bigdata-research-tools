@@ -313,7 +313,7 @@ def test_reporting_entities():
         keywords=["streaming", "content", "subscription", "audience"],
         entities=entities,
         control_entities=None,
-        batch_size=2,
+        batch_size=4,
         fiscal_year=2024,
         sources=None,
         scope=DocumentType.TRANSCRIPTS,

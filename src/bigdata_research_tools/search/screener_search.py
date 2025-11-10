@@ -154,7 +154,7 @@ def search_by_companies(
         results, entities = filter_search_results(results)
         # Filter entities to only include COMPANY entities
         entities, topics = filter_company_entities(entities)
-        
+
         # Determine whether to filter by companies based on document type
         # For filings and transcripts, we don't need to filter as we use reporting entities
         # For news, we need to check against our original universe of companies as a news article
@@ -193,7 +193,7 @@ def search_by_companies(
 
 def filter_company_entities(
     entities: list[Concept],
-) -> list[Concept]:
+) -> tuple[list[Concept], list[Concept]]:
     """
     Filter only COMPANY entities from the list of entities.
 
@@ -206,17 +206,19 @@ def filter_company_entities(
         entity
         for entity in entities
         if hasattr(entity, "entity_type") and entity.entity_type == "COMP"
-    ], [entity for entity in entities
-            if hasattr(entity, 'entity_type') and
-            entity.entity_type != 'COMP']
+    ], [
+        entity
+        for entity in entities
+        if hasattr(entity, "entity_type") and entity.entity_type != "COMP"
+    ]
 
 
 def process_screener_search_results(
     results: list[Document],
     entities: list[Concept],
+    topics: list[Concept],
     companies: list[Company] | None = None,
     document_type: DocumentType = DocumentType.NEWS,
-    topics: list[Concept] | None = None,
 ) -> DataFrame:
     """
     Build a unified DataFrame from search results for any document type.
@@ -281,14 +283,26 @@ def process_screener_search_results(
                 for entity in chunk.entities
                 if entity.key in entity_key_map
             ]
-            chunk_topics = [{'key': entity.key,
-                             'name': (topic_key_map[entity.key].name if entity.key in topic_key_map else None),
-                             'entity_type': (topic_key_map[entity.key].entity_type if entity.key in topic_key_map else None),
-                             #'country': (topic_key_map[entity.key].country if entity.key in topic_key_map else None),
-                             'start': entity.start,
-                             'end': entity.end}
-                            for entity in chunk.entities
-                            if entity.key in topic_key_map]
+            chunk_topics = [
+                {
+                    "key": entity.key,
+                    "name": (
+                        topic_key_map[entity.key].name
+                        if entity.key in topic_key_map
+                        else None
+                    ),
+                    "entity_type": (
+                        topic_key_map[entity.key].entity_type
+                        if entity.key in topic_key_map
+                        else None
+                    ),
+                    #'country': (topic_key_map[entity.key].country if entity.key in topic_key_map else None),
+                    "start": entity.start,
+                    "end": entity.end,
+                }
+                for entity in chunk.entities
+                if entity.key in topic_key_map
+            ]
 
             if not chunk_entities:
                 continue  # Skip if no entities are mapped
@@ -327,7 +341,7 @@ def process_screener_search_results(
                                 e["name"] for e in other_entities
                             ),
                             "entities": chunk_entities,
-                            'topics': chunk_topics,
+                            "topics": chunk_topics,
                         }
                     )
             else:
@@ -367,11 +381,11 @@ def process_screener_search_results(
                                 e["name"] for e in other_entities
                             ),
                             "entities": chunk_entities,
-                            'topics': chunk_topics,
-                            'source_name': result.source.name,
-                            'source_rank': result.source.rank,
-                            'url': result.url
-                                }
+                            "topics": chunk_topics,
+                            "source_name": result.source.name,
+                            "source_rank": result.source.rank,
+                            "url": result.url,
+                        }
                     )
 
     if not rows:
