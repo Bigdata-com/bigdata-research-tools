@@ -16,3 +16,7 @@ __pycache__/
 dist/
 build/
 .ipynb_checkpoints
+
+outputs/*
+*.xlsx
+*.xls

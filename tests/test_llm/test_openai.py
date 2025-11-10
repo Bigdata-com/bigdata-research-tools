@@ -1,9 +1,12 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+
 from bigdata_research_tools.llm.openai import AsyncOpenAIProvider
 
+
 @pytest.mark.asyncio
-@patch('bigdata_research_tools.llm.openai.AsyncOpenAI')
+@patch("bigdata_research_tools.llm.openai.AsyncOpenAI")
 async def test_get_response(mock_async_openai):
     mock_client = AsyncMock()
     mock_client.chat.completions.create.return_value = MagicMock(
@@ -15,8 +18,9 @@ async def test_get_response(mock_async_openai):
     response = await provider.get_response(chat_history)
     assert response == "mocked response"
 
+
 @pytest.mark.asyncio
-@patch('bigdata_research_tools.llm.openai.AsyncOpenAI')
+@patch("bigdata_research_tools.llm.openai.AsyncOpenAI")
 async def test_get_tools_response(mock_async_openai):
     mock_client = AsyncMock()
     mock_client.chat.completions.create.return_value = MagicMock(
@@ -29,12 +33,15 @@ async def test_get_tools_response(mock_async_openai):
     response = await provider.get_tools_response(chat_history, tools)
     assert isinstance(response, dict)
 
+
 @pytest.mark.asyncio
-@patch('bigdata_research_tools.llm.openai.AsyncOpenAI')
+@patch("bigdata_research_tools.llm.openai.AsyncOpenAI")
 async def test_get_stream_response(mock_async_openai):
     mock_client = AsyncMock()
     mock_stream = AsyncMock()
-    mock_stream.__aiter__.return_value = [MagicMock(choices=[MagicMock(delta=MagicMock(content="streamed"))])]
+    mock_stream.__aiter__.return_value = [
+        MagicMock(choices=[MagicMock(delta=MagicMock(content="streamed"))])
+    ]
     mock_client.chat.completions.create.return_value = mock_stream
     mock_async_openai.return_value = mock_client
     provider = AsyncOpenAIProvider(model="gpt-3.5-turbo")

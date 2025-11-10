@@ -1,6 +1,4 @@
-def compose_themes_system_prompt(
-    main_theme: str, analyst_focus: str = ""
-) -> str:
+def compose_themes_system_prompt(main_theme: str, analyst_focus: str = "") -> str:
     prompt = f"""
 	Forget all previous prompts. 
 	You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies. 

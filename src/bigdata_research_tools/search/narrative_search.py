@@ -1,8 +1,7 @@
 from logging import Logger, getLogger
-from typing import List, Optional
 
 from bigdata_client.document import Document
-from bigdata_client.models.advanced_search_query import ListQueryComponent
+from bigdata_client.models.entities import Concept
 from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
@@ -14,7 +13,7 @@ from bigdata_research_tools.search.query_builder import (
 )
 from bigdata_research_tools.search.search import run_search
 from bigdata_research_tools.search.search_utils import (
-    build_chunk_entities, 
+    build_chunk_entities,
     filter_search_results,
 )
 
@@ -22,17 +21,17 @@ logger: Logger = getLogger(__name__)
 
 
 def search_narratives(
-    sentences: List[str],
+    sentences: list[str],
     start_date: str,
     end_date: str,
     scope: DocumentType,
-    fiscal_year: Optional[int] = None,
-    sources: Optional[List[str]] = None,
-    keywords: Optional[List[str]] = None,
-    control_entities: Optional[List[str]] = None,
-    freq: str = "M",
+    fiscal_year: int | list[int] | None = None,
+    sources: list[str] | None = None,
+    keywords: list[str] | None = None,
+    control_entities: list[str] | None = None,
+    frequency: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
-    rerank_threshold: Optional[float] = None,
+    rerank_threshold: float | None = None,
     document_limit: int = 50,
     batch_size: int = 10,
     **kwargs,
@@ -46,14 +45,14 @@ def search_narratives(
         end_date (str): The end date for the search.
         scope (DocumentType): The document type scope
             (e.g., `DocumentType.NEWS`, `DocumentType.TRANSCRIPTS`).
-        fiscal_year (Optional[int]): The fiscal year to filter queries.
+        fiscal_year (int | list[int] | None): The fiscal year to filter queries.
             If None, no fiscal year filter is applied.
         sources (Optional[List[str]]): List of sources to filter on. If none, we search across all sources.
         keywords (Optional[List[str]]): A list of keywords for constructing keyword queries.
             If None, no keyword queries are created.
         control_entities (Optional[List[str]]): A list of control entity IDs for creating co-mentions queries.
             If None, no control queries are created.
-        freq (str): The frequency of the date ranges. Defaults to 'M'.
+        frequency (str): The frequency of the date ranges. Defaults to 'M'.
         sort_by (SortBy): The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
         rerank_threshold (Optional[float]): The threshold for reranking the search results.
@@ -91,7 +90,9 @@ def search_narratives(
     )
 
     # Create list of date ranges
-    date_ranges = create_date_ranges(start_date, end_date, freq)
+    date_ranges = create_date_ranges(
+        start_date, end_date, frequency, return_datetime=True
+    )
 
     no_queries = len(batched_query)
     no_dates = len(date_ranges)
@@ -106,6 +107,7 @@ def search_narratives(
         limit=document_limit,
         scope=scope,
         sortby=sort_by,
+        only_results=True,
         rerank_threshold=rerank_threshold,
         **kwargs,
     )
@@ -117,8 +119,8 @@ def search_narratives(
 
 
 def _process_narrative_search(
-    results: List[Document],
-    entities: List[ListQueryComponent],
+    results: list[Document],
+    entities: list[Concept],
 ) -> DataFrame:
     """
     Build a dataframe for when no companies are specified.
@@ -146,7 +148,7 @@ def _process_narrative_search(
             chunk_entities = build_chunk_entities(chunk, entities)
 
             if not chunk_entities:
-                continue 
+                continue
 
             # Collect all necessary information in the row
             rows.append(
@@ -156,11 +158,13 @@ def _process_narrative_search(
                     "sentence_id": f"{result.id}-{chunk.chunk}",
                     "headline": result.headline,
                     "text": chunk.text,
-                    "entity": [entity["name"] for entity in chunk_entities], 
+                    "entity": [entity["name"] for entity in chunk_entities],
                     "country_code": [entity["country"] for entity in chunk_entities],
-                    "entity_type": [entity["entity_type"] for entity in chunk_entities], 
+                    "entity_type": [entity["entity_type"] for entity in chunk_entities],
+                    "entity_id": [entity["key"] for entity in chunk_entities],
+                    "entity_ticker": [entity.get("ticker", '') for entity in chunk_entities],
                 }
-            ) 
+            )
 
     if not rows:
         raise ValueError("No rows to process")

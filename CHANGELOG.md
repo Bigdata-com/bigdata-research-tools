@@ -7,6 +7,44 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.0] - Unreleased
+Preparation for a first stable release.
+
+## Added
+- Added support for providing several fiscal years to any workflow or search function that
+  accepts a `fiscal_year` parameter. The parameter can now be a single integer or a list
+  of integers. When a list is provided, the workflow or function will search for the union
+  of all values provided.
+
+### Changed
+- Refactor the `themes` submodule to `tree`, allowing for a more generic tree structure
+  that can be re-used accross different workflows.
+- Moved `workflows.utils.save_to_excel` to `excel.save_to_excel`, grouping all optional
+  features related to Excel in one place.
+- Renamed `settings` to `utils` to better reflect its purpose as a utility module and free
+  the name for future use.
+- Renamed all `freq` parameters to `frequency` for better clarity and consistency accross workflows.
+- Implement custom motivation prompts for different use cases, including thematic screening and risk analysis.
+
+### Fixed
+- Fix duplicate dependencies in main vs optional dependencies. `openai` is now only optional while `graphviz`, `openpyxl` and `Pillow` is now only in main dependencies.
+
+### Removed
+- Removed support for Python 3.9 as it has reached its end of life. The minimum supported version is now Python 3.10.
+- Removed `ipython` from main dependencies and removed unused function `bigdata_research_tools.workflows.utils.display_output_chunks_dataframe`.
+
+## [0.20.2] - 2025-10-21
+
+### Fix
+- Fix the function `create_date_intervals` in file `query_builder.py`. It now creates proper weekly/monthly/yearly intervals without losing any day before the first interval.
+- Fix `uv sync` not properly installing the `bigdata_research_tools` package.
+- Fix tracing reporting incorrect query usage.
+
+## [0.20.1] - 2025-09-16
+
+### Fix
+- Fix code duplication that caused duplicated LLM calls introduced at 0.19.0 (#5)
+
 ## [0.20.0] - 2025-09-15
 
 ### Added

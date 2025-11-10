@@ -1,11 +1,4 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 from logging import Logger, getLogger
-from typing import List, Optional
 
 from pandas import DataFrame, Series
 
@@ -20,6 +13,10 @@ from bigdata_research_tools.prompts.labeler import (
     get_target_entity_placeholder,
 )
 
+from bigdata_research_tools.llm.base import LLMConfig, REASONING_MODELS
+
+from typing import Optional
+
 logger: Logger = getLogger(__name__)
 
 
@@ -28,10 +25,9 @@ class ScreenerLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model: str,
-        label_prompt: Optional[str] = None,
+        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
+        label_prompt: str | None = None,
         unknown_label: str = "unclear",
-        temperature: float = 0,
     ):
         """
         Args:
@@ -40,16 +36,16 @@ class ScreenerLabeler(Labeler):
             label_prompt: Prompt provided by user to label the search result chunks.
                 If not provided, then our default labelling prompt is used.
             unknown_label: Label for unclear classifications.
-            temperature: Temperature to use in the LLM model.
         """
-        super().__init__(llm_model, unknown_label, temperature)
+        super().__init__(llm_model_config, unknown_label)
         self.label_prompt = label_prompt
 
     def get_labels(
         self,
         main_theme: str,
-        labels: List[str],
-        texts: List[str],
+        labels: list[str],
+        texts: list[str],
+        timeout: int | None = 20,
         max_workers: int = 50,
     ) -> DataFrame:
         """
@@ -59,6 +55,7 @@ class ScreenerLabeler(Labeler):
             main_theme: The main theme to analyze.
             labels: Labels for labelling the chunks.
             texts: List of chunks to label.
+            timeout: Timeout for each LLM request.
             max_workers: Maximum number of concurrent workers.
 
         Returns:
@@ -74,7 +71,7 @@ class ScreenerLabeler(Labeler):
         prompts = get_prompts_for_labeler(texts)
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers
+            prompts, system_prompt, max_workers=max_workers, timeout=timeout
         )
         responses = [parse_labeling_response(response) for response in responses]
         return self._deserialize_label_responses(responses)
@@ -177,9 +174,16 @@ class ScreenerLabeler(Labeler):
             "Theme",
         ]
 
-        sort_columns = ["Date", "Time Period", "Company", "Document ID", "Headline", "Quote"]
-        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)        
-        
+        sort_columns = [
+            "Date",
+            "Time Period",
+            "Company",
+            "Document ID",
+            "Headline",
+            "Quote",
+        ]
+        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)
+
         return df
 
 

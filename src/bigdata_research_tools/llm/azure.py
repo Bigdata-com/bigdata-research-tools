@@ -7,12 +7,19 @@ from json import loads
 from typing import AsyncGenerator, Generator
 
 try:
-    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-    from openai import AsyncAzureOpenAI, AzureOpenAI, OpenAIError
+    from azure.identity import (  # ty: ignore[unresolved-import]
+        DefaultAzureCredential,
+        get_bearer_token_provider,
+    )
+    from openai import (  # ty: ignore[unresolved-import]
+        AsyncAzureOpenAI,
+        AzureOpenAI,
+        OpenAIError,
+    )
 except ImportError:
     raise ImportError(
         "Missing optional dependency for Azure LLM OpenAI provider, "
-        "please install `bigdata_research_tools[azure]` to enable them."
+        "please install `bigdata_research_tools[azure,openai]` to enable them."
     )
 
 from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
@@ -62,6 +69,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
         """
         max_retries = 5
         delay = 1 + random.random()  # initial delay in seconds
+        last_exception = None
         for attempt in range(max_retries):
             try:
                 chat_completion = await self._client.chat.completions.create(
@@ -70,10 +78,13 @@ class AsyncAzureProvider(AsyncLLMProvider):
 
                 return chat_completion.choices[0].message.content
             except Exception as e:
-                if attempt == max_retries - 1:
-                    raise
                 await asyncio.sleep(delay)
                 delay = 2 * delay + random.random()  # exponential backoff
+                last_exception = e
+
+        raise RuntimeError(
+            f"Max retries exceeded when calling {AsyncAzureProvider.__name__}"
+        ) from last_exception
 
     async def get_tools_response(
         self,
@@ -188,6 +199,7 @@ class AzureProvider(LLMProvider):
 
         max_retries = 5
         delay = 1 + random.random()  # initial delay in seconds
+        last_exception = None
         for attempt in range(max_retries):
             try:
                 chat_completion = self._client.chat.completions.create(
@@ -196,10 +208,13 @@ class AzureProvider(LLMProvider):
 
                 return chat_completion.choices[0].message.content
             except Exception as e:
-                if attempt == max_retries - 1:
-                    raise
                 time.sleep(delay)
                 delay = 2 * delay + random.random()  # exponential backoff
+                last_exception = e
+
+        raise RuntimeError(
+            f"Max retries exceeded when calling {AsyncAzureProvider.__name__}"
+        ) from last_exception
 
     def get_tools_response(
         self,

@@ -1,9 +1,8 @@
+from datetime import datetime
 from logging import Logger, getLogger
-from typing import List, Optional, Dict
 
 from bigdata_client.document import Document
-from bigdata_client.models.advanced_search_query import ListQueryComponent
-from bigdata_client.models.entities import Company
+from bigdata_client.models.entities import Company, Concept
 from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
@@ -14,33 +13,39 @@ from bigdata_research_tools.prompts.labeler import (
     get_target_entity_placeholder,
 )
 from bigdata_research_tools.search.query_builder import (
-    build_batched_query,
     EntitiesToSearch,
+    build_batched_query,
     create_date_ranges,
 )
 from bigdata_research_tools.search.search import run_search
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
 from bigdata_research_tools.search.search_utils import filter_search_results
-
+from bigdata_research_tools.tracing import (
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
 
 logger: Logger = getLogger(__name__)
 
+SEARCH_BY_COMPANIES_NAME: str = "SearchByCompanies"
+
 
 def search_by_companies(
-    companies: List[Company],
-    sentences: List[str],
+    companies: list[Company],
+    sentences: list[str],
     start_date: str,
     end_date: str,
     scope: DocumentType = DocumentType.ALL,
-    fiscal_year: Optional[int] = None,
-    sources: Optional[List[str]] = None,
-    keywords: Optional[List[str]] = None,
-    control_entities: Optional[Dict] = None,
-    freq: str = "M",
+    fiscal_year: int | list[int] | None = None,
+    sources: list[str] | None = None,
+    keywords: list[str] | None = None,
+    control_entities: dict | None = None,
+    frequency: str = "M",
     sort_by: SortBy = SortBy.RELEVANCE,
-    rerank_threshold: Optional[float] = None,
+    rerank_threshold: float | None = None,
     document_limit: int = 50,
     batch_size: int = 10,
+    workflow_name: str = SEARCH_BY_COMPANIES_NAME,
     **kwargs,
 ) -> DataFrame:
     """
@@ -53,13 +58,13 @@ def search_by_companies(
         end_date (str): The end date for the search.
         scope (DocumentType): The document type scope
             (e.g., `DocumentType.ALL`, `DocumentType.TRANSCRIPTS`).
-        fiscal_year (int): The fiscal year to filter queries.
+        fiscal_year (int | list[int] | None): The fiscal year to filter queries.
             If None, no fiscal year filter is applied.
         sources (Optional[List[str]]): List of sources to filter on. If none, we search across all sources.
         keywords (List[str]): A list of keywords for constructing keyword queries.
             If None, no keyword queries are created.
         control_entities (Dict): A dictionary of control entities of different types for creating co-mentions queries.
-        freq (str): The frequency of the date ranges. Defaults to '3M'.
+        frequency (str): The frequency of the date ranges. Defaults to '3M'.
         sort_by (SortBy): The sorting criterion for the search results.
             Defaults to SortBy.RELEVANCE.
         rerank_threshold (Optional[float]): The threshold for reranking the search results.
@@ -94,28 +99,15 @@ def search_by_companies(
             - masked_text: str
             - other_entities_map: List[Tuple[int, str]]
     """
-
-    if not kwargs.get("current_trace"):
-        current_trace = Trace(
-            event_name=TraceEventNames.COMPANY_SEARCH,
-            document_type=scope,
-            start_date=start_date,
-            end_date=end_date,
-            rerank_threshold=rerank_threshold,
-            llm_model=None,
-            frequency=freq,
-            workflow_start_date=Trace.get_time_now(),
-        )
-
-        kwargs["current_trace"] = current_trace
-
+    workflow_start = datetime.now()
+    workflow_status = WorkflowStatus.UNKNOWN
     try:
         # Extract entities for search querying
         entity_keys = [entity.id for entity in companies]
 
-    # Create entity configs
+        # Create entity configs
         entities_config = EntitiesToSearch(companies=entity_keys)
-        
+
         # If control_entities are provided, create a control EntityConfig
         # For this example, assuming control_entities are all company entities
         control_entities_config = None
@@ -136,7 +128,9 @@ def search_by_companies(
         )
 
         # Create list of date ranges
-        date_ranges = create_date_ranges(start_date, end_date, freq)
+        date_ranges = create_date_ranges(
+            start_date, end_date, frequency, return_datetime=True
+        )
 
         no_queries = len(batched_query)
         no_dates = len(date_ranges)
@@ -151,7 +145,9 @@ def search_by_companies(
             limit=document_limit,
             scope=scope,
             sortby=sort_by,
+            only_results=True,
             rerank_threshold=rerank_threshold,
+            workflow_name=workflow_name,
             **kwargs,
         )
 
@@ -175,52 +171,59 @@ def search_by_companies(
             topics=topics,
             document_type=scope,
         )
-    except Exception:
-        execution_result = "error"
+        workflow_status = WorkflowStatus.SUCCESS
+    except BaseException:
+        workflow_status = WorkflowStatus.FAILED
         raise
-    else:
-        execution_result = "success"
     finally:
-        current_trace = kwargs.get("current_trace")
-        if current_trace and current_trace.event_name == TraceEventNames.COMPANY_SEARCH:
-            current_trace.workflow_end_date = Trace.get_time_now()
-            current_trace.result = execution_result  # noqa
-            send_trace(bigdata_connection(), current_trace)
+        if workflow_name == SEARCH_BY_COMPANIES_NAME:
+            send_trace(
+                bigdata_connection(),
+                WorkflowTraceEvent(
+                    name=workflow_name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=None,
+                    status=workflow_status,
+                ),
+            )
 
     return df_sentences
 
+
 def filter_company_entities(
-    entities: List[ListQueryComponent],
-) -> List[ListQueryComponent]:
+    entities: list[Concept],
+) -> list[Concept]:
     """
     Filter only COMPANY entities from the list of entities.
 
     Args:
-        entities (List[ListQueryComponent]): A list of entities to filter.
+        entities (List[Concept]): A list of entities to filter.
     Returns:
-        List[ListQueryComponent]: A list of COMPANY entities.
+        List[Concept]: A list of COMPANY entities.
     """
     return [
         entity
         for entity in entities
-        if hasattr(entity, "entity_type") and getattr(entity, "entity_type") == "COMP"
+        if hasattr(entity, "entity_type") and entity.entity_type == "COMP"
     ], [entity for entity in entities
             if hasattr(entity, 'entity_type') and
-            getattr(entity, "entity_type") != 'COMP']
+            entity.entity_type != 'COMP']
+
 
 def process_screener_search_results(
-    results: List[Document],
-    entities: List[ListQueryComponent],
-    companies: Optional[List[Company]] = None,
+    results: list[Document],
+    entities: list[Concept],
+    companies: list[Company] | None = None,
     document_type: DocumentType = DocumentType.NEWS,
-    topics: Optional[List[ListQueryComponent]] = None,
+    topics: list[Concept] | None = None,
 ) -> DataFrame:
     """
     Build a unified DataFrame from search results for any document type.
 
     Args:
         results (List[Document]): A list of Bigdata search results.
-        entities (List[ListQueryComponent]): A list of entities.
+        entities (List[Entity]): A list of entities.
         companies (Optional[List[Company]]): A list of companies to filter for.
             Only used for non-reporting entity documents.
         document_type (DocumentType): The type of documents being processed.
@@ -334,7 +337,7 @@ def process_screener_search_results(
 
                     if not entity_key:
                         continue  # Skip if entity is not found
-                    
+
                     # # if entity isn't in our original watchlist, skip
                     if company_ids and chunk_entity["key"] not in company_ids:
                         continue
@@ -385,9 +388,7 @@ def process_screener_search_results(
     return df.reset_index(drop=True)
 
 
-def mask_sentences(
-    df: DataFrame
-) -> DataFrame:
+def mask_sentences(df: DataFrame) -> DataFrame:
     """
     Mask the target entity and other entities in the text.
 

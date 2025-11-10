@@ -1,11 +1,9 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
-from bigdata_research_tools.settings import check_libraries_installed
+from bigdata_research_tools.utils.files import check_libraries_installed
 from bigdata_research_tools.visuals.visuals import ExposureDashboard
 
 
@@ -33,7 +31,7 @@ class ThematicExposureDashboard(ExposureDashboard):
         "subplot_titles": [
             "Thematic Exposure Heatmap (Raw Scores)",
             "Total Thematic Exposure Score",
-            f"Top Thematic Exposures by Company",
+            "Top Thematic Exposures by Company",
             "Thematic Scores across Sub-Themes",
         ],
         "axis_titles": {
@@ -44,7 +42,7 @@ class ThematicExposureDashboard(ExposureDashboard):
         },
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the thematic exposure dashboard with configuration parameters.
 
@@ -62,8 +60,8 @@ class ThematicExposureDashboard(ExposureDashboard):
 def create_thematic_exposure_dashboard(
     df_company: pd.DataFrame,
     n_companies: int = 10,
-    config: Optional[Dict[str, Any]] = None,
-) -> Tuple[go.Figure, go.Figure]:
+    config: dict[str, Any] | None = None,
+) -> tuple[go.Figure, go.Figure]:
     """
     Creates a comprehensive dashboard for analyzing thematic exposure of companies.
 

@@ -1,15 +1,8 @@
-"""
-Module for managing Excel workbook operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 from logging import Logger, getLogger
-from typing import List, Tuple
 
 import pandas as pd
 
-from bigdata_research_tools.settings import (
+from bigdata_research_tools.utils.files import (
     check_libraries_installed,
     get_resources_path,
 )
@@ -58,7 +51,7 @@ class ExcelManager:
 
     def save_workbook(
         self,
-        df_args: List[Tuple[pd.DataFrame, str, Tuple[int, int]]],
+        df_args: list[tuple[pd.DataFrame, str, tuple[int, int]]],
         workbook_path: str,
     ) -> None:
         """Save DataFrames to Excel workbook."""
@@ -187,3 +180,29 @@ class ExcelManager:
         for cell in sheet[last_col_letter][self.row_offset - 2 :]:
             cell.font = Font(size=12, bold=True)
             cell.border = self.thick_border
+
+
+def save_to_excel(
+    file_path: str,
+    tables: dict[str, tuple[pd.DataFrame, tuple[int, int]]],
+) -> None:
+    """
+    Save multiple DataFrames to an Excel file using ExcelManager.
+
+    Args:
+        file_path: Destination path for the Excel file.
+        tables: A dict mapping sheet names to (DataFrame, position) tuples.
+
+    Returns:
+        None.
+    """
+    if not file_path or not check_excel_dependencies():
+        return
+
+    excel_manager = ExcelManager()
+
+    excel_args = [
+        (df, sheet_name, position) for sheet_name, (df, position) in tables.items()
+    ]
+
+    excel_manager.save_workbook(excel_args, file_path)

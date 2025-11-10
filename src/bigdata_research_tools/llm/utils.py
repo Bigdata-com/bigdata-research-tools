@@ -2,12 +2,11 @@ import asyncio
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger, getLogger
-from typing import List, Tuple
+from typing import Any, Coroutine
 
-from openai import APITimeoutError, RateLimitError
 from tqdm import tqdm
 
-from bigdata_research_tools.llm.base import AsyncLLMEngine, LLMEngine
+from bigdata_research_tools.llm.base import AsyncLLMEngine
 
 logger: Logger = getLogger(__name__)
 
@@ -15,11 +14,12 @@ logger: Logger = getLogger(__name__)
 # https://platform.openai.com/docs/guides/batch
 def run_concurrent_prompts(
     llm_engine: AsyncLLMEngine,
-    prompts: List[str],
+    prompts: list[str],
     system_prompt: str,
+    timeout: int | None,
     max_workers: int = 30,
     **kwargs,
-) -> List[str]:
+) -> list[str]:
     """
     Run the LLM on the received prompts, concurrently.
 
@@ -27,6 +27,7 @@ def run_concurrent_prompts(
         llm_engine (AsyncLLMEngine): The LLM engine to use.
         prompts (list[str]): List of prompts to run concurrently.
         system_prompt (str): The system prompt.
+        timeout (int | None): Timeout for each LLM request.
         max_workers (int): The maximum number of workers to run concurrently.
         kwargs (dict): Additional arguments to pass to the `get_response` method of the LLMEngine.
 
@@ -37,7 +38,7 @@ def run_concurrent_prompts(
     logger.info(f"Running {len(prompts)} prompts concurrently")
     tasks = [
         _fetch_with_semaphore(
-            idx, llm_engine, semaphore, system_prompt, prompt, **kwargs
+            idx, llm_engine, semaphore, system_prompt, prompt, timeout=timeout, **kwargs
         )
         for idx, prompt in enumerate(prompts)
     ]
@@ -50,8 +51,9 @@ async def _fetch_with_semaphore(
     semaphore: asyncio.Semaphore,
     system_prompt: str,
     prompt: str,
+    timeout: int | None,
     **kwargs,
-) -> Tuple[int, str]:
+) -> tuple[int, str]:
     """
     Fetch the response from the LLM engine with a semaphore.
 
@@ -62,6 +64,7 @@ async def _fetch_with_semaphore(
             number of concurrent requests.
         system_prompt (str): The system prompt.
         prompt (str): The prompt to run.
+        timeout (int | None): Timeout for the LLM request.
         kwargs (dict): Additional arguments to pass to the `get_response` method of the LLMEngine.
 
     Returns:
@@ -74,22 +77,40 @@ async def _fetch_with_semaphore(
     async with semaphore:
         retry_delay = 1  # Initial delay in seconds
         max_retries = 5
+        last_exception = None
         for attempt in range(max_retries):
             try:
-                response = await llm_engine.get_response(chat_history, **kwargs)
+                # Sometimes, the LLM (often OpenAI) can take up to ten minutes to respond without throwing an error,
+                # retrying after a prudential timeout avoids this situation.
+                # A first analysis show that:
+                # from 5k requests
+                # ~20 took longer than 10 seconds
+                # ~10 took longer than 30 seconds
+                # ~3 took longer than 60 seconds, with up to 600 seconds
+                async with asyncio.timeout(timeout):
+                    response = await llm_engine.get_response(chat_history, **kwargs)
                 return idx, response
-            except (APITimeoutError, RateLimitError):
+            except Exception as e:
+                if isinstance(e, asyncio.TimeoutError) and attempt == 0:
+                    logger.warning(
+                        f"Timeout occurred for prompt during LLM call, current timeout configured {timeout} seconds. If this keeps happening (> 1% of your requests), consider increasing the timeout. Retrying..."
+                    )
+                last_exception = e
                 await asyncio.sleep(retry_delay)
                 # Exponential backoff
                 retry_delay = min(retry_delay * 2, 60)
-        logger.error(f"Failed to get response for prompt: {prompt}")
+        logger.error(
+            f"Failed to get response for prompt: {prompt} Error: {last_exception}"
+        )
         return idx, ""
 
 
-async def _run_with_progress_bar(tasks) -> List:
+async def _run_with_progress_bar(
+    tasks: list[Coroutine[Any, Any, tuple[int, str]]],
+) -> list[str]:
     """Run asyncio tasks with a tqdm progress bar."""
     # Pre-allocate a list for results to preserve order
-    results = [None] * len(tasks)
+    results = [""] * len(tasks)
     with tqdm(total=len(tasks), desc="Querying an LLM...") as pbar:
         for coro in asyncio.as_completed(tasks):
             idx, result = await coro
@@ -103,11 +124,11 @@ async def _run_with_progress_bar(tasks) -> List:
 # Added function to run synchronous LLM calls in parallel using threads.
 def run_parallel_prompts(
     llm_engine,
-    prompts: List[str],
+    prompts: list[str],
     system_prompt: str,
     max_workers: int = 30,
     **kwargs,
-) -> List[str]:
+) -> list[str]:
     """
     Run the LLM on the received prompts concurrently using threads.
 
@@ -129,17 +150,21 @@ def run_parallel_prompts(
         ]
         retry_delay = 1
         max_retries = 5
+        last_exception = None
         for attempt in range(max_retries):
             try:
                 response = llm_engine.get_response(chat_history, **kwargs)
                 return idx, response
-            except (APITimeoutError, RateLimitError):
+            except Exception as e:
+                last_exception = e
                 time.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, 60)
-        logger.error(f"Failed to get response for prompt: {prompt}")
+        logger.error(
+            f"Failed to get response for prompt: {prompt} Error: {last_exception}"
+        )
         return idx, ""
 
-    results = [None] * len(prompts)
+    results = [""] * len(prompts)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
             executor.submit(fetch, idx, prompt) for idx, prompt in enumerate(prompts)

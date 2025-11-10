@@ -115,5 +115,5 @@ def compose_risk_system_prompt_focus(main_theme: str, analyst_focus: str) -> str
             ],
             "Keywords": ["Tariffs", "China"]
         }}
-        """ 
+        """
     return prompt.strip()

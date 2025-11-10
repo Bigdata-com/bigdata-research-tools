@@ -1,37 +1,44 @@
+from datetime import datetime
 from logging import Logger, getLogger
-from typing import Dict, List, Optional, Tuple
 
 from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType
 from pandas import DataFrame, merge
 
-from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.client import init_bigdata_client
-from bigdata_research_tools.excel import check_excel_dependencies
+from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.portfolio.motivation import Motivation
+from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.themes import generate_theme_tree
-from bigdata_research_tools.tracing import Trace, TraceEventNames, send_trace
-from bigdata_research_tools.workflows.utils import get_scored_df, save_to_excel
+from bigdata_research_tools.tracing import (
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
+from bigdata_research_tools.tree import generate_theme_tree
+from bigdata_research_tools.workflows.base import Workflow
+from bigdata_research_tools.workflows.utils import get_scored_df
 
 logger: Logger = getLogger(__name__)
 
 
 class ThematicScreener(Workflow):
+    name: str = "ThematicScreener"
 
     def __init__(
         self,
-        llm_model: str,
+        llm_model_config: str | LLMConfig | dict,
         main_theme: str,
-        companies: List[Company],
+        companies: list[Company],
         start_date: str,
         end_date: str,
         document_type: DocumentType,
-        fiscal_year: Optional[int] = None,
-        sources: Optional[List[str]] = None,
-        rerank_threshold: Optional[float] = None,
-        focus: str = "",
+        fiscal_year: int | list[int] | None = None,
+        sources: list[str] | None = None,
+        rerank_threshold: float | None = None,
+        focus: str | None = None,
     ):
         """
         This class will screen a universe's (specified in 'companies') exposure to a given theme ('main_theme').
@@ -47,7 +54,7 @@ class ThematicScreener(Workflow):
             end_date (str): The end date for searching relevant documents.
                 Format: YYYY-MM-DD.
             document_type (DocumentType): Specifies the type of documents to search over
-            fiscal_year (int): The fiscal year that will be analyzed.
+            fiscal_year (int | list[int] | None): The fiscal year that will be analyzed.
             sources (Optional[List[str]]): Used to filter search results by the sources of the documents.
                 If not provided, the search is run across all available sources.
             rerank_threshold (Optional[float]): The threshold for reranking the search results.
@@ -56,25 +63,42 @@ class ThematicScreener(Workflow):
                 If used, generated sub-themes will be based on this.
         """
         super().__init__()
-        self.llm_model = llm_model
         self.main_theme = main_theme
+        if not companies:
+            raise ValueError(
+                "Thematic screener parameter `companies` cannot be None or an empty list"
+            )
         self.companies = companies
+        if not start_date:
+            raise ValueError(
+                "Thematic screener parameter `start_date` cannot be None or an empty string"
+            )
         self.start_date = start_date
+        if not end_date:
+            raise ValueError(
+                "Thematic screener parameter `end_date` cannot be None or an empty string"
+            )
         self.end_date = end_date
         self.fiscal_year = fiscal_year
         self.document_type = document_type
         self.sources = sources
         self.rerank_threshold = rerank_threshold
-        self.focus = focus
+        self.focus = focus or ""
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+        elif isinstance(llm_model_config, str):
+            self.llm_model_config = llm_model_config ##resolve it to config or add string check in the trace.
+        elif isinstance(llm_model_config, LLMConfig):
+            self.llm_model_config = llm_model_config
 
     def screen_companies(
         self,
         document_limit: int = 10,
         batch_size: int = 10,
         frequency: str = "3M",
-        word_range: Tuple[int, int] = (50, 100),
-        export_path: str = None,
-    ) -> Dict:
+        word_range: tuple[int, int] = (50, 100),
+        export_path: str | None = None,
+    ) -> dict:
         """
         Screen companies for the Executive Narrative Factor.
 
@@ -106,31 +130,24 @@ class ThematicScreener(Workflow):
                 f"path `{export_path}`."
             )
         bigdata_client = init_bigdata_client()
-        current_trace = Trace(
-            event_name=TraceEventNames.THEMATIC_SCREENER,
-            document_type=self.document_type,
-            start_date=self.start_date,
-            end_date=self.end_date,
-            rerank_threshold=self.rerank_threshold,
-            llm_model=self.llm_model,
-            frequency=frequency,
-            workflow_start_date=Trace.get_time_now(),
-        )
+        workflow_start = datetime.now()
+        workflow_status = WorkflowStatus.UNKNOWN
 
         try:
-            self.provider, self.model = self.llm_model.split("::")
-            self.notify_observers(f"Generating thematic tree")
+            self.notify_observers("Generating thematic tree")
             theme_tree = generate_theme_tree(
                 main_theme=self.main_theme,
                 focus=self.focus,
-                llm_model_config={"provider": self.provider, "model": self.model},
+                llm_model_config=self.llm_model_config,
             )
 
             theme_summaries = theme_tree.get_terminal_summaries()
             terminal_labels = theme_tree.get_terminal_labels()
-            self.notify_observers(f"Thematic tree generated with {len(terminal_labels)} leafs")
+            self.notify_observers(
+                f"Thematic tree generated with {len(terminal_labels)} leafs"
+            )
             self.notify_observers(theme_tree.as_string())
-            self.notify_observers(f"Searching companies for thematic exposure")
+            self.notify_observers("Searching companies for thematic exposure")
             df_sentences = search_by_companies(
                 companies=self.companies,
                 sentences=theme_summaries,
@@ -140,25 +157,42 @@ class ThematicScreener(Workflow):
                 fiscal_year=self.fiscal_year,
                 sources=self.sources,
                 rerank_threshold=self.rerank_threshold,
-                freq=frequency,
+                frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
-                current_trace=current_trace,
+                workflow_name=ThematicScreener.name,
                 bigdata_client=bigdata_client,
             )
-            self.notify_observers(f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies.")
-            self.notify_observers(df_sentences[["timestamp_utc", "sentence_id", "headline", "entity_name", "text", "other_entities"]].head(10).to_markdown(index=False))
+            self.notify_observers(
+                f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies."
+            )
+            self.notify_observers(
+                df_sentences[
+                    [
+                        "timestamp_utc",
+                        "sentence_id",
+                        "headline",
+                        "entity_name",
+                        "text",
+                        "other_entities",
+                    ]
+                ]
+                .head(10)
+                .to_markdown(index=False)
+            )
             # Label the search results with our theme labels
-            labeler = ScreenerLabeler(llm_model=self.llm_model)
-            self.notify_observers(f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} themes")
+            labeler = ScreenerLabeler(llm_model_config=self.llm_model_config)
+            self.notify_observers(
+                f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} themes"
+            )
             df_labels = labeler.get_labels(
                 main_theme=self.main_theme,
                 labels=terminal_labels,
                 texts=df_sentences["masked_text"].tolist(),
             )
-            self.notify_observers(f"Labelling completed")
+            self.notify_observers("Labelling completed")
             # Merge and process results
-            self.notify_observers(f"Post-processing results")
+            self.notify_observers("Post-processing results")
             df = merge(df_sentences, df_labels, left_index=True, right_index=True)
             df = labeler.post_process_dataframe(df)
 
@@ -171,8 +205,10 @@ class ThematicScreener(Workflow):
                     "df_motivation": DataFrame(),
                     "theme_tree": theme_tree,
                 }
-            self.notify_observers(f"Results post-processed")
-            self.notify_observers(f"Scoring thematic exposure for {len(df['Company'])} companies")
+            self.notify_observers("Results post-processed")
+            self.notify_observers(
+                f"Scoring thematic exposure for {len(df['Company'])} companies"
+            )
             df_company = get_scored_df(
                 df,
                 index_columns=["Company", "Ticker", "Industry"],
@@ -181,17 +217,22 @@ class ThematicScreener(Workflow):
             df_industry = get_scored_df(
                 df, index_columns=["Industry"], pivot_column="Theme"
             )
-            self.notify_observers(f"Thematic exposure scored")
-            self.notify_observers(f"Generating motivations for {len(df_company)} companies")
-            motivation_generator = Motivation(model=self.llm_model)
-            motivation_df = motivation_generator.generate_company_motivations(
-                df=df, theme_name=self.main_theme, word_range=word_range
+            self.notify_observers("Thematic exposure scored")
+            self.notify_observers(
+                f"Generating motivations for {len(df_company)} companies"
             )
-            self.notify_observers(f"Motivations generated")
+            motivation_generator = Motivation(llm_model_config=self.llm_model_config)
+            motivation_df = motivation_generator.generate_company_motivations(
+                df=df,
+                theme_name=self.main_theme,
+                word_range=word_range,
+                use_case=MotivationType.THEMATIC_SCREENER,
+            )
+            self.notify_observers("Motivations generated")
 
             # Export to Excel if path provided
             if export_path:
-                self.notify_observers(f"Exporting results to excel")
+                self.notify_observers("Exporting results to excel")
                 save_to_excel(
                     file_path=export_path,
                     tables={
@@ -201,16 +242,22 @@ class ThematicScreener(Workflow):
                         "Motivations": (motivation_df, (0, 0)),
                     },
                 )
-                self.notify_observers(f"Results exported.")
-        except Exception:
-            execution_result = "error"
+                self.notify_observers("Results exported.")
+            workflow_status = WorkflowStatus.SUCCESS
+        except BaseException:
+            workflow_status = WorkflowStatus.FAILED
             raise
-        else:
-            execution_result = "success"
         finally:
-            current_trace.workflow_end_date = Trace.get_time_now()
-            current_trace.result = execution_result  # noqa
-            send_trace(bigdata_client, current_trace)
+            send_trace(
+                bigdata_client,
+                WorkflowTraceEvent(
+                    name=ThematicScreener.name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=self.llm_model_config.model if isinstance(self.llm_model_config, LLMConfig) else str(self.llm_model_config),
+                    status=workflow_status,
+                ),
+            )
 
         return {
             "df_labeled": df,

@@ -1,13 +1,14 @@
-from typing import Any
-from datetime import datetime
-
 from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
+
 
 class OberserverNotification(BaseModel):
     timestamp: str
     message: Any
+
 
 class Observer(ABC):
     @abstractmethod
@@ -18,13 +19,13 @@ class Observer(ABC):
 class Observable(ABC):
     def __init__(self):
         self.observers = []
-    
+
     def register_observer(self, observer: Observer):
         self.observers.append(observer)
 
     def unregister_observer(self, observer: Observer):
         self.observers.remove(observer)
-    
+
     def notify_observers(self, message: Any):
         ts = datetime.now().isoformat()
         notification = OberserverNotification(timestamp=ts, message=message)
