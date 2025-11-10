@@ -81,7 +81,7 @@ class RiskLabeler(Labeler):
 
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame, extra_fields: Optional[dict], extra_columns: Optional[List[str]]) -> DataFrame:
+    def post_process_dataframe(self, df: DataFrame, extra_fields: Optional[dict], extra_columns: Optional[list[str]]) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 

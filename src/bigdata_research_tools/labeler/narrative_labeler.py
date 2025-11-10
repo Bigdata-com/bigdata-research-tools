@@ -71,7 +71,7 @@ class NarrativeLabeler(Labeler):
         responses = [parse_labeling_response(response) for response in responses]
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame, extra_fields: Optional[dict] = None, extra_columns: Optional[List[str]] = None) -> DataFrame:
+    def post_process_dataframe(self, df: DataFrame, extra_fields: Optional[dict] = None, extra_columns: Optional[list[str]] = None) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
