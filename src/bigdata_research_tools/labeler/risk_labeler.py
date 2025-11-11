@@ -46,7 +46,7 @@ class RiskLabeler(Labeler):
         labels: list[str],
         texts: list[str],
         max_workers: int = 50,
-        timeout: int | None = 20,
+        timeout: int | None = 55,
         textsconfig: list[dict[str, Any]] | None = None,
     ) -> DataFrame:
         """

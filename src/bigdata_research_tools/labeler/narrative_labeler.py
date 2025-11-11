@@ -39,7 +39,7 @@ class NarrativeLabeler(Labeler):
         theme_labels: list[str],
         texts: list[str],
         max_workers: int = 50,
-        timeout: int | None = 20,
+        timeout: int | None = 55,
     ) -> DataFrame:
         """
         Process thematic labels for texts.

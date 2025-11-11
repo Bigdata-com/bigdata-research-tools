@@ -43,7 +43,7 @@ class ScreenerLabeler(Labeler):
         labels: list[str],
         texts: list[str],
         timeout: int | None = 20,
-        max_workers: int = 50,
+        max_workers: int = 55,
     ) -> DataFrame:
         """
         Process thematic labels for texts.
