@@ -1,4 +1,3 @@
-from os import environ
 from typing import Any, Generator
 
 try:
@@ -19,9 +18,8 @@ from bigdata_research_tools.llm.base import (
 class AsyncBedrockProvider(AsyncLLMProvider):
     # Asynchronous boto3 is tricky, for now use the synchronous client, this will not
     # provide the benefits from async, but will at least let our workflows run for now
-    def __init__(self, model: str, region: str | None = None):
-        super().__init__(model)
-        self.region: str | None = region
+    def __init__(self, model: str, **connection_config):
+        super().__init__(model, **connection_config)
         self._client: Session | None = None
         self.configure_bedrock_client()
 
@@ -34,7 +32,7 @@ class AsyncBedrockProvider(AsyncLLMProvider):
         """
         if not self._client:
             self._client = Session(
-                region_name=self.region or environ.get("AWS_DEFAULT_REGION")
+                **self.connection_config,
             )
 
     def _get_bedrock_client(self) -> Session:
@@ -183,9 +181,8 @@ class AsyncBedrockProvider(AsyncLLMProvider):
 
 
 class BedrockProvider(LLMProvider):
-    def __init__(self, model: str, region: str | None = None):
-        super().__init__(model)
-        self.region: str | None = region
+    def __init__(self, model: str, **connection_config):
+        super().__init__(model, **connection_config)
         self._client: Session | None = None
         self.configure_bedrock_client()
 
@@ -198,7 +195,7 @@ class BedrockProvider(LLMProvider):
         """
         if not self._client:
             self._client = Session(
-                region_name=self.region or environ.get("AWS_DEFAULT_REGION")
+                **self.connection_config,
             )
 
     def _get_bedrock_client(self) -> Session:
@@ -268,9 +265,7 @@ class BedrockProvider(LLMProvider):
                     https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html
         """
         bedrock_client = self._get_bedrock_client()
-        model_kwargs, output_prefix = self._get_bedrock_input(
-            chat_history, **kwargs
-        )
+        model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
         response = bedrock_client.converse(**model_kwargs)
 
         output_message = (
@@ -304,9 +299,7 @@ class BedrockProvider(LLMProvider):
                 - text (str): The text content of the message, if any.
         """
         bedrock_client = self._get_bedrock_client()
-        model_kwargs, output_prefix = self._get_bedrock_input(
-            chat_history, **kwargs
-        )
+        model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
         if tools:
             model_kwargs["toolConfig"] = {"tools": tools}
         response = bedrock_client.converse(**model_kwargs)

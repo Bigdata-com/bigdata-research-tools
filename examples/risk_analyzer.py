@@ -10,7 +10,7 @@ from bigdata_research_tools.workflows.risk_analyzer import RiskAnalyzer
 
 def risk_analyzer_example(
     risk_scenario: str,
-    llm_model_config: str | LLMConfig | dict = None,
+    llm_model_config: str | LLMConfig | dict,
     keywords: list = ["Tariffs"],
     control_entities: dict = {"place": ["Canada", "Mexico"]},
     focus: str = "",
