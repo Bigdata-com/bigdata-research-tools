@@ -171,7 +171,7 @@ class ScreenerLabeler(Labeler):
                         replace_company_placeholders, axis=1, col_name="quotes"
                     )
                 else:
-                    print("quotes column not in df")
+                    logger.warning("quotes column not in df")
 
         # Select and order columns
         export_columns = [

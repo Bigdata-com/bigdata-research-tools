@@ -1,6 +1,7 @@
 import ast
 import json
 from dataclasses import dataclass, field
+from logging import Logger, getLogger
 from typing import Any
 
 import graphviz
@@ -11,6 +12,8 @@ from bigdata_research_tools.llm import LLMEngine
 from bigdata_research_tools.llm.base import REASONING_MODELS, LLMConfig
 from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
 from bigdata_research_tools.prompts.themes import compose_themes_system_prompt
+
+logger: Logger = getLogger(__name__)
 
 themes_default_llm_model_config: dict[str, Any] = {
     "provider": "openai",
@@ -358,11 +361,11 @@ def generate_theme_tree(
     elif isinstance(llm_model_config, str):
         llm_model_config = get_default_tree_config(llm_model_config)
 
-    print(llm_model_config)
+    logger.debug(f"LLM Model Config: {llm_model_config}")
 
     model_str = llm_model_config.model
     chat_params = llm_model_config.get_llm_kwargs(remove_max_tokens=True)
-    llm = LLMEngine(model=model_str)
+    llm = LLMEngine(model=model_str, **llm_model_config.connection_config)
 
     system_prompt = compose_themes_system_prompt(main_theme, analyst_focus=focus)
 
@@ -442,11 +445,11 @@ def generate_risk_tree(
     elif isinstance(llm_model_config, str):
         llm_model_config = get_default_tree_config(llm_model_config)
 
-    print(llm_model_config)
+    logger.debug(f"LLM Model Config: {llm_model_config}")
 
     model_str = llm_model_config.model
     chat_params = llm_model_config.get_llm_kwargs(remove_max_tokens=True)
-    llm = LLMEngine(model=model_str)
+    llm = LLMEngine(model=model_str, **llm_model_config.connection_config)
 
     system_prompt = compose_risk_system_prompt_focus(main_theme, focus)
 

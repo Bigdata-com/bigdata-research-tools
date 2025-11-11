@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from logging import Logger, getLogger
 from typing import AsyncGenerator, Generator
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 logger: Logger = getLogger(__name__)
 
@@ -25,6 +25,10 @@ class LLMConfig(BaseModel):
     presence_penalty: int | None = 0
     seed: int | None = 42
     max_completion_tokens: int | None = 300
+    connection_config: dict = Field(
+        default_factory=dict,
+        description="A pair of key-value connection configurations for the LLM provider, the contents will be passed as kwargs to the provider client.",
+    )
 
     @model_validator(mode="after")
     def check_temperature_and_reasoning_effort(self):

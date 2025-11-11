@@ -1,4 +1,5 @@
 from collections import defaultdict
+from logging import Logger, getLogger
 
 import pandas as pd
 from tqdm import tqdm
@@ -8,6 +9,8 @@ from bigdata_research_tools.prompts.motivation import (
     MotivationType,
     get_motivation_prompt,
 )
+
+logger: Logger = getLogger(__name__)
 
 
 class Motivation:
@@ -33,7 +36,9 @@ class Motivation:
         else:
             self.llm_model_config = llm_model_config
 
-        self.llm_engine = LLMEngine(model=self.llm_model_config.model)
+        self.llm_engine = LLMEngine(
+            model=self.llm_model_config.model, **self.llm_model_config.connection_config
+        )
 
     def _get_default_model_config(self, model: str) -> LLMConfig:
         """Get default LLM model configuration."""
@@ -80,7 +85,7 @@ class Motivation:
 
         # Check if DataFrame is empty
         if filtered_df.empty:
-            print("Warning: DataFrame is empty. Returning empty dictionary.")
+            logger.warning("Warning: DataFrame is empty. Returning empty dictionary.")
             return {}
 
         company_data = defaultdict(lambda: {"quotes_and_labels": []})
@@ -99,7 +104,7 @@ class Motivation:
                 {"quote": quote, "label": theme}
             )
 
-        print(f"Found {len(company_data)} unique companies with quotes")
+        logger.info(f"Found {len(company_data)} unique companies with quotes")
 
         # Count label occurrences for each company
         for company, data in company_data.items():
