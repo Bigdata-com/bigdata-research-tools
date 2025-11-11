@@ -11,7 +11,11 @@ except ImportError:
         "please install `bigdata_research_tools[openai]` to enable them."
     )
 
-from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
+from bigdata_research_tools.llm.base import (
+    AsyncLLMProvider,
+    LLMProvider,
+    NotInitializedLLMProviderError,
+)
 
 
 class AsyncOpenAIProvider(AsyncLLMProvider):
@@ -46,6 +50,8 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
                 Reference examples of the format accepted: https://cookbook.openai.com/examples/how_to_format_inputs_to_chatgpt_models.
             kwargs (dict): Additional arguments to pass to the OpenAI API.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         chat_completion = await self._client.chat.completions.create(
             messages=chat_history, model=self.model, **kwargs
         )
@@ -76,6 +82,8 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         response = await self._client.chat.completions.create(
             messages=chat_history,
             model=self.model,
@@ -111,6 +119,8 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
         Returns:
             Generator[str, None, None]: A generator that yields the response from the LLM model.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         async for delta in await self._client.chat.completions.create(
             model=self.model, messages=chat_history, stream=True, **kwargs
         ):
@@ -150,6 +160,8 @@ class OpenAIProvider(LLMProvider):
                 Reference examples of the format accepted: https://cookbook.openai.com/examples/how_to_format_inputs_to_chatgpt_models.
             kwargs (dict): Additional arguments to pass to the OpenAI API.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         chat_completion = self._client.chat.completions.create(
             messages=chat_history, model=self.model, **kwargs
         )
@@ -180,6 +192,8 @@ class OpenAIProvider(LLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         response = self._client.chat.completions.create(
             messages=chat_history,
             model=self.model,
@@ -215,6 +229,8 @@ class OpenAIProvider(LLMProvider):
         Returns:
             Generator[str, None, None]: A generator that yields the response from the LLM model.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         for delta in self._client.chat.completions.create(
             model=self.model, messages=chat_history, stream=True, **kwargs
         ):

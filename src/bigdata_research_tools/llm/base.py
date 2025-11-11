@@ -138,7 +138,7 @@ class AsyncLLMEngine:
             source = "Argument"
 
         try:
-            self.provider, self.model = model.split("::")
+            self.provider_name, self.model = model.split("::")
         except (ValueError, AttributeError):
             logger.error(
                 f"Invalid model format. It should be `<provider>::<model>`."
@@ -149,10 +149,10 @@ class AsyncLLMEngine:
                 "Invalid model format. It should be `<provider>::<model>`."
             )
 
-        self.provider = self.load_provider()
+        self.provider = self.load_provider(provider_name=self.provider_name)
 
-    def load_provider(self) -> AsyncLLMProvider:
-        provider = self.provider.lower()
+    def load_provider(self, provider_name: str) -> AsyncLLMProvider:
+        provider = provider_name.lower()
         if provider == "openai":
             from bigdata_research_tools.llm.openai import AsyncOpenAIProvider
 
@@ -265,7 +265,7 @@ class LLMEngine:
             source = "Argument"
 
         try:
-            self.provider, self.model = model.split("::")
+            self.provider_name, self.model = model.split("::")
         except (ValueError, AttributeError):
             logger.error(
                 f"Invalid model format. It should be `<provider>::<model>`."
@@ -276,10 +276,10 @@ class LLMEngine:
                 "Invalid model format. It should be `<provider>::<model>`."
             )
 
-        self.provider = self.load_provider()
+        self.provider = self.load_provider(provider_name=self.provider_name)
 
-    def load_provider(self) -> LLMProvider:
-        provider = self.provider.lower()
+    def load_provider(self, provider_name: str) -> LLMProvider:
+        provider = provider_name.lower()
         if provider == "openai":
             from bigdata_research_tools.llm.openai import OpenAIProvider
 
@@ -332,3 +332,11 @@ class LLMEngine:
         return self.provider.get_tools_response(
             chat_history, tools, temperature, **kwargs
         )
+
+
+class NotInitializedLLMProviderError(Exception):
+    """Exception raised when an LLM provider is not initialized properly."""
+
+    def __init__(self, provider: LLMProvider | AsyncLLMProvider):
+        message = f"LLM Provider has been used, but it has not been properly initialized. Provider type: {type(provider).__name__}"
+        super().__init__(message)

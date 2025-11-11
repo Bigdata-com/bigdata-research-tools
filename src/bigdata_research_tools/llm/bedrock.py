@@ -9,7 +9,11 @@ except ImportError:
         "please install `bigdata_research_tools[bedrock]` to enable them."
     )
 
-from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
+from bigdata_research_tools.llm.base import (
+    AsyncLLMProvider,
+    LLMProvider,
+    NotInitializedLLMProviderError,
+)
 
 
 class AsyncBedrockProvider(AsyncLLMProvider):
@@ -34,6 +38,8 @@ class AsyncBedrockProvider(AsyncLLMProvider):
             )
 
     def _get_bedrock_client(self) -> Session:
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         return self._client.client("bedrock-runtime")
 
     def _get_bedrock_input(
@@ -195,6 +201,11 @@ class BedrockProvider(LLMProvider):
                 region_name=self.region or environ.get("AWS_DEFAULT_REGION")
             )
 
+    def _get_bedrock_client(self) -> Session:
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
+        return self._client.client("bedrock-runtime")
+
     def _get_bedrock_input(
         self, chat_history: list[dict[str, str]], **kwargs
     ) -> tuple[dict[str, Any], str]:
@@ -256,7 +267,8 @@ class BedrockProvider(LLMProvider):
                     Only implemented for a few models. See
                     https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
+        bedrock_client = self._get_bedrock_client()
+        model_kwargs, output_prefix = self._get_bedrock_input(
             chat_history, **kwargs
         )
         response = bedrock_client.converse(**model_kwargs)
@@ -291,7 +303,8 @@ class BedrockProvider(LLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
+        bedrock_client = self._get_bedrock_client()
+        model_kwargs, output_prefix = self._get_bedrock_input(
             chat_history, **kwargs
         )
         if tools:
