@@ -8,6 +8,7 @@ from pandas import DataFrame, merge
 from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_category
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
@@ -16,10 +17,12 @@ from bigdata_research_tools.tracing import (
     WorkflowTraceEvent,
     send_trace,
 )
-from bigdata_research_tools.tree import SemanticTree, generate_risk_tree, get_default_tree_config
+from bigdata_research_tools.tree import (
+    SemanticTree,
+    generate_risk_tree,
+)
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
-from bigdata_research_tools.llm.base import LLMConfig
 
 logger: Logger = getLogger(__name__)
 
@@ -418,7 +421,9 @@ class RiskAnalyzer(Workflow):
                     name=RiskAnalyzer.name,
                     start_date=workflow_start,
                     end_date=datetime.now(),
-                    llm_model=self.llm_model_config.model if isinstance(self.llm_model_config, LLMConfig) else str(self.llm_model_config),
+                    llm_model=self.llm_model_config.model
+                    if isinstance(self.llm_model_config, LLMConfig)
+                    else str(self.llm_model_config),
                     status=workflow_status,
                 ),
             )

@@ -1,5 +1,5 @@
 from logging import Logger, getLogger
-from typing import Any, Optional
+from typing import Any
 
 from pandas import DataFrame, Series
 
@@ -8,12 +8,12 @@ from bigdata_research_tools.labeler.labeler import (
     get_prompts_for_labeler,
     parse_labeling_response,
 )
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
     get_risk_system_prompt,
     get_target_entity_placeholder,
 )
-from bigdata_research_tools.llm.base import LLMConfig, REASONING_MODELS
 
 logger: Logger = getLogger(__name__)
 
@@ -23,7 +23,7 @@ class RiskLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini', 
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
         label_prompt: str | None = None,
         # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
         #  Changing it here would break the process.

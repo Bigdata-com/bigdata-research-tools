@@ -9,7 +9,6 @@ from bigdata_research_tools.labeler.labeler import (
 )
 from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.prompts.labeler import get_narrative_system_prompt
-from typing import Optional
 
 logger: Logger = getLogger(__name__)
 
@@ -21,7 +20,7 @@ class NarrativeLabeler(Labeler):
         self,
         label_prompt: str | None = None,
         unknown_label: str = "unclear",
-        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
     ):
         """Initialize narrative labeler.
 
@@ -136,7 +135,10 @@ class NarrativeLabeler(Labeler):
             }
         )
 
-        df = df.explode(["Entity", "Entity Type", "Country Code", "Entity ID", "Entity Ticker"], ignore_index=True)
+        df = df.explode(
+            ["Entity", "Entity Type", "Country Code", "Entity ID", "Entity Ticker"],
+            ignore_index=True,
+        )
 
         # Select and order columns
         export_columns = [

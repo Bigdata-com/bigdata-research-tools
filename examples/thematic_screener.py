@@ -1,8 +1,9 @@
 from pathlib import Path
 
 from bigdata_client.models.search import DocumentType
-from bigdata_research_tools.llm.base import LLMConfig
+
 from bigdata_research_tools.client import bigdata_connection
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.utils.observer import OberserverNotification, Observer
 from bigdata_research_tools.visuals import create_thematic_exposure_dashboard
 from bigdata_research_tools.workflows import ThematicScreener
@@ -10,7 +11,7 @@ from bigdata_research_tools.workflows import ThematicScreener
 
 def thematic_screener_example(
     theme_name: str,
-    llm_model_config: str | LLMConfig | dict  = "openai::gpt-4o-mini",
+    llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
     export_path: str = "thematic_screener_results.xlsx",
 ) -> dict:
     GRID_watchlist_ID = "a60c351a-1822-4a88-8c45-a4e78abd979a"
@@ -55,7 +56,11 @@ if __name__ == "__main__":
     output_path = Path("outputs/thematic_screener_results.xlsx")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    x = thematic_screener_example("Chip Manufacturers", export_path=str(output_path), llm_model_config="openai::gpt-5-mini")
+    x = thematic_screener_example(
+        "Chip Manufacturers",
+        export_path=str(output_path),
+        llm_model_config="openai::gpt-5-mini",
+    )
     custom_config = {
         "company_column": "Company",
         "heatmap_colorscale": "Plasma",

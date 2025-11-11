@@ -7,6 +7,7 @@ from pandas import merge
 from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.search import search_narratives
 from bigdata_research_tools.tracing import (
     WorkflowStatus,
@@ -14,7 +15,6 @@ from bigdata_research_tools.tracing import (
     send_trace,
 )
 from bigdata_research_tools.workflows.base import Workflow
-from bigdata_research_tools.llm.base import LLMConfig
 
 logger: Logger = getLogger(__name__)
 
@@ -157,7 +157,9 @@ class NarrativeMiner(Workflow):
                     name=NarrativeMiner.name,
                     start_date=workflow_start,
                     end_date=datetime.now(),
-                    llm_model=self.llm_model_config.model if isinstance(self.llm_model_config, LLMConfig) else str(self.llm_model_config),
+                    llm_model=self.llm_model_config.model
+                    if isinstance(self.llm_model_config, LLMConfig)
+                    else str(self.llm_model_config),
                     status=workflow_status,
                 ),
             )

@@ -162,7 +162,9 @@ def _process_narrative_search(
                     "country_code": [entity["country"] for entity in chunk_entities],
                     "entity_type": [entity["entity_type"] for entity in chunk_entities],
                     "entity_id": [entity["key"] for entity in chunk_entities],
-                    "entity_ticker": [entity.get("ticker", '') for entity in chunk_entities],
+                    "entity_ticker": [
+                        entity.get("ticker", "") for entity in chunk_entities
+                    ],
                 }
             )
 

@@ -7,15 +7,12 @@ from bigdata_research_tools.labeler.labeler import (
     get_prompts_for_labeler,
     parse_labeling_response,
 )
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
     get_screener_system_prompt,
     get_target_entity_placeholder,
 )
-
-from bigdata_research_tools.llm.base import LLMConfig, REASONING_MODELS
-
-from typing import Optional
 
 logger: Logger = getLogger(__name__)
 
@@ -25,7 +22,7 @@ class ScreenerLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
         label_prompt: str | None = None,
         unknown_label: str = "unclear",
     ):
