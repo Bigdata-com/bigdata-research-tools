@@ -82,8 +82,9 @@ class LLMConfig(BaseModel):
 
 
 class AsyncLLMProvider(ABC):
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, **connection_config):
         self.model = model
+        self.connection_config = connection_config
 
     @abstractmethod
     async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
@@ -130,7 +131,7 @@ class AsyncLLMProvider(ABC):
 
 
 class AsyncLLMEngine:
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, **connection_config):
         if model is None:
             model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM", "openai::gpt-4o-mini")
             source = "Environment"
@@ -149,23 +150,27 @@ class AsyncLLMEngine:
                 "Invalid model format. It should be `<provider>::<model>`."
             )
 
-        self.provider = self.load_provider(provider_name=self.provider_name)
+        self.provider = self.load_provider(
+            provider_name=self.provider_name, **connection_config
+        )
 
-    def load_provider(self, provider_name: str) -> AsyncLLMProvider:
+    def load_provider(
+        self, provider_name: str, **connection_config
+    ) -> AsyncLLMProvider:
         provider = provider_name.lower()
         if provider == "openai":
             from bigdata_research_tools.llm.openai import AsyncOpenAIProvider
 
-            return AsyncOpenAIProvider(model=self.model)
+            return AsyncOpenAIProvider(model=self.model, **connection_config)
 
         elif provider == "bedrock":
             from bigdata_research_tools.llm.bedrock import AsyncBedrockProvider
 
-            return AsyncBedrockProvider(model=self.model)
+            return AsyncBedrockProvider(model=self.model, **connection_config)
         elif provider == "azure":
             from bigdata_research_tools.llm.azure import AsyncAzureProvider
 
-            return AsyncAzureProvider(model=self.model)
+            return AsyncAzureProvider(model=self.model, **connection_config)
         else:
             logger.error(f"Invalid provider: `{self.provider}`")
 
@@ -209,8 +214,9 @@ class AsyncLLMEngine:
 
 
 class LLMProvider(ABC):
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, **connection_config):
         self.model = model
+        self.connection_config = connection_config
 
     @abstractmethod
     def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
@@ -257,7 +263,7 @@ class LLMProvider(ABC):
 
 
 class LLMEngine:
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, **connection_config):
         if model is None:
             model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM", "openai::gpt-4o-mini")
             source = "Environment"
@@ -276,22 +282,24 @@ class LLMEngine:
                 "Invalid model format. It should be `<provider>::<model>`."
             )
 
-        self.provider = self.load_provider(provider_name=self.provider_name)
+        self.provider = self.load_provider(
+            provider_name=self.provider_name, **connection_config
+        )
 
-    def load_provider(self, provider_name: str) -> LLMProvider:
+    def load_provider(self, provider_name: str, **connection_config) -> LLMProvider:
         provider = provider_name.lower()
         if provider == "openai":
             from bigdata_research_tools.llm.openai import OpenAIProvider
 
-            return OpenAIProvider(model=self.model)
+            return OpenAIProvider(model=self.model, **connection_config)
         elif provider == "bedrock":
             from bigdata_research_tools.llm.bedrock import BedrockProvider
 
-            return BedrockProvider(model=self.model)
+            return BedrockProvider(model=self.model, **connection_config)
         elif provider == "azure":
             from bigdata_research_tools.llm.azure import AzureProvider
 
-            return AzureProvider(model=self.model)
+            return AzureProvider(model=self.model, **connection_config)
         else:
             logger.error(f"Invalid provider: `{self.provider}`")
 

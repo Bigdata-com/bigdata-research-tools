@@ -33,8 +33,9 @@ class AsyncAzureProvider(AsyncLLMProvider):
     def __init__(
         self,
         model: str,
+        **connection_config,
     ):
-        super().__init__(model)
+        super().__init__(model, **connection_config)
         self._client = None
         self.configure_azure_client()
 
@@ -49,7 +50,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
         """
         if not self._client:
             try:
-                self._client = AsyncAzureOpenAI()
+                self._client = AsyncAzureOpenAI(**self.connection_config)
             except OpenAIError:
                 token_provider = get_bearer_token_provider(
                     DefaultAzureCredential(),
@@ -58,6 +59,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
 
                 self._client = AsyncAzureOpenAI(
                     azure_ad_token_provider=token_provider,
+                    **self.connection_config,
                 )
 
     async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
@@ -168,8 +170,9 @@ class AzureProvider(LLMProvider):
     def __init__(
         self,
         model: str,
+        **connection_config,
     ):
-        super().__init__(model)
+        super().__init__(model, **connection_config)
         self._client = None
         self.configure_azure_client()
 
@@ -184,7 +187,7 @@ class AzureProvider(LLMProvider):
         """
         if not self._client:
             try:
-                self._client = AzureOpenAI()
+                self._client = AzureOpenAI(**self.connection_config)
             except OpenAIError:
                 token_provider = get_bearer_token_provider(
                     DefaultAzureCredential(),
@@ -193,6 +196,7 @@ class AzureProvider(LLMProvider):
 
                 self._client = AzureOpenAI(
                     azure_ad_token_provider=token_provider,
+                    **self.connection_config,
                 )
 
     def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
