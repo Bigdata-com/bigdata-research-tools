@@ -39,7 +39,7 @@ class NarrativeLabeler(Labeler):
         theme_labels: list[str],
         texts: list[str],
         max_workers: int = 50,
-        timeout: int | None = 20,
+        timeout: int | None = 55,
     ) -> DataFrame:
         """
         Process thematic labels for texts.
@@ -70,7 +70,12 @@ class NarrativeLabeler(Labeler):
         responses = [parse_labeling_response(response) for response in responses]
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame) -> DataFrame:
+    def post_process_dataframe(
+        self,
+        df: DataFrame,
+        extra_fields: dict | None = None,
+        extra_columns: list[str] | None = None,
+    ) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -115,30 +120,27 @@ class NarrativeLabeler(Labeler):
         sort_columns = ["timestamp_utc", "label"]
         df = df.sort_values(by=sort_columns).reset_index(drop=True)
 
-        # Add formatted columns
-        df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
-        df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
+        columns_map = {
+            "document_id": "Document ID",
+            "sentence_id": "Sentence ID",
+            "headline": "Headline",
+            "text": "Chunk Text",
+            "motivation": "Motivation",
+            "label": "Label",
+            "entity": "Entity",
+            "country_code": "Country Code",
+            "entity_type": "Entity Type",
+            "entity_id": "Entity ID",
+            "entity_ticker": "Entity Ticker",
+        }
 
-        df = df.rename(
-            columns={
-                "document_id": "Document ID",
-                "sentence_id": "Sentence ID",
-                "headline": "Headline",
-                "text": "Chunk Text",
-                "motivation": "Motivation",
-                "label": "Label",
-                "entity": "Entity",
-                "country_code": "Country Code",
-                "entity_type": "Entity Type",
-                "entity_id": "Entity ID",
-                "entity_ticker": "Entity Ticker",
-            }
-        )
+        optional_fields = ["topics", "source_name", "source_rank", "url"]
+        for field in optional_fields:
+            if field in df.columns:
+                columns_map[field] = field.replace("_", " ").title()
 
-        df = df.explode(
-            ["Entity", "Entity Type", "Country Code", "Entity ID", "Entity Ticker"],
-            ignore_index=True,
-        )
+        if extra_fields:
+            columns_map.update(extra_fields)
 
         # Select and order columns
         export_columns = [
@@ -156,6 +158,21 @@ class NarrativeLabeler(Labeler):
             "Country Code",
             "Entity Type",
         ]
+
+        if extra_columns:
+            export_columns += extra_columns
+
+        for field in optional_fields:
+            if field in df.columns:
+                export_columns += [field.replace("_", " ").title()]
+
+        df = df.rename(columns=columns_map)
+
+        # Add formatted columns
+        df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
+        df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
+
+        df = df.explode(["Entity", "Entity Type", "Country Code"], ignore_index=True)
 
         sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Chunk Text"]
         df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)

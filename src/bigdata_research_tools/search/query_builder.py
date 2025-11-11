@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from itertools import chain, zip_longest
-from typing import Type
+from typing import Callable, Iterator, Type, TypeVar
 
 import pandas as pd
 from bigdata_client.daterange import AbsoluteDateRange
@@ -20,6 +19,8 @@ from bigdata_client.query import (
 )
 
 from bigdata_research_tools.client import bigdata_connection
+
+T = TypeVar("T")  # Type var for generic type
 
 
 @dataclass
@@ -123,11 +124,7 @@ def build_batched_query(
     )
 
     # Step 2: Build control entity query
-    control_query = (
-        _build_control_entity_query(control_entities, scope=scope)
-        if control_entities
-        else None
-    )
+    control_query = _build_entity_query(control_entities) if control_entities else None
 
     # Step 3: Build entity batch queries
     entity_batch_queries = _build_entity_batch_queries(
@@ -180,6 +177,7 @@ def _build_base_queries(
     sources: list[str] | None,
 ) -> tuple[list[QueryComponent] | None, QueryComponent | None, QueryComponent | None]:
     """Build the base queries from sentences, keywords, and sources."""
+    bigdata = bigdata_connection()
     # Create similarity queries from sentences
     queries = build_similarity_queries(sentences) if sentences else None
 
@@ -187,88 +185,92 @@ def _build_base_queries(
     keyword_query = Any([Keyword(word) for word in keywords]) if keywords else None
 
     # Create source query
-    source_query = Any([Source(source) for source in sources]) if sources else None
+    sources_ids = (
+        _find_first_for_each(bigdata.knowledge_graph.find_sources, sources)
+        if sources
+        else []
+    )
+    sources_ids = [Source(source.id) for source in sources_ids]
+
+    source_query = Any(sources_ids) if sources_ids else None
 
     return queries, keyword_query, source_query
 
 
-def _get_entity_ids(
-    entity_names: list[str],
-    entity_type: Type,
+def _find_first_for_each(
+    func: Callable[..., Iterator[T]], values: list[str]
+) -> list[T]:
+    """Helper function to get only the first item from a generator."""
+    responses = []
+    for value in values:
+        gen = func(value)
+        # If next value exists, append to responses
+        if (response := next(iter(gen), None)) is not None:
+            responses.append(response)
+    return responses
+
+
+def _resolve_entities(
+    control_entities: EntitiesToSearch,
+    is_reporting_entity: bool = False,
 ) -> list[QueryComponent]:
+    """Build a query for control entities."""
     bigdata = bigdata_connection()
     entity_ids = []
+    comp_ids = []
+    if control_entities.people:
+        people_ids = _find_first_for_each(
+            bigdata.knowledge_graph.find_people, control_entities.people
+        )
+        entity_ids.extend([Entity(person.id) for person in people_ids])
 
-    lookup_map = {
-        Place: bigdata.knowledge_graph.find_places,
-        Product: bigdata.knowledge_graph.find_products,
-        Person: bigdata.knowledge_graph.find_people,
-        Organization: bigdata.knowledge_graph.find_organizations,
-        Topic: bigdata.knowledge_graph.find_topics,
-        Concept: bigdata.knowledge_graph.find_concepts,
-        Entity: bigdata.knowledge_graph.find_companies,
-        ReportingEntity: bigdata.knowledge_graph.find_companies,
-    }
+    if control_entities.product:
+        prod_ids = _find_first_for_each(
+            bigdata.knowledge_graph.find_products, control_entities.product
+        )
+        entity_ids.extend([Entity(prod.id) for prod in prod_ids])
 
-    lookup_func = lookup_map.get(entity_type)
-    if not lookup_func:
-        return []
+    if control_entities.companies:
+        comp_ids = _find_first_for_each(
+            bigdata.knowledge_graph.find_companies, control_entities.companies
+        )
+        if is_reporting_entity:
+            entity_ids.extend([(ReportingEntity(comp.id)) for comp in comp_ids])
+        else:
+            entity_ids.extend([(Entity(comp.id)) for comp in comp_ids])
 
-    for name in entity_names:
-        entity = next(iter(lookup_func(name)), None)
-        if entity is not None:
-            if entity_type in (Entity, ReportingEntity):
-                entity = entity_type(entity.id)
+    if control_entities.place:
+        place_ids = _find_first_for_each(
+            bigdata.knowledge_graph.find_places, control_entities.place
+        )
+        entity_ids.extend([Entity(place.id) for place in place_ids])
 
-            entity_ids.append(entity)
+    if control_entities.org:
+        orga_ids = _find_first_for_each(
+            bigdata.knowledge_graph.find_organizations, control_entities.org
+        )
+        entity_ids.extend([Entity(org.id) for org in orga_ids])
+
+    if control_entities.topic:
+        topic_ids = _find_first_for_each(
+            bigdata.knowledge_graph.find_topics, control_entities.topic
+        )
+        entity_ids.extend([Entity(topic.id) for topic in topic_ids])
+
+    if control_entities.concepts:
+        concept_ids = _find_first_for_each(
+            bigdata.knowledge_graph.find_concepts, control_entities.concepts
+        )
+        entity_ids.extend([Entity(concept.id) for concept in concept_ids])
 
     return entity_ids
 
 
-def _build_control_entity_query(
+def _build_entity_query(
     control_entities: EntitiesToSearch,
-    scope: DocumentType = DocumentType.ALL,
+    is_reporting_entity: bool = False,
 ) -> QueryComponent:
-    """Build a query for control entities."""
-
-    entity_ids = []
-    comp_ids = []
-    if control_entities.people:
-        people_ids = _get_entity_ids(control_entities.people, Person)
-        if people_ids:
-            entity_ids.extend(people_ids)
-
-    if control_entities.product:
-        prod_ids = _get_entity_ids(control_entities.product, Product)
-        if prod_ids:
-            entity_ids.extend(prod_ids)
-
-    if control_entities.companies:
-        entity_type = _get_entity_type(scope)
-        comp_ids = _get_entity_ids(control_entities.companies, entity_type)
-        if comp_ids:
-            entity_ids.extend(comp_ids)
-
-    if control_entities.place:
-        place_ids = _get_entity_ids(control_entities.place, Place)
-        if place_ids:
-            entity_ids.extend(place_ids)
-
-    if control_entities.org:
-        orga_ids = _get_entity_ids(control_entities.org, Organization)
-        if orga_ids:
-            entity_ids.extend(orga_ids)
-
-    if control_entities.topic:
-        topic_ids = _get_entity_ids(control_entities.topic, Topic)
-        if topic_ids:
-            entity_ids.extend(topic_ids)
-
-    if control_entities.concepts:
-        concept_ids = _get_entity_ids(control_entities.concepts, Concept)
-        if concept_ids:
-            entity_ids.extend(concept_ids)
-
+    entity_ids = _resolve_entities(control_entities, is_reporting_entity)
     control_query = Any(entity_ids)
     return control_query
 
@@ -301,36 +303,15 @@ def _get_entity_type(scope: DocumentType) -> Type[Entity | ReportingEntity]:
 
 
 def _build_custom_batch_queries(
-    custom_batches: list[EntitiesToSearch], scope: DocumentType
+    custom_batches: list[EntitiesToSearch],
+    scope: DocumentType,
 ) -> list[QueryComponent] | None:
     """Build entity queries from a list of EntitiesToSearch objects."""
-    entity_type_map = EntitiesToSearch.get_entity_type_map()
-
-    def get_entity_ids_for_attr(
-        entity_config: EntitiesToSearch, attr_name: str, entity_class
-    ) -> list[QueryComponent]:
-        """Get entity IDs for a specific attribute."""
-        entity_names = getattr(entity_config, attr_name, None)
-        if not entity_names:
-            return []
-
-        entity_type = (
-            _get_entity_type(scope) if entity_class == Entity else entity_class
-        )
-        return _get_entity_ids(entity_names, entity_type)
-
+    is_reporting_entity = _get_entity_type(scope) == ReportingEntity
     batch_queries = []
     for entity_config in custom_batches:
-        # Use chain to flatten all entity IDs from all attributes
-        all_entities = list(
-            chain.from_iterable(
-                get_entity_ids_for_attr(entity_config, attr_name, entity_class)
-                for attr_name, entity_class in entity_type_map.items()
-            )
-        )
-
-        if all_entities:
-            batch_queries.append(Any(all_entities))
+        all_entities = _build_entity_query(entity_config, is_reporting_entity)
+        batch_queries.append(all_entities)
 
     return batch_queries if batch_queries else None
 
@@ -340,39 +321,22 @@ def _auto_batch_entities(
     batch_size: int,
     scope: DocumentType = DocumentType.ALL,
 ) -> list[QueryComponent]:
-    """Auto-batch entities by type using the specified batch size."""
+    """Auto-batch entities using the specified batch size."""
 
-    # Create batches for each entity type
-    all_entity_batches = []
+    batches = []
 
-    for attr_name, entity_class in EntitiesToSearch.get_entity_type_map().items():
-        entity_names = getattr(entities, attr_name, None)
-        if not entity_names:
-            continue
+    entity_ids = _resolve_entities(
+        entities, is_reporting_entity=_get_entity_type(scope) == ReportingEntity
+    )
 
-        # Get valid entity IDs
-        entity_type = (
-            _get_entity_type(scope) if entity_class == Entity else entity_class
-        )
-        entity_ids = _get_entity_ids(entity_names, entity_type)
+    batches = [
+        entity_ids[i : i + batch_size] for i in range(0, len(entity_ids), batch_size)
+    ]
 
-        # Split into batches and add to collection
-        if entity_ids:
-            batches = [
-                entity_ids[i : i + batch_size]
-                for i in range(0, len(entity_ids), batch_size)
-            ]
-            all_entity_batches.append(batches)
-
-    if not all_entity_batches:
+    if not batches:
         return []
 
-    # Combine batches across entity types using zip_longest
-    return [
-        Any([entity for batch in batch_group for entity in batch])
-        for batch_group in zip_longest(*all_entity_batches, fillvalue=[])
-        if any(batch for batch in batch_group)  # Skip empty batch groups
-    ]
+    return [Any([entity for entity in batch]) for batch in batches]
 
 
 def _expand_queries(
