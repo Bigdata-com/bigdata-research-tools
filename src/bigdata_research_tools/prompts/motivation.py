@@ -74,6 +74,7 @@ def get_motivation_prompt(
     theme_name: str,
     min_words: int,
     max_words: int,
+    max_data_points: int = 300,
     use_case: MotivationType = MotivationType.THEMATIC_SCREENER,
 ) -> str:
     """
@@ -89,6 +90,11 @@ def get_motivation_prompt(
     Returns:
     - str: Fully formatted motivation prompt
     """
+
+    # Sample only up to max_data_points quotes to avoid overly long prompts
+    if len(data["quotes_and_labels"]) > max_data_points:
+        data["quotes_and_labels"] = data["quotes_and_labels"].sample(max_data_points, random_state=42)
+
     label_summary = "\n".join(
         [f"- {label}: {count} quotes" for label, count in data["label_counts"]]
     )
