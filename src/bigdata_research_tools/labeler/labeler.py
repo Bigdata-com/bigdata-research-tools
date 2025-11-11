@@ -145,12 +145,18 @@ class Labeler:
         llm_kwargs = self.llm_model_config.get_llm_kwargs(remove_max_tokens=True)
 
         if provider == "bedrock":
-            llm = LLMEngine(model=self.llm_model_config.model)
+            llm = LLMEngine(
+                model=self.llm_model_config.model,
+                **self.llm_model_config.connection_config,
+            )
             return run_parallel_prompts(
                 llm, prompts, system_prompt, max_workers, **llm_kwargs
             )
         else:
-            llm = AsyncLLMEngine(model=self.llm_model_config.model)
+            llm = AsyncLLMEngine(
+                model=self.llm_model_config.model,
+                **self.llm_model_config.connection_config,
+            )
             return run_concurrent_prompts(
                 llm,
                 prompts,
