@@ -165,6 +165,9 @@ def _process_narrative_search(
                     "entity_ticker": [
                         entity.get("ticker", "") for entity in chunk_entities
                     ],
+                    "source_name": result.source.name,
+                    "source_rank": result.source.rank,
+                    "url": result.url,
                 }
             )
 

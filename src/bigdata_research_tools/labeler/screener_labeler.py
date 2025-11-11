@@ -43,7 +43,7 @@ class ScreenerLabeler(Labeler):
         labels: list[str],
         texts: list[str],
         timeout: int | None = 20,
-        max_workers: int = 50,
+        max_workers: int = 55,
     ) -> DataFrame:
         """
         Process thematic labels for texts.
@@ -73,7 +73,12 @@ class ScreenerLabeler(Labeler):
         responses = [parse_labeling_response(response) for response in responses]
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame) -> DataFrame:
+    def post_process_dataframe(
+        self,
+        df: DataFrame,
+        extra_fields: dict | None = None,
+        extra_columns: list[str] | None = None,
+    ) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -140,20 +145,33 @@ class ScreenerLabeler(Labeler):
         df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
         df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
 
-        df = df.rename(
-            columns={
-                "document_id": "Document ID",
-                "entity_name": "Company",
-                "entity_sector": "Sector",
-                "entity_industry": "Industry",
-                "entity_country": "Country",
-                "entity_ticker": "Ticker",
-                "headline": "Headline",
-                "text": "Quote",
-                "motivation": "Motivation",
-                "label": "Theme",
-            }
-        )
+        columns_map = {
+            "document_id": "Document ID",
+            "entity_name": "Company",
+            "entity_sector": "Sector",
+            "entity_industry": "Industry",
+            "entity_country": "Country",
+            "entity_ticker": "Ticker",
+            "headline": "Headline",
+            "text": "Quote",
+            "motivation": "Motivation",
+            "label": "Theme",
+        }
+
+        optional_fields = ["topics", "source_name", "source_rank", "url"]
+        for field in optional_fields:
+            if field in df.columns:
+                columns_map[field] = field.replace("_", " ").title()
+
+        if extra_fields:
+            columns_map.update(extra_fields)
+            if "quotes" in extra_fields.keys():
+                if "quotes" in df.columns:
+                    df["quotes"] = df.apply(
+                        replace_company_placeholders, axis=1, col_name="quotes"
+                    )
+                else:
+                    print("quotes column not in df")
 
         # Select and order columns
         export_columns = [
@@ -170,6 +188,15 @@ class ScreenerLabeler(Labeler):
             "Motivation",
             "Theme",
         ]
+
+        if extra_columns:
+            export_columns += extra_columns
+
+        for field in optional_fields:
+            if field in df.columns:
+                export_columns += [field.replace("_", " ").title()]
+
+        df = df.rename(columns=columns_map)
 
         sort_columns = [
             "Date",

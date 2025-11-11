@@ -14,7 +14,7 @@ def thematic_screener_example(
     llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
     export_path: str = "thematic_screener_results.xlsx",
 ) -> dict:
-    GRID_watchlist_ID = "a60c351a-1822-4a88-8c45-a4e78abd979a"
+    GRID_watchlist_ID = "814d0944-a2c1-44f6-8b42-a70c0795428e"
 
     bigdata = bigdata_connection()
     # Retrieve the watchlist object
