@@ -3,12 +3,12 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from bigdata_research_tools.llm.base import LLMConfig, REASONING_MODELS
 import graphviz
 from json_repair import repair_json
 from pandas import DataFrame
 
 from bigdata_research_tools.llm import LLMEngine
+from bigdata_research_tools.llm.base import REASONING_MODELS, LLMConfig
 from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
 from bigdata_research_tools.prompts.themes import compose_themes_system_prompt
 
@@ -359,7 +359,7 @@ def generate_theme_tree(
         llm_model_config = get_default_tree_config(llm_model_config)
 
     print(llm_model_config)
-    
+
     model_str = llm_model_config.model
     chat_params = llm_model_config.get_llm_kwargs(remove_max_tokens=True)
     llm = LLMEngine(model=model_str)
@@ -460,12 +460,13 @@ def generate_risk_tree(
 
     return SemanticTree.from_dict(tree_dict)
 
+
 def get_default_tree_config(llm_model: str) -> LLMConfig:
     """Get default LLM model configuration for tree generation."""
     if any(rm in llm_model for rm in REASONING_MODELS):
         return LLMConfig(
             model=llm_model,
-            reasoning_effort='high',
+            reasoning_effort="high",
             seed=42,
             max_completion_tokens=300,
             response_format={"type": "json_object"},

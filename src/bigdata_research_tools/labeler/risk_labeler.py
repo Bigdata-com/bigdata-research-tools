@@ -1,5 +1,5 @@
 from logging import Logger, getLogger
-from typing import Any, Optional
+from typing import Any
 
 from pandas import DataFrame, Series
 
@@ -8,12 +8,12 @@ from bigdata_research_tools.labeler.labeler import (
     get_prompts_for_labeler,
     parse_labeling_response,
 )
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
     get_risk_system_prompt,
     get_target_entity_placeholder,
 )
-from bigdata_research_tools.llm.base import LLMConfig, REASONING_MODELS
 
 logger: Logger = getLogger(__name__)
 
@@ -23,7 +23,7 @@ class RiskLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini', 
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
         label_prompt: str | None = None,
         # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
         #  Changing it here would break the process.
@@ -81,7 +81,12 @@ class RiskLabeler(Labeler):
 
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame, extra_fields: Optional[dict], extra_columns: Optional[list[str]]) -> DataFrame:
+    def post_process_dataframe(
+        self,
+        df: DataFrame,
+        extra_fields: dict | None,
+        extra_columns: list[str] | None,
+    ) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -153,20 +158,20 @@ class RiskLabeler(Labeler):
         )
 
         columns_map = {
-                "entity_name": "Company",
-                "entity_sector": "Sector",
-                "entity_industry": "Industry",
-                "entity_country": "Country",
-                "entity_ticker": "Ticker",
-                "headline": "Headline",
-                "text": "Quote",
-                "motivation": "Motivation",
-                "label": "Sub-Scenario"
-            }
-        optional_fields = ['topics','source_name', 'source_rank', 'url']
+            "entity_name": "Company",
+            "entity_sector": "Sector",
+            "entity_industry": "Industry",
+            "entity_country": "Country",
+            "entity_ticker": "Ticker",
+            "headline": "Headline",
+            "text": "Quote",
+            "motivation": "Motivation",
+            "label": "Sub-Scenario",
+        }
+        optional_fields = ["topics", "source_name", "source_rank", "url"]
         for field in optional_fields:
             if field in df.columns:
-                columns_map[field] = field.replace('_', ' ').title()
+                columns_map[field] = field.replace("_", " ").title()
 
         if extra_fields:
             columns_map.update(extra_fields)
@@ -196,14 +201,12 @@ class RiskLabeler(Labeler):
 
         if extra_columns:
             export_columns += extra_columns
-        
+
         for field in optional_fields:
             if field in df.columns:
-                export_columns += [field.replace('_', ' ').title()]
+                export_columns += [field.replace("_", " ").title()]
 
-        df = df.rename(
-            columns=columns_map
-        )
+        df = df.rename(columns=columns_map)
 
         return df[export_columns]
 

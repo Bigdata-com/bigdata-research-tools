@@ -2,12 +2,17 @@ import re
 from itertools import zip_longest
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
-from typing import Any, Optional
+from typing import Any
 
 from json_repair import repair_json
 from pandas import DataFrame
 
-from bigdata_research_tools.llm.base import AsyncLLMEngine, LLMEngine, LLMConfig, REASONING_MODELS
+from bigdata_research_tools.llm.base import (
+    REASONING_MODELS,
+    AsyncLLMEngine,
+    LLMConfig,
+    LLMEngine,
+)
 from bigdata_research_tools.llm.utils import (
     run_concurrent_prompts,
     run_parallel_prompts,
@@ -21,10 +26,9 @@ class Labeler:
 
     def __init__(
         self,
-        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
         # Note that his value is also used in the prompts.
         unknown_label: str = "unclear",
-        
     ):
         """Initialize base Labeler.
 
@@ -40,22 +44,28 @@ class Labeler:
             self.llm_model_config = self.get_default_labeler_config(llm_model_config)
         else:
             self.llm_model_config = llm_model_config
-            
+
         self.unknown_label = unknown_label
 
     def get_default_labeler_config(self, model) -> LLMConfig:
         """Get default LLM model configuration for labeling."""
         if any(rm in model for rm in REASONING_MODELS):
-            return LLMConfig(model=model, reasoning_effort='high', seed=42, response_format={"type": "json_object"})
+            return LLMConfig(
+                model=model,
+                reasoning_effort="high",
+                seed=42,
+                response_format={"type": "json_object"},
+            )
         else:
-            return LLMConfig(model=model,
-            temperature=0,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-            seed=42,
-            response_format={"type": "json_object"},
-        )
+            return LLMConfig(
+                model=model,
+                temperature=0,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+                seed=42,
+                response_format={"type": "json_object"},
+            )
 
     def _deserialize_label_responses(
         self, responses: list[dict[str, Any]]

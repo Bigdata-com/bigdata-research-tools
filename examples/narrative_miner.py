@@ -7,7 +7,10 @@ from bigdata_research_tools.utils.observer import OberserverNotification, Observ
 from bigdata_research_tools.workflows import NarrativeMiner
 
 
-def narrative_miner_example(llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini", export_path: str = "narrative_miner_sample.xlsx") -> dict:
+def narrative_miner_example(
+    llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
+    export_path: str = "narrative_miner_sample.xlsx",
+) -> dict:
     narrative_miner = NarrativeMiner(
         narrative_sentences=[
             "Supervised Learning Techniques",
@@ -59,4 +62,7 @@ if __name__ == "__main__":
     output_path = Path("outputs/narrative_miner_sample.xlsx")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    narrative_miner_example(export_path=str(output_path), llm_model_config={'model': "openai::gpt-5-mini", 'temperature':0})
+    narrative_miner_example(
+        export_path=str(output_path),
+        llm_model_config={"model": "openai::gpt-5-mini", "temperature": 0},
+    )

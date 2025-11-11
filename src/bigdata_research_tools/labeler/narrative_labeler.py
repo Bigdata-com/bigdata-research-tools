@@ -9,7 +9,6 @@ from bigdata_research_tools.labeler.labeler import (
 )
 from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.prompts.labeler import get_narrative_system_prompt
-from typing import Optional
 
 logger: Logger = getLogger(__name__)
 
@@ -21,7 +20,7 @@ class NarrativeLabeler(Labeler):
         self,
         label_prompt: str | None = None,
         unknown_label: str = "unclear",
-        llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
     ):
         """Initialize narrative labeler.
 
@@ -71,7 +70,12 @@ class NarrativeLabeler(Labeler):
         responses = [parse_labeling_response(response) for response in responses]
         return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame, extra_fields: Optional[dict] = None, extra_columns: Optional[list[str]] = None) -> DataFrame:
+    def post_process_dataframe(
+        self,
+        df: DataFrame,
+        extra_fields: dict | None = None,
+        extra_columns: list[str] | None = None,
+    ) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -116,23 +120,24 @@ class NarrativeLabeler(Labeler):
         sort_columns = ["timestamp_utc", "label"]
         df = df.sort_values(by=sort_columns).reset_index(drop=True)
 
-        columns_map = {"document_id": "Document ID",
-                "sentence_id": "Sentence ID",
-                "headline": "Headline",
-                "text": "Chunk Text",
-                "motivation": "Motivation",
-                "label": "Label",
-                "entity": "Entity",
-                "country_code": "Country Code",
-                "entity_type": "Entity Type",
-                "entity_id": "Entity ID",
-                "entity_ticker": "Entity Ticker",
-            }
+        columns_map = {
+            "document_id": "Document ID",
+            "sentence_id": "Sentence ID",
+            "headline": "Headline",
+            "text": "Chunk Text",
+            "motivation": "Motivation",
+            "label": "Label",
+            "entity": "Entity",
+            "country_code": "Country Code",
+            "entity_type": "Entity Type",
+            "entity_id": "Entity ID",
+            "entity_ticker": "Entity Ticker",
+        }
 
-        optional_fields = ['topics','source_name', 'source_rank', 'url']
+        optional_fields = ["topics", "source_name", "source_rank", "url"]
         for field in optional_fields:
             if field in df.columns:
-                columns_map[field] = field.replace('_', ' ').title()
+                columns_map[field] = field.replace("_", " ").title()
 
         if extra_fields:
             columns_map.update(extra_fields)
@@ -156,19 +161,17 @@ class NarrativeLabeler(Labeler):
 
         if extra_columns:
             export_columns += extra_columns
-        
+
         for field in optional_fields:
             if field in df.columns:
-                export_columns += [field.replace('_', ' ').title()]
+                export_columns += [field.replace("_", " ").title()]
 
-        df = df.rename(
-            columns=columns_map
-        )
-        
+        df = df.rename(columns=columns_map)
+
         # Add formatted columns
         df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
         df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
-        
+
         df = df.explode(["Entity", "Entity Type", "Country Code"], ignore_index=True)
 
         sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Chunk Text"]

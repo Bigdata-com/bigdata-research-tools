@@ -1,10 +1,9 @@
 from collections import defaultdict
-from typing import Any
 
 import pandas as pd
 from tqdm import tqdm
 
-from bigdata_research_tools.llm.base import LLMConfig, LLMEngine, REASONING_MODELS
+from bigdata_research_tools.llm.base import REASONING_MODELS, LLMConfig, LLMEngine
 from bigdata_research_tools.prompts.motivation import (
     MotivationType,
     get_motivation_prompt,
@@ -17,7 +16,8 @@ class Motivation:
     """
 
     def __init__(
-        self, llm_model_config: str | LLMConfig | dict  = 'openai::gpt-4o-mini',
+        self,
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
     ):
         """
         Initialize the Motivation class.
@@ -38,16 +38,19 @@ class Motivation:
     def _get_default_model_config(self, model: str) -> LLMConfig:
         """Get default LLM model configuration."""
         if any(rm in model for rm in REASONING_MODELS):
-            return LLMConfig(model=model, reasoning_effort='high', seed=42, max_completion_tokens=300)
+            return LLMConfig(
+                model=model, reasoning_effort="high", seed=42, max_completion_tokens=300
+            )
         else:
-            return LLMConfig(model=model,
-            temperature=0,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-            max_completion_tokens=300,
-            seed=42,
-        )
+            return LLMConfig(
+                model=model,
+                temperature=0,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+                max_completion_tokens=300,
+                seed=42,
+            )
 
     def group_quotes_by_company(self, filtered_df: pd.DataFrame) -> dict:
         """
@@ -127,7 +130,8 @@ class Motivation:
         chat_history = [{"role": "user", "content": prompt}]
 
         motivation = self.llm_engine.get_response(
-            chat_history=chat_history, **self.llm_model_config.get_llm_kwargs(remove_json_formatting=True)
+            chat_history=chat_history,
+            **self.llm_model_config.get_llm_kwargs(remove_json_formatting=True),
         )
 
         return motivation.strip()

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Type, Iterator, TypeVar
+from typing import Callable, Iterator, Type, TypeVar
 
 import pandas as pd
 from bigdata_client.daterange import AbsoluteDateRange
