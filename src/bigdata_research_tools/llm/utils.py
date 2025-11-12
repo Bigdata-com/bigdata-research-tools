@@ -18,8 +18,9 @@ def run_concurrent_prompts(
     system_prompt: str,
     timeout: int | None,
     max_workers: int = 30,
+    callback: Any = None,
     **kwargs,
-) -> list[str]:
+) -> dict:
     """
     Run the LLM on the received prompts, concurrently.
 
@@ -32,13 +33,13 @@ def run_concurrent_prompts(
         kwargs (dict): Additional arguments to pass to the `get_response` method of the LLMEngine.
 
     Returns:
-        list[str]: The list of responses from the LLM model, each in the same order as the prompts.
+        dict: The dictionary of parsed responses from the LLM model, each keyed by the prompt index.
     """
     semaphore = asyncio.Semaphore(max_workers)
     logger.info(f"Running {len(prompts)} prompts concurrently")
     tasks = [
         _fetch_with_semaphore(
-            idx, llm_engine, semaphore, system_prompt, prompt, timeout=timeout, **kwargs
+            idx, llm_engine, semaphore, system_prompt, prompt, timeout=timeout, callback=callback, **kwargs
         )
         for idx, prompt in enumerate(prompts)
     ]
@@ -52,8 +53,9 @@ async def _fetch_with_semaphore(
     system_prompt: str,
     prompt: str,
     timeout: int | None,
+    callback: Any = None,
     **kwargs,
-) -> tuple[int, str]:
+) -> tuple[int, dict]:
     """
     Fetch the response from the LLM engine with a semaphore.
 
@@ -65,6 +67,7 @@ async def _fetch_with_semaphore(
         system_prompt (str): The system prompt.
         prompt (str): The prompt to run.
         timeout (int | None): Timeout for the LLM request.
+        callback (Any): Optional callback function to be called with the index and response for each prompt.
         kwargs (dict): Additional arguments to pass to the `get_response` method of the LLMEngine.
 
     Returns:
@@ -89,11 +92,18 @@ async def _fetch_with_semaphore(
                 # ~3 took longer than 60 seconds, with up to 600 seconds
                 async with asyncio.timeout(timeout):
                     response = await llm_engine.get_response(chat_history, **kwargs)
+                    if callback is not None:
+                        for func in callback:
+                            response = func(response)
                 return idx, response
             except Exception as e:
                 if isinstance(e, asyncio.TimeoutError) and attempt == 0:
                     logger.warning(
                         f"Timeout occurred for prompt during LLM call, current timeout configured {timeout} seconds. If this keeps happening (> 1% of your requests), consider increasing the timeout. Retrying..."
+                    )
+                elif isinstance(e, ValueError):
+                    logger.warning(
+                        f"Error occurred for response validation during LLM call. Retrying..."
                     )
                 last_exception = e
                 await asyncio.sleep(retry_delay)
@@ -102,23 +112,24 @@ async def _fetch_with_semaphore(
         logger.error(
             f"Failed to get response for prompt: {prompt} Error: {last_exception}"
         )
-        return idx, ""
+        return idx, {}
 
 
 async def _run_with_progress_bar(
-    tasks: list[Coroutine[Any, Any, tuple[int, str]]],
-) -> list[str]:
+    tasks: list[Coroutine[Any, Any, tuple[int, dict]]],
+) -> dict:
     """Run asyncio tasks with a tqdm progress bar."""
     # Pre-allocate a list for results to preserve order
-    results = [""] * len(tasks)
+    results = {} #""] * len(tasks)
     with tqdm(total=len(tasks), desc="Querying an LLM...") as pbar:
         for coro in asyncio.as_completed(tasks):
             idx, result = await coro
-            results[idx] = result
+            #results[idx] = result
+            results.update(result)
             # Update the progress bar
             pbar.update(1)
-    return results
 
+    return results
 
 # ADS-140
 # Added function to run synchronous LLM calls in parallel using threads.
@@ -127,6 +138,7 @@ def run_parallel_prompts(
     prompts: list[str],
     system_prompt: str,
     max_workers: int = 30,
+    callback: Any = None,
     **kwargs,
 ) -> list[str]:
     """
@@ -137,6 +149,7 @@ def run_parallel_prompts(
         prompts (list[str]): List of prompts to run concurrently.
         system_prompt (str): The system prompt.
         max_workers (int): The maximum number of threads.
+        callback (Any): Optional callback function to be called with the index and response for each prompt.
         kwargs (dict): Additional arguments for get_response.
 
     Returns:
