@@ -1,14 +1,49 @@
 import asyncio
+import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from logging import Logger, getLogger
+from pathlib import Path
 from typing import Any, Coroutine
+import threading
 
 from tqdm import tqdm
 
 from bigdata_research_tools.llm.base import AsyncLLMEngine
+from openai import BadRequestError
 
 logger: Logger = getLogger(__name__)
+
+def initialize_llm_error_log():
+    # Ensure output directory exists
+    output_dir = Path("outputs")
+    output_dir.mkdir(exist_ok=True)
+    log_file = output_dir / "llm_error_logs.txt"
+    return log_file
+
+def _log_llm_error_to_file(lock: threading.Lock, log_file: Path, timestamp: str, chat_history: list, error: Exception, prompt_idx: int = None):
+    """
+    Thread-safe logging of LLM errors to file.
+    
+    Args:
+        timestamp (str): ISO format timestamp of the error
+        chat_history (list): The chat history that caused the error
+        error (Exception): The exception that occurred
+        prompt_idx (int): Optional index of the prompt for tracking
+    """
+    log_entry = {
+        "timestamp": timestamp,
+        "prompt_index": prompt_idx,
+        "chat_history": chat_history,
+        "error_type": type(error).__name__,
+        "error_details": getattr(error, 'body', None) if hasattr(error, 'body') else None
+    }
+    
+    # Thread-safe file writing
+    with lock:
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry, indent=2, default=str) + "\n" + "="*80 + "\n")
 
 
 # https://platform.openai.com/docs/guides/batch
@@ -73,6 +108,8 @@ async def _fetch_with_semaphore(
     Returns:
         Tuple[int, str]: The index of the prompt and the response from the LLM model.
     """
+    log_file = initialize_llm_error_log()
+    _error_lock = threading.Lock()
     chat_history = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt},
@@ -105,6 +142,15 @@ async def _fetch_with_semaphore(
                     logger.warning(
                         f"Error occurred for response validation during LLM call. Retrying..."
                     )
+                elif isinstance(e, BadRequestError):
+                    if e.body['innererror']['code'] == 'ResponsibleAIPolicyViolation':
+                        print(
+                        f"LLM returned a ResponsibleAIPolicyViolation Error. Ignoring this response..."
+                    )
+                        # Log the error to file
+                        timestamp = datetime.now().isoformat()
+                        _log_llm_error_to_file(_error_lock, log_file, timestamp, chat_history, e, idx)
+                        return idx, {}  # Return empty response for policy violations
                 last_exception = e
                 await asyncio.sleep(retry_delay)
                 # Exponential backoff
