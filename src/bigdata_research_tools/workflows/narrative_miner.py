@@ -61,7 +61,7 @@ class NarrativeMiner(Workflow):
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
         elif isinstance(llm_model_config, str):
-            self.llm_model_config = llm_model_config
+            self.llm_model_config = LLMConfig(model=llm_model_config)
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
 
@@ -122,6 +122,7 @@ class NarrativeMiner(Workflow):
             df_labels = labeler.get_labels(
                 self.narrative_sentences,
                 texts=df_sentences["text"].tolist(),
+                timeout=self.llm_model_config.timeout
             )
             self.notify_observers(
                 f"Labelling completed. {len(df_labels)} labels generated."

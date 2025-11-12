@@ -87,7 +87,7 @@ class ThematicScreener(Workflow):
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
         elif isinstance(llm_model_config, str):
-            self.llm_model_config = llm_model_config  ##resolve it to config or add string check in the trace.
+            self.llm_model_config = LLMConfig(model=llm_model_config)
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
 
@@ -188,6 +188,7 @@ class ThematicScreener(Workflow):
             df_labels = labeler.get_labels(
                 main_theme=self.main_theme,
                 labels=terminal_labels,
+                timeout=self.llm_model_config.timeout,
                 texts=df_sentences["masked_text"].tolist(),
             )
             self.notify_observers("Labelling completed")
