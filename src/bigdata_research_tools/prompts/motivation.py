@@ -93,7 +93,7 @@ def get_motivation_prompt(
 
     # Sample only up to max_data_points quotes to avoid overly long prompts
     if len(data["quotes_and_labels"]) > max_data_points:
-        data["quotes_and_labels"] = data["quotes_and_labels"].sample(max_data_points, random_state=42)
+        data = data.sample(max_data_points, random_state=42).sort_index().reset_index(drop=True)
 
     label_summary = "\n".join(
         [f"- {label}: {count} quotes" for label, count in data["label_counts"]]
