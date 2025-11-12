@@ -66,7 +66,7 @@ if __name__ == "__main__":
         export_path=str(output_path),
         llm_model_config=LLMConfig(
             model="openai::gpt-5-mini",
-            reasoning_effort="high",
+            reasoning_effort="medium",
         ),
     )
     # custom_config = {

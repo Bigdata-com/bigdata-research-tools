@@ -85,36 +85,87 @@ class Labeler:
         """
         response_mapping = {}
         for response in responses:
-            if not response or not isinstance(response, dict):
-                continue
+            # if not response or not isinstance(response, dict):
+            #     continue
 
-            for k, v in response.items():
-                try:
-                    response_mapping[k] = {
-                        "motivation": v.get("motivation", ""),
-                        "label": v.get("label", self.unknown_label),
-                        **{
-                            key: value
-                            for key, value in v.items()
-                            if key not in ["motivation", "label"]
-                        },
-                    }
-                    # Add any extra keys present in v
-                    extra_keys = {
+            # for k, v in response.items():
+            #     try:
+            #         response_mapping[k] = {
+            #             "motivation": v.get("motivation", ""),
+            #             "label": v.get("label", self.unknown_label),
+            #             **{
+            #                 key: value
+            #                 for key, value in v.items()
+            #                 if key not in ["motivation", "label"]
+            #             },
+            #         }
+            #         # Add any extra keys present in v
+            #         extra_keys = {
+            #             key: value
+            #             for key, value in v.items()
+            #             if key not in ["motivation", "label"]
+            #         }
+            #         response_mapping[k].update(extra_keys)
+            #     except (KeyError, AttributeError):
+            #         response_mapping[k] = {
+            #             "motivation": "",
+            #             "label": self.unknown_label,
+            #         }
+            response_mapping.update(self._deserialize_label_response(response))
+
+        df_labels = self._convert_to_label_df(response_mapping)
+        
+        return df_labels
+    
+    def _convert_to_label_df(self, response_mapping: dict[str, Any]) -> DataFrame:
+        """Convert a labeling response dictionary to a DataFrame.
+
+        Args:
+            response: A response dictionary from the LLM collecting one or more parsed responses
+
+        Returns:
+            DataFrame with schema:
+            - index: sentence_id
+            - columns:
+                - motivation
+                - label
+        """
+        df_labels = DataFrame.from_dict(response_mapping, orient="index")
+        df_labels.index = df_labels.index.astype(int)
+        df_labels.sort_index(inplace=True)
+        return df_labels
+    
+    def _deserialize_label_response(self, response: dict[str, Any]) -> dict:
+        """mmm
+        """
+        response_mapping = {}
+        if not response or not isinstance(response, dict):
+                return response_mapping
+
+        for k, v in response.items():
+            try:
+                response_mapping[int(k)] = {
+                    "motivation": v.get("motivation", ""),
+                    "label": v.get("label", self.unknown_label),
+                    **{
                         key: value
                         for key, value in v.items()
                         if key not in ["motivation", "label"]
-                    }
-                    response_mapping[k].update(extra_keys)
-                except (KeyError, AttributeError):
-                    response_mapping[k] = {
-                        "motivation": "",
-                        "label": self.unknown_label,
-                    }
-
-        df_labels = DataFrame.from_dict(response_mapping, orient="index")
-        df_labels.index = df_labels.index.astype(int)
-        return df_labels
+                    },
+                }
+                # Add any extra keys present in v
+                extra_keys = {
+                    key: value
+                    for key, value in v.items()
+                    if key not in ["motivation", "label"]
+                }
+                response_mapping[int(k)].update(extra_keys)
+            except (KeyError, AttributeError):
+                response_mapping[int(k)] = {
+                    "motivation": "",
+                    "label": self.unknown_label,
+                }
+        return response_mapping
 
     def _run_labeling_prompts(
         self,
@@ -122,7 +173,8 @@ class Labeler:
         system_prompt: str,
         timeout: int | None,
         max_workers: int = 100,
-    ) -> list:
+        callback: Any = None,
+    ) -> dict:
         """
         Get the labels from the prompts.
 
@@ -131,9 +183,9 @@ class Labeler:
             system_prompt: System prompt for the LLM
             timeout: Timeout for each LLM request for concurrent calls
             max_workers: Maximum number of concurrent workers
-
+            callback: Callback function for handling responses
         Returns:
-            List of responses from the LLM
+            Dict of parsed responses from the LLM
         """
 
         # ADS-140
@@ -142,7 +194,7 @@ class Labeler:
         # We execute parallel calls using ThreadPoolExecutor for Bedrock and async calls for other providers.
         provider, _ = self.llm_model_config.model.split("::")
 
-        llm_kwargs = self.llm_model_config.get_llm_kwargs(remove_max_tokens=True)
+        llm_kwargs = self.llm_model_config.get_llm_kwargs(remove_max_tokens=True, remove_timeout=True)
 
         if provider == "bedrock":
             llm = LLMEngine(
@@ -163,62 +215,61 @@ class Labeler:
                 system_prompt,
                 timeout,
                 max_workers=max_workers,
+                callback=callback,
                 **llm_kwargs,
             )
+    
+    def parse_labeling_response(self, response: str) -> dict:
+        """
+        Parse the response from the LLM model used for labeling.
 
+        Args:
+            response: The response from the LLM model used for labeling,
+                as a raw string.
+        Returns:
+            Parsed dictionary. Will be empty if the parsing fails. Keys:
+                - motivation
+                - label
+        """
+        try:
+            # Improve json retrieval robustness by using a regex as first attempt
+            # to extract the json object from the response.
+            # If that fails, we use the json_repair library to try to fix common
+            # json formatting issues.
+            match = re.search(r'\{\s*"\d*":.*?\}\s*\}', response, re.DOTALL)
 
-def get_prompts_for_labeler(
-    texts: list[str],
-    textsconfig: list[dict[str, Any]] | None = None,
-) -> list[str]:
-    """
-    Generate a list of user messages for each text to be labelled by the labeling system.
+            if match:
+                response = match.group(0)
+            else:
+                response = repair_json(response, return_objects=False)
+            deserialized_response = loads(response)
+        except JSONDecodeError:
+            logger.error(f"Error deserializing response: {response}")
+            return {}
 
-    Example of generated prompts: [{"sentence_id": 0, "text": "Chunk 0 text here"},
-    {"sentence_id": 1, "text": "Chunk 1 text here"}, ...]
+        return deserialized_response
 
-    Args:
-        texts: texts to get the labels from.
-        textsconfig: Optional fields for the prompts in addition to the text.
+    def get_prompts_for_labeler(self, 
+        texts: list[str],
+        textsconfig: list[dict[str, Any]] | None = None,
+    ) -> list[str]:
+        """
+        Generate a list of user messages for each text to be labelled by the labeling system.
 
-    Returns:
-        A list of prompts for the labeling system.
-    """
-    textsconfig = textsconfig or []
-    return [
-        dumps({"sentence_id": i, **config, "text": text})
-        for i, (config, text) in enumerate(
-            zip_longest(textsconfig, texts, fillvalue={})
-        )
-    ]
+        Example of generated prompts: [{"sentence_id": 0, "text": "Chunk 0 text here"},
+        {"sentence_id": 1, "text": "Chunk 1 text here"}, ...]
 
+        Args:
+            texts: texts to get the labels from.
+            textsconfig: Optional fields for the prompts in addition to the text.
 
-def parse_labeling_response(response: str) -> dict:
-    """
-    Parse the response from the LLM model used for labeling.
-
-    Args:
-        response: The response from the LLM model used for labeling,
-            as a raw string.
-    Returns:
-        Parsed dictionary. Will be empty if the parsing fails. Keys:
-            - motivation
-            - label
-    """
-    try:
-        # Improve json retrieval robustness by using a regex as first attempt
-        # to extract the json object from the response.
-        # If that fails, we use the json_repair library to try to fix common
-        # json formatting issues.
-        match = re.search(r'\{\s*"\d*":.*?\}\s*\}', response, re.DOTALL)
-
-        if match:
-            response = match.group(0)
-        else:
-            response = repair_json(response, return_objects=False)
-        deserialized_response = loads(response)
-    except JSONDecodeError:
-        logger.error(f"Error deserializing response: {response}")
-        return {}
-
-    return deserialized_response
+        Returns:
+            A list of prompts for the labeling system.
+        """
+        textsconfig = textsconfig or []
+        return [
+            dumps({"sentence_id": i, **config, "text": text})
+            for i, (config, text) in enumerate(
+                zip_longest(textsconfig, texts, fillvalue={})
+            )
+        ]

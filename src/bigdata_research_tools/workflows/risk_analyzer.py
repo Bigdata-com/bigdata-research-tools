@@ -203,6 +203,9 @@ class RiskAnalyzer(Workflow):
             timeout=self.llm_model_config.timeout,
         )
 
+        print(f"Labeling completed. {len(df_labels)} labels generated.")
+        print(df_labels.head())
+
         # Merge and process results
         df = merge(df_sentences, df_labels, left_index=True, right_index=True)
 

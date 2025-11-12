@@ -77,13 +77,17 @@ class LLMConfig(BaseModel):
         return self
 
     def get_llm_kwargs(
-        self, remove_max_tokens: bool = False, remove_json_formatting: bool = False
+        self, remove_max_tokens: bool = False, remove_json_formatting: bool = False, remove_connection_config: bool = True, remove_timeout: bool = False
     ) -> dict:
         config_dict = self.model_dump()
         if remove_max_tokens:
             config_dict.pop("max_completion_tokens", None)
         if remove_json_formatting:
             config_dict.pop("response_format", None)
+        if remove_connection_config:
+            config_dict.pop("connection_config", None)
+        if remove_timeout:
+            config_dict.pop("timeout", None)
         # Remove None values and model key
         return {k: v for k, v in config_dict.items() if v is not None and k != "model"}
 
