@@ -61,13 +61,15 @@ class ScreenerLabeler(Labeler):
         system_prompt = self.label_prompt or get_screener_system_prompt(
             main_theme, labels, unknown_label=self.unknown_label
         )
-        prompts = get_prompts_for_labeler(texts)
+        prompts = self.get_prompts_for_labeler(texts, textsconfig)
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers, timeout=timeout
+            prompts, system_prompt, max_workers=max_workers, timeout=timeout, callback=[self.parse_labeling_response, self._deserialize_label_response]
         )
-        responses = [parse_labeling_response(response) for response in responses]
-        return self._deserialize_label_responses(responses)
+        #responses = [self.parse_labeling_response(response) for response in responses]
+        # return self._deserialize_label_responses(responses)
+
+        return self._convert_to_label_df(responses)
 
     def post_process_dataframe(
         self,
