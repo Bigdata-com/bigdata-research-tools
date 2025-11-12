@@ -25,6 +25,9 @@ class LLMConfig(BaseModel):
     presence_penalty: int | None = 0
     seed: int | None = 42
     max_completion_tokens: int | None = 300
+    timeout: int | None = Field(
+        default=60, description="Timeout for LLM requests in seconds.", ge=0
+    )
     connection_config: dict = Field(
         default_factory=dict,
         description="A pair of key-value connection configurations for the LLM provider, the contents will be passed as kwargs to the provider client.",

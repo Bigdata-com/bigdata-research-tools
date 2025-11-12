@@ -83,7 +83,7 @@ class RiskAnalyzer(Workflow):
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
         elif isinstance(llm_model_config, str):
-            self.llm_model_config = llm_model_config
+            self.llm_model_config = LLMConfig(model=llm_model_config)
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
 
@@ -200,6 +200,7 @@ class RiskAnalyzer(Workflow):
             labels=terminal_labels,
             texts=df_sentences["masked_text"].tolist(),
             textsconfig=prompt_fields,
+            timeout=self.llm_model_config.timeout,
         )
 
         # Merge and process results
