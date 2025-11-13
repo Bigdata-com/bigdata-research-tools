@@ -7,11 +7,11 @@ from time import sleep
 from bigdata_client.connection import RequestMaxLimitExceeds
 from bigdata_client.document import Document
 from bigdata_client.models.document import DocumentChunk
-from bigdata_client.models.entities import Concept
 from bigdata_client.query_type import QueryType
 from pydantic import ValidationError
 
 from bigdata_research_tools.client import bigdata_connection
+from bigdata_research_tools.search.models import BigdataEntity
 
 logger: Logger = getLogger(__name__)
 
@@ -38,7 +38,7 @@ def _collect_entity_keys(results: list[Document]) -> list[str]:
 
 def _look_up_entities_binary_search(
     entity_keys: list[str], max_batch_size: int = 50
-) -> list[Concept]:
+) -> list[BigdataEntity]:
     """
     Look up entities using the Bigdata Knowledge Graph in a binary search manner.
 
@@ -68,7 +68,7 @@ def _look_up_entities_binary_search(
 
         try:
             batch_lookup = bigdata.knowledge_graph.get_entities(batch)
-            entities.extend(batch_lookup)
+            entities.extend([BigdataEntity.from_sdk(ent) for ent in batch_lookup])
         except ValidationError as e:
             non_entities_found = findall(non_entity_key_pattern, str(e))
             non_entities.extend(non_entities_found)
@@ -105,7 +105,7 @@ def _look_up_entities_binary_search(
 
 def filter_search_results(
     results: list[list[Document]],
-) -> tuple[list[Document], list[Concept]]:
+) -> tuple[list[Document], list[BigdataEntity]]:
     """
     Postprocess the search results to filter only COMPANY entities.
 
@@ -114,7 +114,7 @@ def filter_search_results(
             the function `bigdata_research_tools.search.run_search` with the
             parameter `only_results` set to True
     Returns:
-        Tuple[List[Document], List[Concept]]: A tuple of the filtered
+        Tuple[List[Document], List[BigdataEntity]]: A tuple of the filtered
             search results and the entities.
     """
     # Flatten the list of result lists
@@ -127,7 +127,9 @@ def filter_search_results(
     return results, entities
 
 
-def build_chunk_entities(chunk: DocumentChunk, entities: list[Concept]) -> list[dict]:
+def build_chunk_entities(
+    chunk: DocumentChunk, entities: list[BigdataEntity]
+) -> list[dict]:
     entity_key_map = {entity.id: entity for entity in entities}
 
     chunk_entities = [

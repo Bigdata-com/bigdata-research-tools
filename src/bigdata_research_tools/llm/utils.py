@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Coroutine
+from typing import Any, Callable, Coroutine
 
 from openai import BadRequestError
 from tqdm import tqdm
@@ -30,7 +30,7 @@ def _log_llm_error_to_file(
     timestamp: str,
     chat_history: list,
     error: Exception,
-    prompt_idx: int = None,
+    prompt_idx: int | None = None,
 ):
     """
     Thread-safe logging of LLM errors to file.
@@ -66,9 +66,9 @@ def run_concurrent_prompts(
     system_prompt: str,
     timeout: int | None,
     max_workers: int = 30,
-    callback: Any = None,
+    processing_callbacks: list[Callable[[str], str]] | None = None,
     **kwargs,
-) -> dict:
+) -> list[str]:
     """
     Run the LLM on the received prompts, concurrently.
 
@@ -93,7 +93,7 @@ def run_concurrent_prompts(
             system_prompt,
             prompt,
             timeout=timeout,
-            callback=callback,
+            processing_callbacks=processing_callbacks,
             **kwargs,
         )
         for idx, prompt in enumerate(prompts)
@@ -108,9 +108,9 @@ async def _fetch_with_semaphore(
     system_prompt: str,
     prompt: str,
     timeout: int | None,
-    callback: Any = None,
+    processing_callbacks: list[Callable[[str], str]] | None = None,
     **kwargs,
-) -> tuple[int, dict]:
+) -> tuple[int, str]:
     """
     Fetch the response from the LLM engine with a semaphore.
 
@@ -122,7 +122,7 @@ async def _fetch_with_semaphore(
         system_prompt (str): The system prompt.
         prompt (str): The prompt to run.
         timeout (int | None): Timeout for the LLM request.
-        callback (Any): Optional callback function to be called with the index and response for each prompt.
+        processing_callbacks (list[Callable[[str], str]] | None): Optional callback function to be called with the index and response for each prompt.
         kwargs (dict): Additional arguments to pass to the `get_response` method of the LLMEngine.
 
     Returns:
@@ -149,8 +149,8 @@ async def _fetch_with_semaphore(
                 # ~3 took longer than 60 seconds, with up to 600 seconds
                 async with asyncio.timeout(timeout):
                     response = await llm_engine.get_response(chat_history, **kwargs)
-                    if callback is not None:
-                        for func in callback:
+                    if processing_callbacks is not None:
+                        for func in processing_callbacks:
                             response = func(response)
                 return idx, response
             except Exception as e:
@@ -163,7 +163,11 @@ async def _fetch_with_semaphore(
                         "Error occurred for response validation during LLM call. Retrying..."
                     )
                 elif isinstance(e, BadRequestError):
-                    if e.body["innererror"]["code"] == "ResponsibleAIPolicyViolation":
+                    # Check for ResponsibleAIPolicyViolation error on Azure OpenAI
+                    if (
+                        e.response.json().get("innererror", {}).get("code")
+                        == "ResponsibleAIPolicyViolation"
+                    ):
                         logger.error(
                             "LLM returned a ResponsibleAIPolicyViolation Error. Ignoring this response..."
                         )
@@ -172,7 +176,7 @@ async def _fetch_with_semaphore(
                         _log_llm_error_to_file(
                             _error_lock, log_file, timestamp, chat_history, e, idx
                         )
-                        return idx, {}  # Return empty response for policy violations
+                        return idx, ""  # Return empty response for policy violations
                 last_exception = e
                 await asyncio.sleep(retry_delay)
                 # Exponential backoff
@@ -180,20 +184,19 @@ async def _fetch_with_semaphore(
         logger.error(
             f"Failed to get response for prompt: {prompt} Error: {last_exception}"
         )
-        return idx, {}
+        return idx, ""
 
 
 async def _run_with_progress_bar(
-    tasks: list[Coroutine[Any, Any, tuple[int, dict]]],
-) -> dict:
+    tasks: list[Coroutine[Any, Any, tuple[int, str]]],
+) -> list[str]:
     """Run asyncio tasks with a tqdm progress bar."""
     # Pre-allocate a list for results to preserve order
-    results = {}  # ""] * len(tasks)
+    results = [""] * len(tasks)
     with tqdm(total=len(tasks), desc="Querying an LLM...") as pbar:
         for coro in asyncio.as_completed(tasks):
             idx, result = await coro
-            # results[idx] = result
-            results.update(result)
+            results[idx] = result
             # Update the progress bar
             pbar.update(1)
 
@@ -207,7 +210,7 @@ def run_parallel_prompts(
     prompts: list[str],
     system_prompt: str,
     max_workers: int = 30,
-    callback: Any = None,
+    processing_callbacks: list[Callable[[str], str]] | None = None,
     **kwargs,
 ) -> list[str]:
     """
@@ -218,7 +221,7 @@ def run_parallel_prompts(
         prompts (list[str]): List of prompts to run concurrently.
         system_prompt (str): The system prompt.
         max_workers (int): The maximum number of threads.
-        callback (Any): Optional callback function to be called with the index and response for each prompt.
+        processing_callbacks (list[Callable[[str], str]] | None): Optional callback function to be called with the index and response for each prompt.
         kwargs (dict): Additional arguments for get_response.
 
     Returns:

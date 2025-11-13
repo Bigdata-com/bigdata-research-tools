@@ -1,8 +1,9 @@
+import json
 import re
 from itertools import zip_longest
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
-from typing import Any
+from typing import Any, Callable
 
 from json_repair import repair_json
 from pandas import DataFrame
@@ -67,57 +68,7 @@ class Labeler:
                 response_format={"type": "json_object"},
             )
 
-    def _deserialize_label_responses(
-        self, responses: list[dict[str, Any]]
-    ) -> DataFrame:
-        """
-        Deserialize labeling responses into a DataFrame.
-
-        Args:
-            responses: List of response dictionaries from the LLM.
-
-        Returns:
-            DataFrame with schema:
-            - index: sentence_id
-            - columns:
-                - motivation
-                - label
-        """
-        response_mapping = {}
-        for response in responses:
-            # if not response or not isinstance(response, dict):
-            #     continue
-
-            # for k, v in response.items():
-            #     try:
-            #         response_mapping[k] = {
-            #             "motivation": v.get("motivation", ""),
-            #             "label": v.get("label", self.unknown_label),
-            #             **{
-            #                 key: value
-            #                 for key, value in v.items()
-            #                 if key not in ["motivation", "label"]
-            #             },
-            #         }
-            #         # Add any extra keys present in v
-            #         extra_keys = {
-            #             key: value
-            #             for key, value in v.items()
-            #             if key not in ["motivation", "label"]
-            #         }
-            #         response_mapping[k].update(extra_keys)
-            #     except (KeyError, AttributeError):
-            #         response_mapping[k] = {
-            #             "motivation": "",
-            #             "label": self.unknown_label,
-            #         }
-            response_mapping.update(self._deserialize_label_response(response))
-
-        df_labels = self._convert_to_label_df(response_mapping)
-
-        return df_labels
-
-    def _convert_to_label_df(self, response_mapping: dict[str, Any]) -> DataFrame:
+    def _convert_to_label_df(self, response_mapping: list[str]) -> DataFrame:
         """Convert a labeling response dictionary to a DataFrame.
 
         Args:
@@ -130,16 +81,19 @@ class Labeler:
                 - motivation
                 - label
         """
-        df_labels = DataFrame.from_dict(response_mapping, orient="index")
+        responses_json = {}
+        for response in response_mapping:
+            responses_json.update(json.loads(response))
+        df_labels = DataFrame.from_dict(responses_json, orient="index")
         df_labels.index = df_labels.index.astype(int)
         df_labels.sort_index(inplace=True)
         return df_labels
 
-    def _deserialize_label_response(self, response: dict[str, Any]) -> dict:
-        """mmm"""
+    def _deserialize_label_response(self, response: str) -> str:
+        response = json.loads(response)
         response_mapping = {}
         if not response or not isinstance(response, dict):
-            return response_mapping
+            raise ValueError("Response is empty or not a dictionary")
 
         for k, v in response.items():
             try:
@@ -164,7 +118,7 @@ class Labeler:
                     "motivation": "",
                     "label": self.unknown_label,
                 }
-        return response_mapping
+        return str(response_mapping)
 
     def _run_labeling_prompts(
         self,
@@ -172,8 +126,8 @@ class Labeler:
         system_prompt: str,
         timeout: int | None,
         max_workers: int = 100,
-        callback: Any = None,
-    ) -> dict:
+        processing_callbacks: list[Callable[[str], str]] | None = None,
+    ) -> list[str]:
         """
         Get the labels from the prompts.
 
@@ -182,7 +136,7 @@ class Labeler:
             system_prompt: System prompt for the LLM
             timeout: Timeout for each LLM request for concurrent calls
             max_workers: Maximum number of concurrent workers
-            callback: Callback function for handling responses
+            processing_callbacks: Callback function for handling responses
         Returns:
             Dict of parsed responses from the LLM
         """
@@ -216,11 +170,11 @@ class Labeler:
                 system_prompt,
                 timeout,
                 max_workers=max_workers,
-                callback=callback,
+                processing_callbacks=processing_callbacks,
                 **llm_kwargs,
             )
 
-    def parse_labeling_response(self, response: str) -> dict:
+    def parse_labeling_response(self, response: str) -> str:
         """
         Parse the response from the LLM model used for labeling.
 
@@ -246,9 +200,9 @@ class Labeler:
             deserialized_response = loads(response)
         except JSONDecodeError:
             logger.error(f"Error deserializing response: {response}")
-            return {}
+            return ""
 
-        return deserialized_response
+        return str(deserialized_response)
 
     def get_prompts_for_labeler(
         self,
