@@ -33,15 +33,20 @@ def run_concurrent_prompts(
     Returns:
         list[str]: The list of responses from the LLM model, each in the same order as the prompts.
     """
-    semaphore = asyncio.Semaphore(max_workers)
-    logger.info(f"Running {len(prompts)} prompts concurrently")
-    tasks = [
-        _fetch_with_semaphore(
-            idx, llm_engine, semaphore, system_prompt, prompt, **kwargs
-        )
-        for idx, prompt in enumerate(prompts)
-    ]
-    return asyncio.run(_run_with_progress_bar(tasks))
+
+    async def _run_async():
+        # Create semaphore INSIDE the event loop
+        semaphore = asyncio.Semaphore(max_workers)
+        logger.info(f"Running {len(prompts)} prompts concurrently")
+        tasks = [
+            _fetch_with_semaphore(
+                idx, llm_engine, semaphore, system_prompt, prompt, **kwargs
+            )
+            for idx, prompt in enumerate(prompts)
+        ]
+        return await _run_with_progress_bar(tasks)
+
+    return asyncio.run(_run_async())
 
 
 async def _fetch_with_semaphore(
