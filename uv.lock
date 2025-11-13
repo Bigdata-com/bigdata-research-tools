@@ -318,7 +318,7 @@ wheels = [
 
 [[package]]
 name = "bigdata-research-tools"
-version = "0.21.0"
+version = "0.21.1"
 source = { editable = "." }
 dependencies = [
     { name = "bigdata-client" },
