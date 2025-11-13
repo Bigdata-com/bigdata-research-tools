@@ -19,4 +19,4 @@ format-check:
 	@uvx ruff format --check bigdata_thematic_screener/ tests/
 
 type-check:
-	@uvx ty check --python-version 3.13 src/bigdata_research_tools/ examples/ tests/ # tutorial/ # Fix version to 3.13 due to this issue https://github.com/astral-sh/ty/issues/1355 # Ignore tutorials, the issues come from this open issue https://github.com/astral-sh/ty/issues/1297
+	@uvx ty@0.0.1a26 check --python-version 3.13 src/bigdata_research_tools/ examples/ tests/ # tutorial/ # Fix version to 3.13 due to this issue https://github.com/astral-sh/ty/issues/1355 # Ignore tutorials, the issues come from this open issue https://github.com/astral-sh/ty/issues/1297
