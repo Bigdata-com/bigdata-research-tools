@@ -8,7 +8,16 @@ from logging import Logger, getLogger
 from pathlib import Path
 from typing import Any, Callable, Coroutine
 
-from openai import BadRequestError
+import httpx
+
+try:
+    from openai import BadRequestError  # ty: ignore[unresolved-import]
+except ImportError:
+    # Fallback, this wont work for actual OpenAI calls but avoids import errors
+    class BadRequestError(Exception):
+        response: httpx.Response
+
+
 from tqdm import tqdm
 
 from bigdata_research_tools.llm.base import AsyncLLMEngine
