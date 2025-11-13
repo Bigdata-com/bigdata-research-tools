@@ -4,7 +4,7 @@ import asyncio
 import random
 import time
 from json import loads
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Union
 
 try:
     from azure.identity import DefaultAzureCredential, get_bearer_token_provider
@@ -84,7 +84,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -213,7 +213,7 @@ class AzureProvider(LLMProvider):
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:

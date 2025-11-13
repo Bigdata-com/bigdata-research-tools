@@ -5,7 +5,7 @@ Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
 """
 
 from logging import Logger, getLogger
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pandas import DataFrame, Series
 
@@ -29,7 +29,7 @@ class ScreenerLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model: str | LLMEngine,
+        llm_model: Union[str, LLMEngine],
         label_prompt: Optional[str] = None,
         unknown_label: str = "unclear",
         temperature: float = 0,

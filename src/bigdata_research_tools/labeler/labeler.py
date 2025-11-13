@@ -8,7 +8,7 @@ import re
 from itertools import zip_longest
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from json_repair import repair_json
 from pandas import DataFrame
@@ -27,7 +27,7 @@ class Labeler:
 
     def __init__(
         self,
-        llm_model: str | LLMEngine,
+        llm_model: Union[str, LLMEngine],
         # Note that his value is also used in the prompts.
         unknown_label: str = "unclear",
         temperature: float = 0,

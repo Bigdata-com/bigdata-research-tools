@@ -1,3 +1,4 @@
+from typing import Optional
 from collections import namedtuple
 
 from bigdata_client.models.watchlists import Watchlist
@@ -5,7 +6,7 @@ from bigdata_client import Bigdata
 
 from bigdata_research_tools.utils.distance import levenshtein_distance
 
-def fuzzy_find_watchlist_by_name(name: str, bigdata: Bigdata, only_private: bool = False, max_distance: int = 2) -> Watchlist | None:
+def fuzzy_find_watchlist_by_name(name: str, bigdata: Bigdata, only_private: bool = False, max_distance: int = 2) -> Optional[Watchlist]:
     watchlists = bigdata.watchlists.list(owned=only_private)
     WlScore = namedtuple("WlScore", ["watchlist", "score"])
     scored_list: list[WlScore] = []
@@ -21,7 +22,7 @@ def fuzzy_find_watchlist_by_name(name: str, bigdata: Bigdata, only_private: bool
     scored_list.sort(key=lambda x: x.score)
     return scored_list[0].watchlist
 
-def find_watchlist_by_name(name: str, bigdata: Bigdata, only_private: bool = False) -> Watchlist | None:
+def find_watchlist_by_name(name: str, bigdata: Bigdata, only_private: bool = False) -> Optional[Watchlist]:
     watchlists = bigdata.watchlists.list(owned=only_private)
     for wl in watchlists:
         if wl.name.lower() == name.lower():

@@ -1,6 +1,6 @@
 from datetime import datetime
 from logging import Logger, getLogger
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from bigdata_client.models.search import DocumentType
 from pandas import merge
@@ -29,7 +29,7 @@ class NarrativeMiner(Workflow):
         narrative_sentences: List[str],
         start_date: str,
         end_date: str,
-        llm_model: str | LLMEngine,
+        llm_model: Union[str, LLMEngine],
         document_type: DocumentType,
         fiscal_year: Optional[int],
         sources: Optional[List[str]] = None,
