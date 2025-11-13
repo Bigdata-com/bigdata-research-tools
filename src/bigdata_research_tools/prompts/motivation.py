@@ -1,6 +1,5 @@
-from enum import Enum
 import random
-import pandas as pd
+from enum import Enum
 
 
 class MotivationType(str, Enum):
@@ -94,7 +93,9 @@ def get_motivation_prompt(
     # Sample only up to max_data_points quotes to avoid overly long prompts
     if len(data["quotes_and_labels"]) > max_data_points:
         random.seed(42)
-        data["quotes_and_labels"] = random.sample(data["quotes_and_labels"], max_data_points)
+        data["quotes_and_labels"] = random.sample(
+            data["quotes_and_labels"], max_data_points
+        )
 
     label_summary = "\n".join(
         [f"- {label}: {count} quotes" for label, count in data["label_counts"]]

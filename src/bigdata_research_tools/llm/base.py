@@ -77,7 +77,11 @@ class LLMConfig(BaseModel):
         return self
 
     def get_llm_kwargs(
-        self, remove_max_tokens: bool = False, remove_json_formatting: bool = False, remove_connection_config: bool = True, remove_timeout: bool = False
+        self,
+        remove_max_tokens: bool = False,
+        remove_json_formatting: bool = False,
+        remove_connection_config: bool = True,
+        remove_timeout: bool = False,
     ) -> dict:
         config_dict = self.model_dump()
         if remove_max_tokens:

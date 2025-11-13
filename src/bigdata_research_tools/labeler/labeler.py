@@ -114,9 +114,9 @@ class Labeler:
             response_mapping.update(self._deserialize_label_response(response))
 
         df_labels = self._convert_to_label_df(response_mapping)
-        
+
         return df_labels
-    
+
     def _convert_to_label_df(self, response_mapping: dict[str, Any]) -> DataFrame:
         """Convert a labeling response dictionary to a DataFrame.
 
@@ -134,13 +134,12 @@ class Labeler:
         df_labels.index = df_labels.index.astype(int)
         df_labels.sort_index(inplace=True)
         return df_labels
-    
+
     def _deserialize_label_response(self, response: dict[str, Any]) -> dict:
-        """mmm
-        """
+        """mmm"""
         response_mapping = {}
         if not response or not isinstance(response, dict):
-                return response_mapping
+            return response_mapping
 
         for k, v in response.items():
             try:
@@ -194,7 +193,9 @@ class Labeler:
         # We execute parallel calls using ThreadPoolExecutor for Bedrock and async calls for other providers.
         provider, _ = self.llm_model_config.model.split("::")
 
-        llm_kwargs = self.llm_model_config.get_llm_kwargs(remove_max_tokens=True, remove_timeout=True)
+        llm_kwargs = self.llm_model_config.get_llm_kwargs(
+            remove_max_tokens=True, remove_timeout=True
+        )
 
         if provider == "bedrock":
             llm = LLMEngine(
@@ -218,7 +219,7 @@ class Labeler:
                 callback=callback,
                 **llm_kwargs,
             )
-    
+
     def parse_labeling_response(self, response: str) -> dict:
         """
         Parse the response from the LLM model used for labeling.
@@ -249,7 +250,8 @@ class Labeler:
 
         return deserialized_response
 
-    def get_prompts_for_labeler(self, 
+    def get_prompts_for_labeler(
+        self,
         texts: list[str],
         textsconfig: list[dict[str, Any]] | None = None,
     ) -> list[str]:

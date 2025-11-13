@@ -1,19 +1,20 @@
 import asyncio
 import json
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from logging import Logger, getLogger
 from pathlib import Path
 from typing import Any, Coroutine
-import threading
 
+from openai import BadRequestError
 from tqdm import tqdm
 
 from bigdata_research_tools.llm.base import AsyncLLMEngine
-from openai import BadRequestError
 
 logger: Logger = getLogger(__name__)
+
 
 def initialize_llm_error_log():
     # Ensure output directory exists
@@ -22,10 +23,18 @@ def initialize_llm_error_log():
     log_file = output_dir / "llm_error_logs.txt"
     return log_file
 
-def _log_llm_error_to_file(lock: threading.Lock, log_file: Path, timestamp: str, chat_history: list, error: Exception, prompt_idx: int = None):
+
+def _log_llm_error_to_file(
+    lock: threading.Lock,
+    log_file: Path,
+    timestamp: str,
+    chat_history: list,
+    error: Exception,
+    prompt_idx: int = None,
+):
     """
     Thread-safe logging of LLM errors to file.
-    
+
     Args:
         timestamp (str): ISO format timestamp of the error
         chat_history (list): The chat history that caused the error
@@ -37,13 +46,17 @@ def _log_llm_error_to_file(lock: threading.Lock, log_file: Path, timestamp: str,
         "prompt_index": prompt_idx,
         "chat_history": chat_history,
         "error_type": type(error).__name__,
-        "error_details": getattr(error, 'body', None) if hasattr(error, 'body') else None
+        "error_details": getattr(error, "body", None)
+        if hasattr(error, "body")
+        else None,
     }
-    
+
     # Thread-safe file writing
     with lock:
         with open(log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry, indent=2, default=str) + "\n" + "="*80 + "\n")
+            f.write(
+                json.dumps(log_entry, indent=2, default=str) + "\n" + "=" * 80 + "\n"
+            )
 
 
 # https://platform.openai.com/docs/guides/batch
@@ -74,7 +87,14 @@ def run_concurrent_prompts(
     logger.info(f"Running {len(prompts)} prompts concurrently")
     tasks = [
         _fetch_with_semaphore(
-            idx, llm_engine, semaphore, system_prompt, prompt, timeout=timeout, callback=callback, **kwargs
+            idx,
+            llm_engine,
+            semaphore,
+            system_prompt,
+            prompt,
+            timeout=timeout,
+            callback=callback,
+            **kwargs,
         )
         for idx, prompt in enumerate(prompts)
     ]
@@ -140,16 +160,18 @@ async def _fetch_with_semaphore(
                     )
                 elif isinstance(e, ValueError):
                     logger.warning(
-                        f"Error occurred for response validation during LLM call. Retrying..."
+                        "Error occurred for response validation during LLM call. Retrying..."
                     )
                 elif isinstance(e, BadRequestError):
-                    if e.body['innererror']['code'] == 'ResponsibleAIPolicyViolation':
+                    if e.body["innererror"]["code"] == "ResponsibleAIPolicyViolation":
                         print(
-                        f"LLM returned a ResponsibleAIPolicyViolation Error. Ignoring this response..."
-                    )
+                            "LLM returned a ResponsibleAIPolicyViolation Error. Ignoring this response..."
+                        )
                         # Log the error to file
                         timestamp = datetime.now().isoformat()
-                        _log_llm_error_to_file(_error_lock, log_file, timestamp, chat_history, e, idx)
+                        _log_llm_error_to_file(
+                            _error_lock, log_file, timestamp, chat_history, e, idx
+                        )
                         return idx, {}  # Return empty response for policy violations
                 last_exception = e
                 await asyncio.sleep(retry_delay)
@@ -166,16 +188,17 @@ async def _run_with_progress_bar(
 ) -> dict:
     """Run asyncio tasks with a tqdm progress bar."""
     # Pre-allocate a list for results to preserve order
-    results = {} #""] * len(tasks)
+    results = {}  # ""] * len(tasks)
     with tqdm(total=len(tasks), desc="Querying an LLM...") as pbar:
         for coro in asyncio.as_completed(tasks):
             idx, result = await coro
-            #results[idx] = result
+            # results[idx] = result
             results.update(result)
             # Update the progress bar
             pbar.update(1)
 
     return results
+
 
 # ADS-140
 # Added function to run synchronous LLM calls in parallel using threads.

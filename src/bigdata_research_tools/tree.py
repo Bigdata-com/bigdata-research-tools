@@ -364,7 +364,9 @@ def generate_theme_tree(
     logger.debug(f"LLM Model Config: {llm_model_config}")
 
     model_str = llm_model_config.model
-    chat_params = llm_model_config.get_llm_kwargs(remove_max_tokens=True, remove_timeout=True)
+    chat_params = llm_model_config.get_llm_kwargs(
+        remove_max_tokens=True, remove_timeout=True
+    )
     llm = LLMEngine(model=model_str, **llm_model_config.connection_config)
 
     system_prompt = compose_themes_system_prompt(main_theme, analyst_focus=focus)
@@ -448,7 +450,9 @@ def generate_risk_tree(
     logger.debug(f"LLM Model Config: {llm_model_config}")
 
     model_str = llm_model_config.model
-    chat_params = llm_model_config.get_llm_kwargs(remove_max_tokens=True, remove_timeout=True)
+    chat_params = llm_model_config.get_llm_kwargs(
+        remove_max_tokens=True, remove_timeout=True
+    )
     llm = LLMEngine(model=model_str, **llm_model_config.connection_config)
 
     system_prompt = compose_risk_system_prompt_focus(main_theme, focus)
