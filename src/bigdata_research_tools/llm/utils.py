@@ -164,7 +164,7 @@ async def _fetch_with_semaphore(
                     )
                 elif isinstance(e, BadRequestError):
                     if e.body["innererror"]["code"] == "ResponsibleAIPolicyViolation":
-                        print(
+                        logger.error(
                             "LLM returned a ResponsibleAIPolicyViolation Error. Ignoring this response..."
                         )
                         # Log the error to file
