@@ -8,14 +8,15 @@ from logging import Logger, getLogger
 from pathlib import Path
 from typing import Any, Callable, Coroutine
 
-import httpx
-
 try:
     from openai import BadRequestError  # ty: ignore[unresolved-import]
 except ImportError:
     # Fallback, this wont work for actual OpenAI calls but avoids import errors
+    class hasJsonBody:
+        def json(self) -> dict:
+            return {}
     class BadRequestError(Exception):
-        response: httpx.Response
+        response: hasJsonBody
 
 
 from tqdm import tqdm
