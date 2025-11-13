@@ -122,7 +122,7 @@ class NarrativeMiner(Workflow):
             df_labels = labeler.get_labels(
                 self.narrative_sentences,
                 texts=df_sentences["text"].tolist(),
-                timeout=self.llm_model_config.timeout
+                timeout=self.llm_model_config.timeout,
             )
             self.notify_observers(
                 f"Labelling completed. {len(df_labels)} labels generated."

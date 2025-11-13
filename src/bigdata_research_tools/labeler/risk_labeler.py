@@ -71,9 +71,13 @@ class RiskLabeler(Labeler):
         prompts = self.get_prompts_for_labeler(texts, textsconfig)
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers, timeout=timeout, callback=[self.parse_labeling_response, self._deserialize_label_response]
+            prompts,
+            system_prompt,
+            max_workers=max_workers,
+            timeout=timeout,
+            callback=[self.parse_labeling_response, self._deserialize_label_response],
         )
-        #responses = [self.parse_labeling_response(response) for response in responses]
+        # responses = [self.parse_labeling_response(response) for response in responses]
         # return self._deserialize_label_responses(responses)
 
         return self._convert_to_label_df(responses)

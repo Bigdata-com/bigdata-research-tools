@@ -136,7 +136,9 @@ class Motivation:
 
         motivation = self.llm_engine.get_response(
             chat_history=chat_history,
-            **self.llm_model_config.get_llm_kwargs(remove_json_formatting=True, remove_timeout=True),
+            **self.llm_model_config.get_llm_kwargs(
+                remove_json_formatting=True, remove_timeout=True
+            ),
         )
 
         return motivation.strip()
