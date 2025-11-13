@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from abc import ABC, abstractmethod
 from logging import Logger, getLogger
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Union
 
 logger: Logger = getLogger(__name__)
 
@@ -27,7 +27,7 @@ class AsyncLLMProvider(ABC):
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -114,7 +114,7 @@ class AsyncLLMEngine:
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -156,7 +156,7 @@ class LLMProvider(ABC):
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -241,7 +241,7 @@ class LLMEngine:
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:

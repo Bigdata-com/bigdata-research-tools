@@ -111,7 +111,7 @@ class AsyncBedrockProvider(AsyncLLMProvider):
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -272,7 +272,7 @@ class BedrockProvider(LLMProvider):
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:

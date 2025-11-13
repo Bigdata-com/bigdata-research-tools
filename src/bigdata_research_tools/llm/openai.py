@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from json import loads
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Union
 
 try:
     from openai import AsyncOpenAI, OpenAI
@@ -62,7 +62,7 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -170,7 +170,7 @@ class OpenAIProvider(LLMProvider):
         tools: list[dict[str, str]],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[str, Union[list[dict], str]]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:

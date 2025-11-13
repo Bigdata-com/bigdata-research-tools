@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 from importlib.metadata import version
 from logging import Logger, getLogger
 
@@ -31,7 +32,7 @@ class WorkflowTraceEvent(BaseModel, TraceEventABC):
     start_date: datetime
     end_date: datetime
     name: str
-    llm_model: str | None
+    llm_model: Optional[str]
     status: WorkflowStatus
 
     @computed_field
