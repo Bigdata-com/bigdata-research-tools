@@ -68,10 +68,11 @@ class ScreenerLabeler(Labeler):
             system_prompt,
             max_workers=max_workers,
             timeout=timeout,
-            callback=[self.parse_labeling_response, self._deserialize_label_response],
+            processing_callbacks=[
+                self.parse_labeling_response,
+                self._deserialize_label_response,
+            ],
         )
-        # responses = [self.parse_labeling_response(response) for response in responses]
-        # return self._deserialize_label_responses(responses)
 
         return self._convert_to_label_df(responses)
 

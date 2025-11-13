@@ -1,11 +1,11 @@
 from logging import Logger, getLogger
 
 from bigdata_client.document import Document
-from bigdata_client.models.entities import Concept
 from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
 
+from bigdata_research_tools.search.models import BigdataEntity
 from bigdata_research_tools.search.query_builder import (
     EntitiesToSearch,
     build_batched_query,
@@ -120,7 +120,7 @@ def search_narratives(
 
 def _process_narrative_search(
     results: list[Document],
-    entities: list[Concept],
+    entities: list[BigdataEntity],
 ) -> DataFrame:
     """
     Build a dataframe for when no companies are specified.

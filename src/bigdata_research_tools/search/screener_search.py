@@ -2,7 +2,7 @@ from datetime import datetime
 from logging import Logger, getLogger
 
 from bigdata_client.document import Document
-from bigdata_client.models.entities import Company, Concept
+from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType, SortBy
 from pandas import DataFrame
 from tqdm import tqdm
@@ -12,6 +12,7 @@ from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
     get_target_entity_placeholder,
 )
+from bigdata_research_tools.search.models import BigdataEntity
 from bigdata_research_tools.search.query_builder import (
     EntitiesToSearch,
     build_batched_query,
@@ -192,15 +193,15 @@ def search_by_companies(
 
 
 def filter_company_entities(
-    entities: list[Concept],
-) -> tuple[list[Concept], list[Concept]]:
+    entities: list[BigdataEntity],
+) -> tuple[list[BigdataEntity], list[BigdataEntity]]:
     """
     Filter only COMPANY entities from the list of entities.
 
     Args:
-        entities (List[Concept]): A list of entities to filter.
+        entities (List[BigdataEntity]): A list of entities to filter.
     Returns:
-        List[Concept]: A list of COMPANY entities.
+        List[BigdataEntity]: A list of COMPANY entities.
     """
     return [
         entity
@@ -215,8 +216,8 @@ def filter_company_entities(
 
 def process_screener_search_results(
     results: list[Document],
-    entities: list[Concept],
-    topics: list[Concept],
+    entities: list[BigdataEntity],
+    topics: list[BigdataEntity],
     companies: list[Company] | None = None,
     document_type: DocumentType = DocumentType.NEWS,
 ) -> DataFrame:
