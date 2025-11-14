@@ -118,7 +118,7 @@ class Labeler:
                     "motivation": "",
                     "label": self.unknown_label,
                 }
-        return str(response_mapping)
+        return json.dumps(response_mapping)
 
     def _run_labeling_prompts(
         self,
@@ -202,7 +202,7 @@ class Labeler:
             logger.error(f"Error deserializing response: {response}")
             return ""
 
-        return str(deserialized_response)
+        return json.dumps(deserialized_response)
 
     def get_prompts_for_labeler(
         self,
