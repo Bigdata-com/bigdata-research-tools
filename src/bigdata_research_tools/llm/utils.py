@@ -15,6 +15,7 @@ except ImportError:
     class hasJsonBody:
         def json(self) -> dict:
             return {}
+
     class BadRequestError(Exception):
         response: hasJsonBody
 
