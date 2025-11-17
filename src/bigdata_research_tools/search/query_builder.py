@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Iterator, Type, TypeVar
+from typing import Callable, Iterator, Literal, Type, TypeVar, overload
 
 import pandas as pd
 from bigdata_client.daterange import AbsoluteDateRange
@@ -509,6 +509,21 @@ def create_date_intervals(
     )
 
     return intervals
+
+
+@overload
+def create_date_ranges(
+    start_date: str, end_date: str, frequency: str, return_datetime: Literal[True]
+) -> list[tuple[datetime, datetime]]: ...
+
+
+@overload
+def create_date_ranges(
+    start_date: str,
+    end_date: str,
+    frequency: str,
+    return_datetime: Literal[False] = False,
+) -> list[AbsoluteDateRange]: ...
 
 
 def create_date_ranges(
