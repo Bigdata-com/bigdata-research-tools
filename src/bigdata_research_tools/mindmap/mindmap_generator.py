@@ -681,7 +681,11 @@ class MindMapGenerator:
         """
         doctexts = []
         for (text_query, date_range), result in results.items():
-            docstr = f"###Query: {text_query}\n ### Results:\n"
+            for item in text_query.items:
+                dictitem = item.to_dict()
+                if dictitem['type']=='similarity':
+                    sentence = dictitem['value']
+            docstr = f"###Query: {sentence}\n ### Results:\n"
             for doc in result:
                 headline = getattr(doc, "headline", "No headline")
                 docstr += f"## {headline}\n\n##"

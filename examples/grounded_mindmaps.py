@@ -93,9 +93,9 @@ def main(MAIN_THEME = "Political Change in Japan.",
     logger.info("=" * 60)
 
     try:
-        # base_mindmap = test_one_shot_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, llm_base_config="openai::gpt-4o-mini")
-        # test_refined_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, base_mindmap, llm_base_config="openai::o3-mini")
-        # test_refined_mindmap2(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, base_mindmap, llm_base_config="openai::o3-mini")
+        base_mindmap = test_one_shot_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, llm_base_config="openai::gpt-4o-mini")
+        test_refined_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, base_mindmap, llm_base_config="openai::o3-mini")
+        test_refined_mindmap2(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, base_mindmap, llm_base_config="openai::o3-mini")
         test_dynamic_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, llm_base_config="openai::gpt-4o-mini", llm_reasoning_config="openai::o3-mini")
 
         logger.info("=" * 60)
