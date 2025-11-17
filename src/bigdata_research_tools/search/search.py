@@ -34,6 +34,7 @@ INPUT_DATE_RANGE = Union[
     tuple[datetime, datetime],
     RollingDateRange,
     list[tuple[datetime, datetime] | RollingDateRange],
+    AbsoluteDateRange,
 ]
 SEARCH_QUERY_RESULTS_TYPE = dict[
     tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], list[Document]
@@ -185,7 +186,7 @@ class SearchManager:
     def concurrent_search(
         self,
         queries: list[QueryComponent],
-        date_ranges: list[tuple[datetime, datetime] | RollingDateRange],
+        date_ranges: list[tuple[datetime, datetime] | RollingDateRange | AbsoluteDateRange],
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
@@ -244,7 +245,13 @@ class SearchManager:
                 as_completed(futures), total=len(futures), desc="Querying Bigdata..."
             ):
                 query, date_range = futures[future]
+                
                 try:
+                    if isinstance(date_range, AbsoluteDateRange):
+                        date_range = f"{date_range.start_dt.isoformat()}_{date_range.end_dt.isoformat()}"
+                    elif isinstance(date_range, tuple):
+                        date_range = f"{date_range[0].isoformat()}_{date_range[1].isoformat()}"
+
                     results[(query, date_range)] = future.result()
                 except Exception as e:
                     raise e
@@ -265,7 +272,7 @@ class SearchManager:
 
 def normalize_date_range(
     date_ranges: INPUT_DATE_RANGE,
-) -> list[tuple[datetime, datetime] | RollingDateRange]:
+) -> list[tuple[datetime, datetime] | RollingDateRange | AbsoluteDateRange]:
     if not isinstance(date_ranges, list):
         date_ranges = [date_ranges]
 
@@ -335,7 +342,8 @@ def run_search(
         the list of the corresponding search results.
     """
     date_ranges = normalize_date_range(date_ranges)
-    date_ranges.sort(key=lambda x: x[0])
+    if isinstance(date_ranges[0], tuple) or isinstance(date_ranges[0], list):
+        date_ranges.sort(key=lambda x: x[0])
 
     workflow_start = datetime.now()
     workflow_status = WorkflowStatus.UNKNOWN

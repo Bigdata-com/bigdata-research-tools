@@ -245,7 +245,6 @@ class LLMProvider(ABC):
         self,
         chat_history: list[dict[str, str]],
         tools: list[dict[str, str]],
-        temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:
         """
@@ -332,7 +331,6 @@ class LLMEngine:
         self,
         chat_history: list[dict[str, str]],
         tools: list[dict[str, str]],
-        temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:
         """
@@ -353,7 +351,7 @@ class LLMEngine:
                 - text (str): The text content of the message, if any.
         """
         return self.provider.get_tools_response(
-            chat_history, tools, temperature, **kwargs
+            chat_history, tools, **kwargs
         )
 
 

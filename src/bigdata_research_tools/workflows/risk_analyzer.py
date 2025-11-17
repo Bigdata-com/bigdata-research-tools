@@ -17,8 +17,8 @@ from bigdata_research_tools.tracing import (
     WorkflowTraceEvent,
     send_trace,
 )
-from bigdata_research_tools.tree import (
-    SemanticTree,
+from bigdata_research_tools.mindmap.mindmap import (
+    MindMap,
     generate_risk_tree,
 )
 from bigdata_research_tools.workflows.base import Workflow
@@ -90,7 +90,7 @@ class RiskAnalyzer(Workflow):
     def create_taxonomy(self):
         """Create a risk taxonomy based on the main theme and focus.
         Returns:
-            SemanticTree: The generated risk tree.
+            MindMap: The generated risk tree.
             List[str]: A list of risk summaries for the terminal nodes.
             List[str]: A list of terminal labels for the risk categories.
         """
@@ -174,7 +174,7 @@ class RiskAnalyzer(Workflow):
         self,
         df_sentences,
         terminal_labels,
-        risk_tree: SemanticTree,
+        risk_tree: MindMap,
         additional_prompt_fields: list[str] | None = None,
     ):
         """
@@ -183,7 +183,7 @@ class RiskAnalyzer(Workflow):
         Args:
             df_sentences (DataFrame): The DataFrame containing the search results.
             terminal_labels (List[str]): The terminal labels for the risk categories.
-            risk_tree (SemanticTree): The SemanticTree object containing the risk taxonomy.
+            risk_tree (MindMap): The MindMap object containing the risk taxonomy.
             prompt_fields (Dict): Additional fields to be used in the labeling prompt.
 
         Returns:
@@ -273,7 +273,7 @@ class RiskAnalyzer(Workflow):
         df_company: DataFrame,
         df_industry: DataFrame,
         motivation_df: DataFrame,
-        risk_tree: SemanticTree,
+        risk_tree: MindMap,
         export_path: str,
     ):
         """
@@ -330,7 +330,7 @@ class RiskAnalyzer(Workflow):
             - df_company: The DataFrame with the output by company.
             - df_industry: The DataFrame with the output by industry.
             - df_motivation: The DataFrame with the generated motivations.
-            - risk_tree: The SemanticTree created for the screening.
+            - risk_tree: The MindMap created for the screening.
         """
 
         if export_path and not check_excel_dependencies():

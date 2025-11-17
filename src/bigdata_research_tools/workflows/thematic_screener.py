@@ -17,7 +17,7 @@ from bigdata_research_tools.tracing import (
     WorkflowTraceEvent,
     send_trace,
 )
-from bigdata_research_tools.tree import generate_theme_tree
+from bigdata_research_tools.mindmap.mindmap import generate_theme_tree
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
 

@@ -59,7 +59,6 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
         self,
         chat_history: list[dict[str, str]],
         tools: list[dict[str, str]],
-        temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:
         """
@@ -85,7 +84,6 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
             messages=chat_history,
             model=self.model,
             tools=tools,
-            temperature=temperature,
             **kwargs,
         )
         message = response.choices[0].message
@@ -170,9 +168,8 @@ class OpenAIProvider(LLMProvider):
         self,
         chat_history: list[dict[str, str]],
         tools: list[dict[str, str]],
-        temperature: float = 0,
         **kwargs,
-    ) -> dict[str, list[dict] | str]:
+    ) -> dict[list, list, list[dict] | str, dict]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -196,19 +193,22 @@ class OpenAIProvider(LLMProvider):
             messages=chat_history,
             model=self.model,
             tools=tools,
-            temperature=temperature,
             **kwargs,
         )
         message = response.choices[0].message
         output = {
+            "id" : [],
             "func_names": [],
             "arguments": [],
             "text": message.content,
-        }
+            "tool_calls": {}}
+        
         if function_calls := message.tool_calls if message.tool_calls else None:
             output = {
+                "id" : [f.id for f in function_calls],
                 "func_names": [f.function.name for f in function_calls],
                 "arguments": [loads(f.function.arguments) for f in function_calls],
+                "tool_calls": response.model_dump().get("choices", [])[0].get("message", {}).get("tool_calls", [])
             }
         return output
 
