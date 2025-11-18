@@ -14,6 +14,7 @@ from bigdata_client.query import (
 from bigdata_client.query import (
     Keyword,
     Similarity,
+    Entity
 )
 from tqdm import tqdm
 
@@ -798,27 +799,25 @@ class MindMapGenerator:
             entity_objs = []
             for entity_name in entities_list:
                 try:
-                    entity = self.bigdata_connection.knowledge_graph.autosuggest(
-                        entity_name, limit=1
-                    )[0]
-                    entity_objs.append(entity)
+                    suggestions = self.bigdata_connection.knowledge_graph.autosuggest(entity_name, limit=1)
+                    if suggestions:  # Check if list is not empty
+                        entity = suggestions[0]
+                        entity_objs.append(entity)
+                    else:
+                        print(f"Warning: No autosuggest results for '{entity_name}'")
                 except Exception as e:
                     print(f"Warning: Autosuggest failed for '{entity_name}': {e}")
                     continue
-            print(
-                f"Searching with entities: {[entity.name for entity, orig_str in zip(entity_objs, entities_list) if entity.name in orig_str or orig_str in entity.name]}"
-            )
-            confirmed_entities = [
-                entity
-                for entity, orig_str in zip(entity_objs, entities_list)
-                if entity.name in orig_str or orig_str in entity.name
-            ]
+            
+            confirmed_entities = [entity.id for entity, orig_str in zip(entity_objs, entities_list) if entity.name.lower() in orig_str.lower() or orig_str.lower() in entity.name.lower()]
             if confirmed_entities:
-                entities = BigdataAny(confirmed_entities)
+                
+                entities = Any([Entity(entity) for entity in confirmed_entities])
             else:
                 entities = None
         else:
             entities = None
+        print(f"Searching with entities: {[entity.name for entity, orig_str in zip(entity_objs, entities_list) if entity.name in orig_str or orig_str in entity.name]}")
         if keywords_list:
             print(f"Searching with keywords: {keywords_list}")
             keywords = BigdataAny([Keyword(kw) for kw in keywords_list])

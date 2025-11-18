@@ -128,8 +128,8 @@ def test_dynamic_mindmap(
         ],
         month_names=["October_2025", "November_2025", "December_2025"],
     )
-    logger.info("Results: %s", mindmap["base_mindmap"])
-    logger.info("Results: %s", mindmap["October_2025"])
+    logger.info("Results: %s", mindmap["base_mindmap"]['mindmap_json'])
+    logger.info("Results: %s", mindmap["October_2025"]['mindmap_json'])
     logger.info("")
 
 
