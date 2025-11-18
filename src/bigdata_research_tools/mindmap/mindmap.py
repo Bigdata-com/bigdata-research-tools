@@ -199,7 +199,7 @@ class MindMap:
                 f"Unsupported engine '{engine}'. "
                 f"Supported engines are 'graphviz', 'plotly', and 'matplotlib'."
             )
-    
+
     def _visualize_matplotlib(self):
         """
         Auxiliary function to visualize the tree using Matplotlib.
@@ -208,11 +208,11 @@ class MindMap:
             A Matplotlib Plot rendering the mindmap.
         """
         import matplotlib
-        matplotlib.use('Agg')  # Use non-interactive backend
-        from bigdata_research_tools.visuals.mindmap_visuals import plot_mindmap
-        
-        plot_mindmap(self.to_dataframe(), main_theme=self.label)
 
+        matplotlib.use("Agg")  # Use non-interactive backend
+        from bigdata_research_tools.visuals.mindmap_visuals import plot_mindmap
+
+        plot_mindmap(self.to_dataframe(), main_theme=self.label)
 
     def _visualize_graphviz(self) -> graphviz.Digraph:
         """
@@ -351,29 +351,34 @@ class MindMap:
         Flatten tree to rows for DataFrame: each row is (Parent, Label, Node, Summary)
         """
         rows = []
-        rows.append({
-            "Parent": parent_label,
-            "Label": self.label,
-            "Node": self.node,
-            "Summary": self.summary
-        })
+        rows.append(
+            {
+                "Parent": parent_label,
+                "Label": self.label,
+                "Node": self.node,
+                "Summary": self.summary,
+            }
+        )
         for child in self.children:
             rows.extend(child.to_rows(parent_label=self.label))
         return rows
 
     def to_dataframe(self, leaves_only=False):
         import pandas as pd
+
         rows = self.to_rows(parent_label=None)
         # Exclude rows where Parent is None or Parent == self.label (root node)
         filtered = [row for row in rows if row["Parent"] not in (None, self.label)]
         if leaves_only:
             # Only keep rows that are leaves (i.e., have no children)
-            leaf_labels = {row["Label"] for row in filtered}
-            filtered = [row for row in filtered if row["Label"] not in {r["Parent"] for r in filtered}]
+            filtered = [
+                row
+                for row in filtered
+                if row["Label"] not in {r["Parent"] for r in filtered}
+            ]
         return pd.DataFrame(filtered)
-    
+
     def to_json(self):
-    
         return json.dumps(self._to_dict(), indent=2)
 
 

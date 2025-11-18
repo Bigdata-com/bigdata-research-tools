@@ -197,18 +197,22 @@ class OpenAIProvider(LLMProvider):
         )
         message = response.choices[0].message
         output = {
-            "id" : [],
+            "id": [],
             "func_names": [],
             "arguments": [],
             "text": message.content,
-            "tool_calls": {}}
-        
+            "tool_calls": {},
+        }
+
         if function_calls := message.tool_calls if message.tool_calls else None:
             output = {
-                "id" : [f.id for f in function_calls],
+                "id": [f.id for f in function_calls],
                 "func_names": [f.function.name for f in function_calls],
                 "arguments": [loads(f.function.arguments) for f in function_calls],
-                "tool_calls": response.model_dump().get("choices", [])[0].get("message", {}).get("tool_calls", [])
+                "tool_calls": response.model_dump()
+                .get("choices", [])[0]
+                .get("message", {})
+                .get("tool_calls", []),
             }
         return output
 

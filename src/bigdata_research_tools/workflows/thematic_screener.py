@@ -9,6 +9,7 @@ from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
 from bigdata_research_tools.llm.base import LLMConfig
+from bigdata_research_tools.mindmap.mindmap import generate_theme_tree
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
@@ -17,7 +18,6 @@ from bigdata_research_tools.tracing import (
     WorkflowTraceEvent,
     send_trace,
 )
-from bigdata_research_tools.mindmap.mindmap import generate_theme_tree
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
 

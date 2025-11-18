@@ -40,7 +40,12 @@ NORMALIZED_DATE_RANGE = (
     | list[tuple[datetime, datetime] | AbsoluteDateRange | RollingDateRange]
 )
 
-INPUT_DATE_RANGE = tuple[datetime, datetime] | RollingDateRange | AbsoluteDateRange | NORMALIZED_DATE_RANGE
+INPUT_DATE_RANGE = (
+    tuple[datetime, datetime]
+    | RollingDateRange
+    | AbsoluteDateRange
+    | NORMALIZED_DATE_RANGE
+)
 
 SEARCH_QUERY_RESULTS_TYPE = dict[
     tuple[QueryComponent, AbsoluteDateRange | RollingDateRange], list[Document]
@@ -250,12 +255,14 @@ class SearchManager:
                 as_completed(futures), total=len(futures), desc="Querying Bigdata..."
             ):
                 query, date_range = futures[future]
-                
+
                 try:
                     if isinstance(date_range, AbsoluteDateRange):
                         date_range = f"{date_range.start_dt.isoformat()}_{date_range.end_dt.isoformat()}"
                     elif isinstance(date_range, tuple):
-                        date_range = f"{date_range[0].isoformat()}_{date_range[1].isoformat()}"
+                        date_range = (
+                            f"{date_range[0].isoformat()}_{date_range[1].isoformat()}"
+                        )
 
                     results[(query, date_range)] = future.result()
                 except Exception as e:

@@ -1,11 +1,15 @@
-import pandas as pd
-from io import StringIO
-import os
 import json
+import os
+from io import StringIO
 
-prompts_dict = {'theme':{'qualifier':'Main Theme',
-                         'user_prompt_message':'Your given Theme is: {main_theme}',
-                         'enforce_structure_string':("""IMPORTANT: Your response MUST be a valid JSON object. Each node in the JSON object must include:\n"
+import pandas as pd
+
+prompts_dict = {
+    "theme": {
+        "qualifier": "Main Theme",
+        "user_prompt_message": "Your given Theme is: {main_theme}",
+        "enforce_structure_string": (
+            """IMPORTANT: Your response MUST be a valid JSON object. Each node in the JSON object must include:\n"
 	                    "- `node`: an integer representing the unique identifier for the node.\n"
 	                    "- `label`: a string for the name of the sub-theme.\n"
 	                    "- `summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme.\n"
@@ -33,10 +37,13 @@ prompts_dict = {'theme':{'qualifier':'Main Theme',
             "    ]}\n"
             "  ]\n"
             "}\n"
-            """)},
-                'risk':{'qualifier':'Risk Scenario', 
-                        'user_prompt_message':'Your given Risk Scenario is: {main_theme}',
-                            'enforce_structure_string':(
+            """
+        ),
+    },
+    "risk": {
+        "qualifier": "Risk Scenario",
+        "user_prompt_message": "Your given Risk Scenario is: {main_theme}",
+        "enforce_structure_string": (
             """IMPORTANT: Your response MUST be a valid JSON object. Each node in the JSON object must include:\n"
             "    - `node`: an integer representing the unique identifier for the node.\n"
             "    - `label`: a string for the name of the sub-theme.\n"
@@ -64,9 +71,11 @@ prompts_dict = {'theme':{'qualifier':'Main Theme',
             "    ]}\n"
             "  ]\n"
             "}\n"
-            """)
-                            }
+            """
+        ),
+    },
 }
+
 
 def format_mindmap_to_dataframe(mindmap_text):
     """
@@ -83,24 +92,27 @@ def format_mindmap_to_dataframe(mindmap_text):
         ValueError: If the resulting DataFrame does not contain the required columns.
     """
     try:
-        df = pd.read_csv(StringIO(mindmap_text.strip()), sep="|", engine="python", skiprows=[1])
-        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-    except Exception as e:
+        df = pd.read_csv(
+            StringIO(mindmap_text.strip()), sep="|", engine="python", skiprows=[1]
+        )
+        df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+    except Exception:
         try:
             df = pd.read_csv(
                 StringIO(mindmap_text.strip()),
                 sep="|",
                 engine="python",
                 skiprows=[1],
-                on_bad_lines='skip'
+                on_bad_lines="skip",
             )
-            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+            df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
         except Exception as e2:
             raise ValueError(f"Failed to parse mindmap text to DataFrame: {e2}")
     required_columns = {"Main Branches", "Sub-Branches", "Description"}
     if not required_columns.issubset(set(df.columns)):
         raise ValueError(f"Missing required columns in mindmap table: {df.columns}")
     return df
+
 
 def save_results_to_file(results, output_dir, filename):
     """
@@ -111,6 +123,7 @@ def save_results_to_file(results, output_dir, filename):
 
     with open(output_file, "w") as f:
         json.dump(results, f, default=str, indent=2)
+
 
 def load_results_from_file(output_dir, filename):
     """

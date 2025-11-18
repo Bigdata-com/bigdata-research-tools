@@ -350,9 +350,7 @@ class LLMEngine:
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
-        return self.provider.get_tools_response(
-            chat_history, tools, **kwargs
-        )
+        return self.provider.get_tools_response(chat_history, tools, **kwargs)
 
 
 class NotInitializedLLMProviderError(Exception):
