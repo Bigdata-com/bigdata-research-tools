@@ -169,7 +169,7 @@ class OpenAIProvider(LLMProvider):
         chat_history: list[dict[str, str]],
         tools: list[dict[str, str]],
         **kwargs,
-    ) -> dict[list, list, list[dict] | str, dict]:
+    ) -> dict[str, list[dict] | str]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:

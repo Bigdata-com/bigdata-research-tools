@@ -13,7 +13,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Literal, Union, overload
+from typing import Literal, overload
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
@@ -30,14 +30,20 @@ from bigdata_research_tools.tracing import (
     send_trace,
 )
 
-INPUT_DATE_RANGE = Union[
-    tuple[datetime, datetime],
-    RollingDateRange,
-    list[tuple[datetime, datetime] | RollingDateRange],
-    AbsoluteDateRange,
-]
+NORMALIZED_DATE_RANGE = (
+    list[tuple[datetime, datetime]]
+    | list[RollingDateRange]
+    | list[AbsoluteDateRange]
+    | list[tuple[datetime, datetime] | RollingDateRange]
+    | list[tuple[datetime, datetime] | AbsoluteDateRange]
+    | list[AbsoluteDateRange | RollingDateRange]
+    | list[tuple[datetime, datetime] | AbsoluteDateRange | RollingDateRange]
+)
+
+INPUT_DATE_RANGE = tuple[datetime, datetime] | RollingDateRange | AbsoluteDateRange | NORMALIZED_DATE_RANGE
+
 SEARCH_QUERY_RESULTS_TYPE = dict[
-    tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], list[Document]
+    tuple[QueryComponent, AbsoluteDateRange | RollingDateRange], list[Document]
 ]
 
 REQUESTS_PER_MINUTE_LIMIT = 300
@@ -179,14 +185,13 @@ class SearchManager:
                 self.quota_consumed += query_obj.get_usage()
             return results
         except Exception as e:
-            raise e
             logging.error(f"Search error: {e}")
             return None
 
     def concurrent_search(
         self,
         queries: list[QueryComponent],
-        date_ranges: list[tuple[datetime, datetime] | RollingDateRange | AbsoluteDateRange],
+        date_ranges: NORMALIZED_DATE_RANGE,
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
@@ -272,7 +277,7 @@ class SearchManager:
 
 def normalize_date_range(
     date_ranges: INPUT_DATE_RANGE,
-) -> list[tuple[datetime, datetime] | RollingDateRange | AbsoluteDateRange]:
+) -> NORMALIZED_DATE_RANGE:
     if not isinstance(date_ranges, list):
         date_ranges = [date_ranges]
 
@@ -289,8 +294,10 @@ def run_search(
     sortby: SortBy = SortBy.RELEVANCE,
     scope: DocumentType = DocumentType.ALL,
     limit: int = 10,
-    only_results: Literal[False] = False,
     rerank_threshold: float | None = None,
+    workflow_name: str = RUN_SEARCH_NAME,
+    *,
+    only_results: Literal[False],
     **kwargs,
 ) -> SEARCH_QUERY_RESULTS_TYPE: ...
 
@@ -302,8 +309,10 @@ def run_search(
     sortby: SortBy = SortBy.RELEVANCE,
     scope: DocumentType = DocumentType.ALL,
     limit: int = 10,
-    only_results: Literal[True] = True,
     rerank_threshold: float | None = None,
+    workflow_name: str = RUN_SEARCH_NAME,
+    *,
+    only_results: Literal[True],
     **kwargs,
 ) -> list[list[Document]]: ...
 

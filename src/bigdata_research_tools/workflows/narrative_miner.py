@@ -42,7 +42,7 @@ class NarrativeMiner(Workflow):
                                These will be used in both the search and the labelling of the search result chunks.
             start_date:        The start date for searching relevant documents (format: YYYY-MM-DD).
             end_date:          The end date for searching relevant documents (format: YYYY-MM-DD).
-            llm_model:         Specifies the LLM to be used in text processing and analysis.
+            llm_model_config:  Specifies the LLM to be used in text processing and analysis. Also accepts a LLMConfig object.
             document_type:     Specifies the type of documents to search over.
             fiscal_year:       The fiscal year for which filings or transcripts should be analyzed.
             sources:           Used to filter search results by the sources of the documents.

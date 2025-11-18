@@ -2,6 +2,7 @@ from typing import Any, Generator
 
 try:
     from boto3 import Session  # ty: ignore[unresolved-import]
+    from botocore import BaseClient  # type: ignore[unresolved-import]
 except ImportError:
     raise ImportError(
         "Missing optional dependency for LLM Bedrock provider, "
@@ -31,11 +32,9 @@ class AsyncBedrockProvider(AsyncLLMProvider):
         loading the environment.
         """
         if not self._client:
-            self._client = Session(
-                **self.connection_config,
-            )
+            self._client = Session(**self.connection_config)
 
-    def _get_bedrock_client(self) -> Session:
+    def _get_bedrock_client(self) -> BaseClient:
         if not self._client:
             raise NotInitializedLLMProviderError(self)
         return self._client.client("bedrock-runtime")
@@ -194,11 +193,9 @@ class BedrockProvider(LLMProvider):
         loading the environment.
         """
         if not self._client:
-            self._client = Session(
-                **self.connection_config,
-            )
+            self._client = Session(**self.connection_config)
 
-    def _get_bedrock_client(self) -> Session:
+    def _get_bedrock_client(self) -> BaseClient:
         if not self._client:
             raise NotInitializedLLMProviderError(self)
         return self._client.client("bedrock-runtime")

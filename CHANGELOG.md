@@ -33,6 +33,18 @@ Preparation for a first stable release.
 - Removed support for Python 3.9 as it has reached its end of life. The minimum supported version is now Python 3.10.
 - Removed `ipython` from main dependencies and removed unused function `bigdata_research_tools.workflows.utils.display_output_chunks_dataframe`.
 
+## [0.21.1] - 2025-11-13
+
+### Added
+- Fix typing and async bugs in Python3.9
+
+
+## [0.21.0] - 2025-11-05
+
+### Added
+- Now the LLMEngine accepts sending keywords that will be used for initializing the client
+- NarrativeMiner, NarrativeLabeler, ScreenerLabeler and Labeler benefit from being able to send an LLMEngine already initialized instead of the provider::model string
+
 ## [0.20.2] - 2025-10-21
 
 ### Fix
