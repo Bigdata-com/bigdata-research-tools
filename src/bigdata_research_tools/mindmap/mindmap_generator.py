@@ -4,13 +4,14 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger, getLogger
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
 from bigdata_client.models.search import DocumentType, SortBy
 from bigdata_client.query import (
     Any as BigdataAny,
 )
+from bigdata_client.models.search import DocumentType, SortBy
 from bigdata_client.query import (
     Keyword,
     Similarity,
@@ -232,12 +233,17 @@ class MindMapGenerator:
         focus: str,
         map_type: str,
         instructions: Optional[str],
+        date_range: Optional[tuple[str,str]],
         initial_mindmap: Optional[str],
     ) -> list:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
+        
         tool_prompt = f"{instructions} {focus} You can use news search to find relevant information about the topic. \nUse the Bigdata API to search for news articles related to the topic and use them to inform your response."
+        
         if initial_mindmap:
-            tool_prompt += f"Starting from the following mind map:\n{initial_mindmap}"
+            tool_prompt += f"\nStarting from the following mind map:\n{initial_mindmap}"
+        if date_range is not None:
+            tool_prompt += f"\nYour search will be conducted over the range: {date_range[0]} - {date_range[1]}"
 
         tool_prompt += f"\nReturn a list of searches you would like to perform to enhance it.\n{enforce_structure}"
 
@@ -296,16 +302,22 @@ class MindMapGenerator:
         focus: str,
         map_type: str,
         instructions: Optional[str],
+        date_range: Optional[tuple[str,str]],
         tool_calls,
         tool_call_id,
         context,
     ) -> list:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
+        final_prompt = f"{instructions} {focus}. \nIMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant.\n{enforce_structure}"
+
+        if date_range is not None:
+            tool_prompt += f"\nYour search will be conducted over the range: {date_range[0]} - {date_range[1]}"
+
         final_message = [
             {
                 "role": "system",
-                "content": f"{instructions} {focus}. IMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant. \n{enforce_structure}",
+                "content": final_prompt,
             },
             {
                 "role": "user",
@@ -325,6 +337,7 @@ class MindMapGenerator:
         focus: str,
         map_type: str,
         instructions: Optional[str],
+        date_range: Optional[tuple[str,str]],
         initial_mindmap: str,
         context: str,
         tool_calls,
@@ -332,12 +345,11 @@ class MindMapGenerator:
     ) -> list:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
-        refine_prompt = (
-            f"{instructions} {prompts_dict[map_type]['qualifier']}: {main_theme} {focus} "
-            "Based on these instructions, enhance the given mindmap with the information below. Only return the mindmap without extra text."
-            "IMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant."
-            f"{enforce_structure}."
-        )
+        refine_prompt = f"{instructions} {prompts_dict[map_type]['qualifier']}: {main_theme} {focus}.\nBased on these instructions, enhance the given mindmap with the information below. Only return the mindmap without extra text.\nIMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant.\n{enforce_structure}."
+        
+        if date_range is not None:
+            refine_prompt += f"\nYour search will be conducted over the range: {date_range[0]} - {date_range[1]}"
+
         refinement_messages = [
             {"role": "system", "content": refine_prompt},
             {"role": "user", "content": initial_mindmap},
@@ -349,115 +361,73 @@ class MindMapGenerator:
 
     def generate_one_shot(
         self,
-        focus: str,
         main_theme: str,
-        instructions: Optional[str] = None,
+        focus: str,
         allow_grounding: bool = False,
-        grounding_method: str = "tool_call",
-        date_range: Optional[Tuple[str, str]] = None,
+        instructions: Optional[str] = None,
+        date_range: Optional[tuple[str, str]] = None,
         map_type: str = "risk",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate a mind map in one LLM call, optionally allowing the LLM to request grounding.
         If allow_grounding is True, use the specified grounding_method ("tool_call" or "chat").
         Optionally log intermediate steps to disk.
         """
 
-        messages = self.compose_base_message(main_theme, focus, map_type, instructions)
+        messages = self.compose_base_message(main_theme=main_theme, focus=focus, map_type=map_type, instructions=instructions)
 
         llm_kwargs = self.llm_model_config_base.get_llm_kwargs(
             remove_max_tokens=True, remove_timeout=True
         )
         if allow_grounding:
-            if grounding_method == "tool_call":
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": "You can use news search to find relevant information about the topic. "
-                        "Use the Bigdata API to search for news articles related to the topic and use them to inform your response. You will need to specify a list of sentences, a list of entities, and a list of keywords.",
-                    }
+            messages = self.compose_tool_call_message(
+            main_theme=main_theme, focus=focus, map_type=map_type, instructions=instructions, date_range=date_range,
+        )
+            tool_call_id, tool_calls, search_list, entities_list, keywords_list = (
+                self.send_tool_call(messages, self.llm_base, llm_kwargs)
+            )
+
+            if search_list and isinstance(search_list, list):
+                context = self._run_and_collate_search(
+                    search_list, entities_list, keywords_list, date_range=date_range
                 )
-                tool_call_id, tool_calls, search_list, entities_list, keywords_list = (
-                    self.send_tool_call(messages, self.llm_base, llm_kwargs)
+
+                final_messages = self.compose_final_message(
+                    main_theme=main_theme,
+                    focus=focus,
+                    map_type=map_type,
+                    instructions=instructions,
+                    date_range=date_range,
+                    tool_calls=tool_calls,
+                    tool_call_id=tool_call_id,
+                    context=context,
                 )
 
-                if search_list and isinstance(search_list, list):
-                    context = self._run_and_collate_search(
-                        search_list, entities_list, keywords_list, date_range=date_range
-                    )
+                mindmap_text = self.llm_base.get_response(final_messages)
 
-                    final_messages = self.compose_final_message(
-                        main_theme,
-                        focus,
-                        map_type,
-                        instructions,
-                        tool_calls,
-                        tool_call_id,
-                        context,
-                    )
-
-                    mindmap_text = self.llm_base.get_response(final_messages)
-
-                    theme_tree = self._parse_llm_to_themetree(mindmap_text)
-                    df = self._themetree_to_dataframe(theme_tree)
-                    return {
-                        "mindmap_text": mindmap_text,
-                        "mindmap_df": df,
-                        "mindmap_json": theme_tree.to_json(),  ##where does this come from?
-                        "grounded": True,
-                        "search_queries": search_list,
-                        "search_context": context,
-                    }
-                else:
-                    # decide if this fallback should be simplified
-                    mindmap_text = search_list if isinstance(search_list, str) else ""
-                    theme_tree = self._parse_llm_to_themetree(
-                        mindmap_text
-                    )  ## check if correct
-                    df = format_mindmap_to_dataframe(mindmap_text)
-                    return {
-                        "mindmap_text": mindmap_text,
-                        "mindmap_df": df,
-                        "mindmap_json": theme_tree.to_json(),
-                        "grounded": False,
-                    }
+                theme_tree = self._parse_llm_to_themetree(mindmap_text)
+                df = self._themetree_to_dataframe(theme_tree)
+                return {
+                    "mindmap_text": mindmap_text,
+                    "mindmap_df": df,
+                    "mindmap_json": theme_tree.to_json(),  ##where does this come from?
+                    "grounded": True,
+                    "search_queries": search_list,
+                    "search_context": context,
+                }
             else:
                 # decide if this fallback should be simplified
-                messages[0]["content"] += (
-                    " You may request news search to ground your mind map. "
-                    "If you want to search, return a list of queries."
-                )
-                response = self.llm_base.get_response(messages)
-
-                queries = self._parse_queries(response)
-
-                if queries:
-                    context = self._run_and_collate_search(queries, [], [])
-
-                    followup_messages = [
-                        {"role": "system", "content": f"{instructions} {focus}"},
-                        {
-                            "role": "user",
-                            "content": prompts_dict[map_type][
-                                "user_prompt_message"
-                            ].format(main_theme=main_theme),
-                        },
-                        {
-                            "role": "assistant",
-                            "content": "News search results:\n" + context,
-                        },
-                    ]
-                    mindmap_text = self.llm_base.get_response(followup_messages)
-
-                    df = format_mindmap_to_dataframe(mindmap_text)
-                    return {
-                        "mindmap_text": mindmap_text,
-                        "mindmap_df": df,
-                        "mindmap_json": theme_tree.to_json(),
-                        "grounded": True,
-                        "search_queries": queries,
-                        "search_context": context,
-                    }
+                mindmap_text = search_list if isinstance(search_list, str) else ""
+                theme_tree = self._parse_llm_to_themetree(
+                    mindmap_text
+                )  ## check if correct
+                df = format_mindmap_to_dataframe(mindmap_text)
+                return {
+                    "mindmap_text": mindmap_text,
+                    "mindmap_df": df,
+                    "mindmap_json": theme_tree.to_json(),
+                    "grounded": False,
+                }
         # Default: just generate mind map
         mindmap_text = self.llm_base.get_response(messages)
 
@@ -473,98 +443,61 @@ class MindMapGenerator:
 
     def generate_refined(
         self,
-        focus: str,
         main_theme: str,
+        focus: str,
         initial_mindmap: str,
-        grounding_method: str = "tool_call",
         output_dir: str = "./refined_mindmaps",
         filename: str = "refined_mindmap.json",
         map_type: str = "risk",
         instructions: Optional[str] = None,
-        search_scope: Optional[Any] = None,
-        sortby: Optional[Any] = None,
-        date_range: Optional[Any] = None,
+        search_scope: Optional[DocumentType] = None,
+        sortby: Optional[SortBy] = None,
+        date_range: Optional[tuple[str, str]] = None,
         chunk_limit: Optional[int] = 20,
         **llm_kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Refine an initial mind map: LLM proposes searches, search is run, LLM refines mind map with search results.
         Optionally log intermediate steps to disk.
         """
+
         messages = self.compose_tool_call_message(
-            main_theme, focus, map_type, instructions, initial_mindmap
+            main_theme=main_theme,
+            focus=focus,
+            map_type=map_type,
+            instructions=instructions,
+            date_range=date_range,
+            initial_mindmap=initial_mindmap
         )
         llm_kwargs = self.llm_model_config_reasoning.get_llm_kwargs(
             remove_max_tokens=True, remove_timeout=True
         )
-        if grounding_method == "tool_call":
-            tool_call_id, tool_calls, search_list, entities_list, keywords_list = (
-                self.send_tool_call(messages, self.llm_reasoning, llm_kwargs=llm_kwargs)
-            )
 
-            if search_list and isinstance(search_list, list):
-                context = self._run_and_collate_search(
-                    search_list,
-                    entities_list,
-                    keywords_list,
-                    search_scope,
-                    sortby,
-                    date_range,
-                    chunk_limit,
-                )
+        tool_call_id, tool_calls, search_list, entities_list, keywords_list = (
+            self.send_tool_call(messages, self.llm_reasoning, llm_kwargs=llm_kwargs)
+        )
 
-                refinement_messages = self.compose_refinement_message(
-                    main_theme,
-                    focus,
-                    map_type,
-                    instructions,
-                    initial_mindmap,
-                    context,
-                    tool_calls,
-                    tool_call_id,
-                )
-                mindmap_text = self.llm_reasoning.get_response(refinement_messages)
-
-                theme_tree = self._parse_llm_to_themetree(mindmap_text)
-                df = self._themetree_to_dataframe(theme_tree)
-                result_dict = {
-                    "mindmap_text": mindmap_text,
-                    "mindmap_df": df,
-                    "mindmap_json": theme_tree.to_json(),
-                    "search_queries": search_list,
-                    "search_context": context,
-                }
-                save_results_to_file(result_dict, output_dir, filename)
-                return result_dict
-            else:
-                mindmap_text = search_list if isinstance(search_list, str) else ""
-                df = format_mindmap_to_dataframe(mindmap_text)
-                result_dict = {
-                    "mindmap_text": mindmap_text,
-                    "mindmap_df": df,
-                    "mindmap_json": theme_tree.to_json(),
-                    "search_queries": [],
-                    "search_context": "",
-                }
-                save_results_to_file(result_dict, output_dir, filename)
-                return result_dict
-        else:
-            queries_json = self.llm_reasoning.get_response(messages)
-
-            search_queries = self._parse_queries(queries_json)
+        if search_list and isinstance(search_list, list):
             context = self._run_and_collate_search(
-                search_queries, [], [], search_scope, sortby, date_range, chunk_limit
+                search_list,
+                entities_list,
+                keywords_list,
+                search_scope,
+                sortby,
+                date_range,
+                chunk_limit,
             )
 
             refinement_messages = self.compose_refinement_message(
-                main_theme,
-                focus,
-                map_type,
-                instructions,
-                initial_mindmap,
-                context,
-                tool_calls,
-                tool_call_id,
+                main_theme=main_theme,
+                focus=focus,
+                map_type=map_type,
+                instructions=instructions,
+                date_range=date_range,
+                initial_mindmap=initial_mindmap,
+                tool_calls=tool_calls,
+                tool_call_id=tool_call_id,
+                context=context
             )
             mindmap_text = self.llm_reasoning.get_response(refinement_messages)
 
@@ -574,26 +507,36 @@ class MindMapGenerator:
                 "mindmap_text": mindmap_text,
                 "mindmap_df": df,
                 "mindmap_json": theme_tree.to_json(),
-                "search_queries": search_queries,
+                "search_queries": search_list,
                 "search_context": context,
             }
             save_results_to_file(result_dict, output_dir, filename)
             return result_dict
+        else:
+            mindmap_text = search_list if isinstance(search_list, str) else ""
+            df = format_mindmap_to_dataframe(mindmap_text)
+            result_dict = {
+                "mindmap_text": mindmap_text,
+                "mindmap_df": df,
+                "mindmap_json": theme_tree.to_json(),
+                "search_queries": [],
+                "search_context": "",
+            }
+            save_results_to_file(result_dict, output_dir, filename)
+            return result_dict
+   
 
     def generate_or_load_refined(
         self,
-        instructions: str,
-        focus: str,
         main_theme: str,
+        focus: str,
         map_type: str,
         initial_mindmap: str,
-        llm_model: str = "o3-mini",
-        reasoning_effort: str = "high",
-        search_scope: Any = None,
-        sortby: Any = None,
-        date_range: Any = None,
-        chunk_limit: int = 20,
-        grounding_method: str = "tool_call",
+        instructions: Optional[str],
+        search_scope: Optional[DocumentType] = None,
+        sortby: Optional[SortBy] = None,
+        date_range: Optional[tuple[str, str]] = None,
+        chunk_limit: Optional[int] = 20,
         output_dir: str = "./bootstrapped_mindmaps",
         filename: str = "refined_mindmap",
         i: int = 0,
@@ -609,9 +552,10 @@ class MindMapGenerator:
                     main_theme=main_theme,
                     map_type=map_type,
                     initial_mindmap=initial_mindmap,
-                    reasoning_effort=reasoning_effort,
-                    grounding_method=grounding_method,
                     date_range=date_range,
+                    search_scope=search_scope,
+                    sortby=sortby,
+                    chunk_limit=chunk_limit,
                     output_dir=output_dir,
                     filename=f"{filename}_{i}.json",
                 )
@@ -624,8 +568,6 @@ class MindMapGenerator:
                     main_theme=main_theme,
                     map_type=map_type,
                     initial_mindmap=initial_mindmap,
-                    reasoning_effort=reasoning_effort,
-                    grounding_method=grounding_method,
                     date_range=date_range,
                     output_dir=output_dir,
                     filename=f"{filename}_{i}.json",
@@ -635,16 +577,15 @@ class MindMapGenerator:
 
     def bootstrap_refined(
         self,
-        instructions: str,
-        focus: str,
         main_theme: str,
+        focus: str,
         map_type: str,
         initial_mindmap: str,
-        search_scope: Any = None,
-        sortby: Any = None,
-        date_range: Any = None,
+        instructions: Optional[str],
+        search_scope: Optional[DocumentType] = None,
+        sortby: Optional[SortBy] = None,
+        date_range: Optional[tuple[str, str]] = None,
         chunk_limit: int = 20,
-        grounding_method: str = "tool_call",
         output_dir: str = "./bootstrapped_mindmaps",
         filename: str = "refined_mindmap",
         n_elements: int = 50,
@@ -680,7 +621,6 @@ class MindMapGenerator:
                     sortby=sortby,
                     date_range=date_range,
                     chunk_limit=chunk_limit,
-                    grounding_method=grounding_method,
                     output_dir=output_dir,
                     filename=filename,
                     i=i,
@@ -704,19 +644,18 @@ class MindMapGenerator:
 
     def generate_dynamic(
         self,
-        instructions: str,
-        focus: str,
         main_theme: str,
-        month_intervals: List[Tuple[str, str]],
-        month_names: List[str],
-        search_scope: Any = None,
-        sortby: Any = None,
-        chunk_limit: int = 20,
-        grounding_method: str = "tool_call",
+        focus: str,
+        month_intervals: list[tuple[str, str]],
+        month_names: list[str],
+        instructions: Optional[str],
+        search_scope: Optional[DocumentType] = None,
+        sortby: Optional[SortBy] = None,
+        chunk_limit: Optional[int] = 20,
         map_type: str = "risk",
         output_dir: str = "./dynamic_mindmaps",
         **llm_kwargs,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Dynamic/iterative mind map generation over time intervals.
         Returns a list of dicts, one per interval.
@@ -725,23 +664,28 @@ class MindMapGenerator:
         results = {}
         # Step 1: Generate initial mind map for t0
         one_shot = self.generate_one_shot(
-            instructions, focus, main_theme, map_type=map_type, **llm_kwargs
+            main_theme=main_theme,
+            focus=focus,
+            allow_grounding=False, 
+            instructions=instructions, 
+            map_type=map_type, 
+            **llm_kwargs
         )
-        prev_mindmap = one_shot["mindmap_text"]
+        prev_mindmap = one_shot["mindmap_json"]
+        print(prev_mindmap)
         results["base_mindmap"] = one_shot
         # Step 2: For each subsequent interval, refine using previous mind map and new search, including starting month
-        for i, (interval, month_name) in enumerate(
+        for i, (date_range, month_name) in enumerate(
             zip(month_intervals, month_names), start=0
         ):
-            date_range = self._make_absolute_date_range(interval)
+
             refined = self.generate_refined(
-                focus=focus,
                 main_theme=main_theme,
+                focus=focus,
                 initial_mindmap=prev_mindmap,
-                grounding_method=grounding_method,
+                map_type=map_type,
                 output_dir=output_dir,
                 filename=f"{month_name}.json",
-                map_type=map_type,
                 instructions=instructions,
                 search_scope=search_scope,
                 sortby=sortby,
@@ -751,18 +695,18 @@ class MindMapGenerator:
             )
 
             results[month_name] = refined
-            prev_mindmap = refined["mindmap_text"]
+            prev_mindmap = refined["mindmap_json"]
         return results
 
     def _run_and_collate_search(
         self,
-        search_list: List[str],
-        entities_list: List[str],
-        keywords_list: List[str],
-        search_scope: Any = None,
-        sortby: Any = None,
-        date_range: Any = None,
-        chunk_limit: int = 20,
+        search_list: list[str],
+        entities_list: Optional[list[str]],
+        keywords_list: Optional[list[str]],
+        search_scope: Optional[DocumentType] = None,
+        sortby: Optional[SortBy] = None,
+        date_range: Optional[tuple[str, str]] = None,
+        chunk_limit: Optional[int] = 20,
     ) -> str:
         """
         Run Bigdata search for each query and collate results for LLM context.
@@ -775,24 +719,10 @@ class MindMapGenerator:
         scope = search_scope if search_scope is not None else DocumentType.NEWS
         sortby = sortby if sortby is not None else SortBy.RELEVANCE
 
-        # --- Robust date_range parsing ---
-        # If date_range is a list of one tuple, unpack it
-        if (
-            isinstance(date_range, list)
-            and len(date_range) == 1
-            and isinstance(date_range[0], (tuple, list))
-            and len(date_range[0]) == 2
-        ):
-            date_range = date_range[0]
-        # If date_range is a tuple/list of two strings, convert to AbsoluteDateRange
-        if (
-            isinstance(date_range, (tuple, list))
-            and len(date_range) == 2
-            and all(isinstance(x, str) for x in date_range)
-        ):
-            date_range = AbsoluteDateRange(start=date_range[0], end=date_range[1])
-        elif date_range is None:
+        if date_range is None:
             date_range = RollingDateRange.LAST_THIRTY_DAYS
+        else:
+            date_range = AbsoluteDateRange(start=date_range[0], end=date_range[1])
 
         if entities_list:
             print(f"Entities List: {entities_list}")
@@ -812,7 +742,7 @@ class MindMapGenerator:
             confirmed_entities = [entity.id for entity, orig_str in zip(entity_objs, entities_list) if entity.name.lower() in orig_str.lower() or orig_str.lower() in entity.name.lower()]
             if confirmed_entities:
                 
-                entities = Any([Entity(entity) for entity in confirmed_entities])
+                entities = BigdataAny([Entity(entity) for entity in confirmed_entities])
             else:
                 entities = None
         else:
@@ -842,7 +772,7 @@ class MindMapGenerator:
 
         return self.collate_results(all_results)
 
-    def collate_results(self, results: List[Tuple[str, Any]]) -> str:
+    def collate_results(self, results: dict[tuple[str, str], list]) -> str:
         """
         Collate a list of (query, result) tuples into a single string for LLM context.
 
@@ -868,30 +798,3 @@ class MindMapGenerator:
                         docstr += f"{chunk.text}\n"
             doctexts.append(docstr)
         return "\n".join(doctexts)
-
-    @staticmethod
-    def _parse_queries(self, queries_json: str) -> List[str]:
-        """
-        Parse LLM output (JSON or text) into a list of search queries.
-        """
-        import json
-
-        try:
-            queries = json.loads(queries_json)
-            if isinstance(queries, list):
-                return queries
-            elif isinstance(queries, dict) and "search_list" in queries:
-                return queries["search_list"]
-            elif isinstance(queries, dict) and "queries" in queries:
-                return queries["queries"]
-        except Exception:
-            # Fallback: split by lines
-            return [q.strip() for q in queries_json.splitlines() if q.strip()]
-        return []
-
-    @staticmethod
-    def _make_absolute_date_range(interval: Tuple[str, str]) -> Any:
-        """
-        Helper to create an AbsoluteDateRange object from a (start, end) tuple.
-        """
-        return AbsoluteDateRange(start=interval[0], end=interval[1])
