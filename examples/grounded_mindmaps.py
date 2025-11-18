@@ -3,10 +3,9 @@ import logging
 from bigdata_client import Bigdata
 from bigdata_client.models.search import DocumentType
 from dotenv import load_dotenv
-from traitlets import Any
-
 from bigdata_research_tools.mindmap.mindmap import MindMap
 from bigdata_research_tools.mindmap.mindmap_generator import MindMapGenerator
+from bigdata_research_tools.visuals.mindmap_visuals import plot_mindmap
 
 # Load environment variables for authentication
 print(f"Environment variables loaded: {load_dotenv()}")
@@ -31,7 +30,7 @@ def test_one_shot_mindmap(main_theme, focus, map_type, instructions, llm_base_co
     allow_grounding=False,
 )
     logger.info("Results: %s", mindmap['mindmap_text'])
-    return mindmap["mindmap_json"]
+    return mindmap["mindmap_df"], mindmap["mindmap_json"]
     
     
 def test_refined_mindmap(main_theme, focus, map_type, instructions, base_mindmap: str, llm_base_config: str = "openai::o3-mini") -> MindMap:
@@ -93,7 +92,8 @@ def main(MAIN_THEME = "Political Change in Japan.",
     logger.info("=" * 60)
 
     try:
-        base_mindmap = test_one_shot_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, llm_base_config="openai::gpt-4o-mini")
+        df_mindmap, base_mindmap = test_one_shot_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, llm_base_config="openai::gpt-4o-mini")
+        plot_mindmap(df_mindmap, MAIN_THEME)
         test_refined_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, base_mindmap, llm_base_config="openai::o3-mini")
         test_refined_mindmap2(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, base_mindmap, llm_base_config="openai::o3-mini")
         test_dynamic_mindmap(MAIN_THEME, FOCUS, map_type, INSTRUCTIONS, llm_base_config="openai::gpt-4o-mini", llm_reasoning_config="openai::o3-mini")

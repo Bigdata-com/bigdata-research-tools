@@ -192,11 +192,27 @@ class MindMap:
             self._visualize_graphviz()
         elif engine == "plotly":
             self._visualize_plotly()
+        elif engine == "matplotlib":
+            self._visualize_matplotlib()
         else:
             raise ValueError(
                 f"Unsupported engine '{engine}'. "
-                f"Supported engines are 'graphviz' and 'plotly'."
+                f"Supported engines are 'graphviz', 'plotly', and 'matplotlib'."
             )
+    
+    def _visualize_matplotlib(self):
+        """
+        Auxiliary function to visualize the tree using Matplotlib.
+
+        Returns:
+            A Matplotlib Plot rendering the mindmap.
+        """
+        import matplotlib
+        matplotlib.use('Agg')  # Use non-interactive backend
+        from bigdata_research_tools.visuals.mindmap_visuals import plot_mindmap
+        
+        plot_mindmap(self.to_dataframe(), main_theme=self.label)
+
 
     def _visualize_graphviz(self) -> graphviz.Digraph:
         """
