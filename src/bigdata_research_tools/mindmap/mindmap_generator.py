@@ -657,7 +657,11 @@ class MindMapGenerator:
         else:
             keywords = None
         
-        queries = [Similarity(sentence)&keywords&entities if keywords or entities else Similarity(sentence) for sentence in search_list]
+        queries = [Similarity(sentence) for sentence in search_list]
+        if entities:
+            queries = [query&entities for query in queries]
+        if keywords:
+            queries = [query&keywords for query in queries]
         
         all_results = run_search(queries=queries,
                                  date_ranges = date_range,
