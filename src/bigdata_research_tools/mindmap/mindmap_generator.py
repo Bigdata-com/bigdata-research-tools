@@ -257,7 +257,7 @@ class MindMapGenerator:
 
     def send_tool_call(
         self, messages: list, llm_client: LLMEngine, llm_kwargs: dict
-    ) -> tuple[str | None, dict | None, list | None, list | None, list | None]:
+    ) -> tuple:
         llm_kwargs.update(
             {
                 "tool_choice": {
@@ -275,9 +275,9 @@ class MindMapGenerator:
             if response_dict["tool_calls"] is not None:
                 tool_call_id = response_dict["id"][0]
                 arguments = response_dict["arguments"][0]
-                search_list = arguments.get("search_list", [])
-                entities_list = arguments.get("entities_list", [])
-                keywords_list = arguments.get("keywords_list", [])
+                search_list = arguments.get("search_list", []) # ty: ignore[possibly-missing-attribute]
+                entities_list = arguments.get("entities_list", []) # ty: ignore[possibly-missing-attribute]
+                keywords_list = arguments.get("keywords_list", []) # ty: ignore[possibly-missing-attribute]
                 return (
                     tool_call_id,
                     response_dict["tool_calls"],
@@ -306,9 +306,6 @@ class MindMapGenerator:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
         final_prompt = f"{instructions} {focus}. \nIMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant.\n{enforce_structure}"
-
-        if date_range is not None:
-            tool_prompt += f"\nYour search will be conducted over the range: {date_range[0]} - {date_range[1]}"
 
         final_message = [
             {
@@ -378,6 +375,7 @@ class MindMapGenerator:
         if allow_grounding:
             messages = self.compose_tool_call_message(
             main_theme=main_theme, focus=focus, map_type=map_type, instructions=instructions, date_range=date_range,
+            initial_mindmap=None
         )
             tool_call_id, tool_calls, search_list, entities_list, keywords_list = (
                 self.send_tool_call(messages, self.llm_base, llm_kwargs)
@@ -449,7 +447,7 @@ class MindMapGenerator:
         search_scope: Optional[DocumentType] = None,
         sortby: Optional[SortBy] = None,
         date_range: Optional[tuple[str, str]] = None,
-        chunk_limit: Optional[int] = 20,
+        chunk_limit: int = 20,
         **llm_kwargs,
     ) -> dict[str, Any]:
         """
@@ -514,7 +512,7 @@ class MindMapGenerator:
             result_dict = {
                 "mindmap_text": mindmap_text,
                 "mindmap_df": df,
-                "mindmap_json": theme_tree.to_json(),
+                "mindmap_json": "",
                 "search_queries": [],
                 "search_context": "",
             }
@@ -532,7 +530,7 @@ class MindMapGenerator:
         search_scope: Optional[DocumentType] = None,
         sortby: Optional[SortBy] = None,
         date_range: Optional[tuple[str, str]] = None,
-        chunk_limit: Optional[int] = 20,
+        chunk_limit: int = 20,
         output_dir: str = "./bootstrapped_mindmaps",
         filename: str = "refined_mindmap",
         i: int = 0,
@@ -647,11 +645,11 @@ class MindMapGenerator:
         instructions: Optional[str],
         search_scope: Optional[DocumentType] = None,
         sortby: Optional[SortBy] = None,
-        chunk_limit: Optional[int] = 20,
+        chunk_limit: int = 20,
         map_type: str = "risk",
         output_dir: str = "./dynamic_mindmaps",
         **llm_kwargs,
-    ) -> list[dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """
         Dynamic/iterative mind map generation over time intervals.
         Returns a list of dicts, one per interval.
@@ -702,7 +700,7 @@ class MindMapGenerator:
         search_scope: Optional[DocumentType] = None,
         sortby: Optional[SortBy] = None,
         date_range: Optional[tuple[str, str]] = None,
-        chunk_limit: Optional[int] = 20,
+        chunk_limit: int = 20,
     ) -> str:
         """
         Run Bigdata search for each query and collate results for LLM context.
@@ -716,9 +714,9 @@ class MindMapGenerator:
         sortby = sortby if sortby is not None else SortBy.RELEVANCE
 
         if date_range is None:
-            date_range = RollingDateRange.LAST_THIRTY_DAYS
+            date_range_filter = RollingDateRange.LAST_THIRTY_DAYS
         else:
-            date_range = AbsoluteDateRange(start=date_range[0], end=date_range[1])
+            date_range_filter = AbsoluteDateRange(start=date_range[0], end=date_range[1])
 
         if entities_list:
             print(f"Entities List: {entities_list}")
@@ -741,9 +739,9 @@ class MindMapGenerator:
                 entities = BigdataAny([Entity(entity) for entity in confirmed_entities])
             else:
                 entities = None
+            print(f"Searching with entities: {[entity.name for entity, orig_str in zip(entity_objs, entities_list) if entity.name in orig_str or orig_str in entity.name]}")
         else:
             entities = None
-        print(f"Searching with entities: {[entity.name for entity, orig_str in zip(entity_objs, entities_list) if entity.name in orig_str or orig_str in entity.name]}")
         if keywords_list:
             print(f"Searching with keywords: {keywords_list}")
             keywords = BigdataAny([Keyword(kw) for kw in keywords_list])
@@ -758,7 +756,7 @@ class MindMapGenerator:
 
         all_results = run_search(
             queries=queries,
-            date_ranges=date_range,
+            date_ranges=date_range_filter,
             sortby=sortby,
             scope=scope,
             limit=chunk_limit,
@@ -768,7 +766,7 @@ class MindMapGenerator:
 
         return self.collate_results(all_results)
 
-    def collate_results(self, results: dict[tuple[str, str], list]) -> str:
+    def collate_results(self, results: dict) -> str:
         """
         Collate a list of (query, result) tuples into a single string for LLM context.
 

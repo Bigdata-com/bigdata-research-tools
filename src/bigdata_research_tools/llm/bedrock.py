@@ -113,7 +113,7 @@ class AsyncBedrockProvider(AsyncLLMProvider):
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:
@@ -274,7 +274,7 @@ class BedrockProvider(LLMProvider):
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:

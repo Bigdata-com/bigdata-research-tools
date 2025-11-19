@@ -58,7 +58,7 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         **kwargs,
     ) -> dict[str, list[dict] | str]:
         """
@@ -167,9 +167,9 @@ class OpenAIProvider(LLMProvider):
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         **kwargs,
-    ) -> dict[str, list[dict] | str | list[str]]:
+    ) -> dict:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:

@@ -112,7 +112,7 @@ class AsyncLLMProvider(ABC):
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:
@@ -202,7 +202,7 @@ class AsyncLLMEngine:
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:
@@ -244,7 +244,7 @@ class LLMProvider(ABC):
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         **kwargs,
     ) -> dict[str, list[dict] | str]:
         """
@@ -330,7 +330,7 @@ class LLMEngine:
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         **kwargs,
     ) -> dict[str, list[dict] | str]:
         """
