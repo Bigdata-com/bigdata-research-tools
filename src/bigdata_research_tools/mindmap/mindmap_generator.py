@@ -92,6 +92,8 @@ class MindMapGenerator:
             self.llm_model_config_base = LLMConfig(**llm_model_config_base)
         elif isinstance(llm_model_config_base, str):
             self.llm_model_config_base = get_default_tree_config(llm_model_config_base)
+        else:
+            self.llm_model_config_base = llm_model_config_base
 
         if isinstance(llm_model_config_reasoning, dict):
             self.llm_model_config_reasoning = LLMConfig(**llm_model_config_reasoning)
@@ -99,13 +101,14 @@ class MindMapGenerator:
             self.llm_model_config_reasoning = get_default_tree_config(
                 llm_model_config_reasoning
             )
+        else:
+            self.llm_model_config_reasoning = llm_model_config_reasoning
 
-        print(self.llm_model_config_base)
         self.llm_base = LLMEngine(
             model=self.llm_model_config_base.model,
             **self.llm_model_config_base.connection_config,
         )
-        print(self.llm_model_config_reasoning)
+
         self.llm_reasoning = LLMEngine(
             model=self.llm_model_config_reasoning.model,
             **self.llm_model_config_reasoning.connection_config,
@@ -201,6 +204,9 @@ class MindMapGenerator:
         self, main_theme: str, focus: str, map_type: str, instructions: Optional[str]
     ) -> list:
         # Explicit, step-by-step prompt (robust, as in working repo, minus Keywords)
+        if instructions is None:
+            instructions = prompts_dict[map_type]["default_instructions"].format(main_theme=main_theme, analyst_focus=focus)
+
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
         messages = [
             {
@@ -214,6 +220,7 @@ class MindMapGenerator:
                 ),
             },
         ]
+
         return messages
 
     def compose_tool_call_message(
@@ -226,6 +233,9 @@ class MindMapGenerator:
         initial_mindmap: Optional[str],
     ) -> list:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
+
+        if instructions is None:
+            instructions = prompts_dict[map_type]["default_instructions"].format(main_theme=main_theme, analyst_focus=focus)
 
         tool_prompt = f"{instructions} {focus} You can use news search to find relevant information about the topic. \nUse the Bigdata API to search for news articles related to the topic and use them to inform your response."
 
@@ -298,7 +308,13 @@ class MindMapGenerator:
     ) -> list:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
+        if instructions is None:
+            instructions = prompts_dict[map_type]["default_instructions"].format(main_theme=main_theme, analyst_focus=focus)
+
         final_prompt = f"{instructions} {focus}. \nIMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant.\n{enforce_structure}"
+
+        if date_range is not None:
+            final_prompt += f"\nYour search will be conducted over the range: {date_range[0]} - {date_range[1]}"
 
         final_message = [
             {
@@ -331,6 +347,9 @@ class MindMapGenerator:
     ) -> list:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
+        if instructions is None:
+            instructions = prompts_dict[map_type]["default_instructions"].format(main_theme=main_theme, analyst_focus=focus)
+
         refine_prompt = f"{instructions} {prompts_dict[map_type]['qualifier']}: {main_theme} {focus}.\nBased on these instructions, enhance the given mindmap with the information below. Only return the mindmap without extra text.\nIMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant.\n{enforce_structure}."
 
         if date_range is not None:
@@ -353,7 +372,7 @@ class MindMapGenerator:
         instructions: Optional[str] = None,
         date_range: Optional[tuple[str, str]] = None,
         map_type: str = "risk",
-    ) -> dict[str, Any]:
+    ) -> tuple[MindMap, dict]:
         """
         Generate a mind map in one LLM call, optionally allowing the LLM to request grounding.
         If allow_grounding is True, use the specified grounding_method ("tool_call" or "chat").
@@ -403,7 +422,7 @@ class MindMapGenerator:
 
                 theme_tree = self._parse_llm_to_themetree(mindmap_text)
                 df = self._themetree_to_dataframe(theme_tree)
-                return {
+                return theme_tree, {
                     "mindmap_text": mindmap_text,
                     "mindmap_df": df,
                     "mindmap_json": theme_tree.to_json(),  ##where does this come from?
@@ -418,7 +437,7 @@ class MindMapGenerator:
                     mindmap_text
                 )  ## check if correct
                 df = format_mindmap_to_dataframe(mindmap_text)
-                return {
+                return None, {
                     "mindmap_text": mindmap_text,
                     "mindmap_df": df,
                     "mindmap_json": theme_tree.to_json(),
@@ -429,7 +448,7 @@ class MindMapGenerator:
 
         theme_tree = self._parse_llm_to_themetree(mindmap_text)
         df = self._themetree_to_dataframe(theme_tree)
-        return {
+        return theme_tree, {
             "mindmap_text": mindmap_text,
             "mindmap_tree": theme_tree,
             "mindmap_json": theme_tree.to_json(),
@@ -451,7 +470,7 @@ class MindMapGenerator:
         date_range: Optional[tuple[str, str]] = None,
         chunk_limit: int = 20,
         **llm_kwargs,
-    ) -> dict[str, Any]:
+    ) -> tuple[MindMap, dict]:
         """
         Refine an initial mind map: LLM proposes searches, search is run, LLM refines mind map with search results.
         Optionally log intermediate steps to disk.
@@ -507,7 +526,7 @@ class MindMapGenerator:
                 "search_context": context,
             }
             save_results_to_file(result_dict, output_dir, filename)
-            return result_dict
+            return theme_tree, result_dict
         else:
             mindmap_text = search_list if isinstance(search_list, str) else ""
             df = format_mindmap_to_dataframe(mindmap_text)
@@ -519,7 +538,7 @@ class MindMapGenerator:
                 "search_context": "",
             }
             save_results_to_file(result_dict, output_dir, filename)
-            return result_dict
+            return None, result_dict
 
     def generate_or_load_refined(
         self,
@@ -535,7 +554,7 @@ class MindMapGenerator:
         output_dir: str = "./bootstrapped_mindmaps",
         filename: str = "refined_mindmap",
         i: int = 0,
-    ):
+    ) -> dict:
         if f"{filename}_{i}.json" in os.listdir(output_dir):
             result = load_results_from_file(output_dir, f"{filename}_{i}.json")
             print(f"Loaded existing result for {filename}_{i}.json")
@@ -557,7 +576,7 @@ class MindMapGenerator:
                 # save_results_to_file(result, output_dir, )
             except Exception as e:
                 print(e)
-                result = self.generate_refined(
+                _, result = self.generate_refined(
                     instructions=instructions,
                     focus=focus,
                     main_theme=main_theme,
@@ -585,7 +604,7 @@ class MindMapGenerator:
         filename: str = "refined_mindmap",
         n_elements: int = 50,
         max_workers: int = 10,
-    ):
+    ) -> dict:
         """
         Generate multiple refined mindmaps in parallel using ThreadPoolExecutor.
 
@@ -650,15 +669,16 @@ class MindMapGenerator:
         map_type: str = "risk",
         output_dir: str = "./dynamic_mindmaps",
         **llm_kwargs,
-    ) -> dict[str, dict[str, Any]]:
+    ) -> tuple[dict[str,MindMap], dict]:
         """
         Dynamic/iterative mind map generation over time intervals.
         Returns a list of dicts, one per interval.
         Each step: generate/refine mind map for the given interval, grounded in search results for that period.
         """
         results = {}
+        mind_map_objs = {}
         # Step 1: Generate initial mind map for t0
-        one_shot = self.generate_one_shot(
+        one_shot_map, one_shot_dict = self.generate_one_shot(
             main_theme=main_theme,
             focus=focus,
             allow_grounding=False,
@@ -666,14 +686,14 @@ class MindMapGenerator:
             map_type=map_type,
             **llm_kwargs,
         )
-        prev_mindmap = one_shot["mindmap_json"]
-        print(prev_mindmap)
-        results["base_mindmap"] = one_shot
+        prev_mindmap = one_shot_dict["mindmap_json"]
+        mind_map_objs["base_mindmap"] = one_shot_map
+        results["base_mindmap"] = one_shot_dict
         # Step 2: For each subsequent interval, refine using previous mind map and new search, including starting month
         for i, (date_range, month_name) in enumerate(
             zip(month_intervals, month_names), start=0
         ):
-            refined = self.generate_refined(
+            refined_map, refined = self.generate_refined(
                 main_theme=main_theme,
                 focus=focus,
                 initial_mindmap=prev_mindmap,
@@ -689,8 +709,9 @@ class MindMapGenerator:
             )
 
             results[month_name] = refined
+            mind_map_objs[month_name] = refined_map
             prev_mindmap = refined["mindmap_json"]
-        return results
+        return mind_map_objs, results
 
     def _run_and_collate_search(
         self,
@@ -758,6 +779,8 @@ class MindMapGenerator:
         else:
             keywords = None
 
+        print(f"Searching with sentences: {search_list}")
+
         queries: list[QueryComponent] = [
             Similarity(sentence) for sentence in search_list
         ]
@@ -793,6 +816,8 @@ class MindMapGenerator:
             dictitem = text_query.to_dict()
             if dictitem["type"] == "similarity":
                 sentence = dictitem["value"]
+            else:
+                sentence = ""
             docstr = f"###Query: {sentence}\n ### Results:\n"
             for doc in result:
                 headline = getattr(doc, "headline", "No headline")

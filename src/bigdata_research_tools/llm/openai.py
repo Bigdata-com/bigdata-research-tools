@@ -16,7 +16,8 @@ from bigdata_research_tools.llm.base import (
     LLMProvider,
     NotInitializedLLMProviderError,
 )
-
+from logging import Logger, getLogger
+logger: Logger = getLogger(__name__)
 
 class AsyncOpenAIProvider(AsyncLLMProvider):
     def __init__(self, model: str, **connection_config):
@@ -161,6 +162,7 @@ class OpenAIProvider(LLMProvider):
         chat_completion = self._client.chat.completions.create(
             messages=chat_history, model=self.model, **kwargs
         )
+        logger.info(f"Chat Completion {chat_completion}")
 
         return chat_completion.choices[0].message.content
 

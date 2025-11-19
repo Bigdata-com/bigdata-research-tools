@@ -13,6 +13,7 @@ from bigdata_research_tools.mindmap.mindmap import (
     MindMap,
     generate_risk_tree,
 )
+from bigdata_research_tools.mindmap.mindmap_generator import MindMapGenerator
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
@@ -44,6 +45,7 @@ class RiskAnalyzer(Workflow):
         sources: list[str] | None = None,
         rerank_threshold: float | None = None,
         focus: str = "",
+        ground_mindmap: bool = False,
     ):
         """
         This class will screen a universe's (specified in 'companies') exposure to a given theme ('main_theme').
@@ -79,6 +81,7 @@ class RiskAnalyzer(Workflow):
         self.sources = sources
         self.rerank_threshold = rerank_threshold
         self.focus = focus
+        self.ground_mindmap = ground_mindmap
 
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
@@ -86,6 +89,9 @@ class RiskAnalyzer(Workflow):
             self.llm_model_config = LLMConfig(model=llm_model_config)
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
+
+        logger.info(f"LLM Config {self.llm_model_config}")
+        logger.info(f"LLM Config {type(self.llm_model_config)}")
 
     def create_taxonomy(self):
         """Create a risk taxonomy based on the main theme and focus.
@@ -95,11 +101,19 @@ class RiskAnalyzer(Workflow):
             List[str]: A list of terminal labels for the risk categories.
         """
 
-        risk_tree = generate_risk_tree(
-            main_theme=self.main_theme,
-            focus=self.focus,
-            llm_model_config=self.llm_model_config,
-        )
+        # risk_tree = generate_risk_tree(
+        #     main_theme=self.main_theme,
+        #     focus=self.focus,
+        #     llm_model_config=self.llm_model_config,
+        # )
+
+        mindmap_generator = MindMapGenerator(llm_model_config_base=self.llm_model_config)
+        risk_tree, _ = mindmap_generator.generate_one_shot(main_theme = self.main_theme,
+                                                           focus = self.focus,
+                                                           allow_grounding = self.ground_mindmap,
+                                                           instructions = None,
+                                                           date_range = None,
+                                                           map_type = "risk")
 
         risk_summaries = risk_tree.get_terminal_summaries()
         terminal_labels = risk_tree.get_terminal_labels()
@@ -257,6 +271,7 @@ class RiskAnalyzer(Workflow):
         df_industry = get_scored_df(
             df_labeled, index_columns=["Industry"], pivot_column="Sub-Scenario"
         )
+        logger.info(f"LLM CONFIG {self.llm_model_config}")
         motivation_generator = Motivation(llm_model_config=self.llm_model_config)
         motivation_df = motivation_generator.generate_company_motivations(
             df=df_labeled.rename(columns={"Sub-Scenario": "Theme"}),
@@ -264,6 +279,7 @@ class RiskAnalyzer(Workflow):
             word_range=word_range,
             use_case=MotivationType.RISK_ANALYZER,
         )
+        print(motivation_df)
 
         return df_company, df_industry, motivation_df
 

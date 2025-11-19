@@ -30,6 +30,7 @@ def thematic_screener_example(
         end_date="2024-02-28",
         document_type=DocumentType.TRANSCRIPTS,
         fiscal_year=2024,
+        ground_mindmap=True
     )
 
     class PrintObserver(Observer):
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     x = thematic_screener_example(
         "Chip Manufacturers",
         export_path=str(output_path),
-        llm_model_config="openai::gpt-5-mini",
+        llm_model_config="openai::gpt-4o-mini",
     )
     custom_config = {
         "company_column": "Company",

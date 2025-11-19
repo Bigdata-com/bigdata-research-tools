@@ -59,6 +59,7 @@ class LLMConfig(BaseModel):
             self.reasoning_effort = (
                 self.reasoning_effort if self.reasoning_effort is not None else "high"
             )
+            self.max_completion_tokens = 1000
             if self.temperature is not None:
                 warnings.warn(
                     "The selected model does not support temperature settings. "

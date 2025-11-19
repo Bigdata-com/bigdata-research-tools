@@ -26,7 +26,7 @@ def risk_analyzer_example(
 
     analyzer = RiskAnalyzer(
         main_theme=risk_scenario,
-        companies=companies,
+        companies=companies[:3],
         start_date="2025-01-01",
         end_date="2025-01-31",
         keywords=keywords,
@@ -34,6 +34,7 @@ def risk_analyzer_example(
         control_entities=control_entities,
         focus=focus,  # Optional focus to narrow the theme,
         llm_model_config=llm_model_config,
+        ground_mindmap=False
     )
 
     class PrintObserver(Observer):

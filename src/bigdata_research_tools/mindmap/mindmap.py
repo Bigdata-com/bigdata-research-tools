@@ -526,7 +526,6 @@ def get_default_tree_config(llm_model: str) -> LLMConfig:
             model=llm_model,
             reasoning_effort="high",
             seed=42,
-            max_completion_tokens=300,
             response_format={"type": "json_object"},
         )
     else:
@@ -536,7 +535,6 @@ def get_default_tree_config(llm_model: str) -> LLMConfig:
             top_p=1,
             frequency_penalty=0,
             presence_penalty=0,
-            max_completion_tokens=300,
             seed=42,
             response_format={"type": "json_object"},
         )
