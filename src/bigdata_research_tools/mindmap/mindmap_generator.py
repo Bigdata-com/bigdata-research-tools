@@ -7,16 +7,12 @@ from logging import Logger, getLogger
 from typing import Any, Optional
 
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
+from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
 from bigdata_client.query import (
     Any as BigdataAny,
 )
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client.query import (
-    Keyword,
-    Similarity,
-    Entity
-)
+from bigdata_client.query import Entity, Keyword, Similarity
 from tqdm import tqdm
 
 from bigdata_research_tools.client import bigdata_connection
@@ -29,10 +25,7 @@ from bigdata_research_tools.mindmap.mindmap_utils import (
     prompts_dict,
     save_results_to_file,
 )
-from bigdata_client.models.advanced_search_query import QueryComponent
-from bigdata_research_tools.search.search import SEARCH_QUERY_RESULTS_TYPE
-
-from bigdata_research_tools.search.search import run_search, INPUT_DATE_RANGE
+from bigdata_research_tools.search.search import run_search
 
 logger: Logger = getLogger(__name__)
 
@@ -229,13 +222,13 @@ class MindMapGenerator:
         focus: str,
         map_type: str,
         instructions: Optional[str],
-        date_range: Optional[tuple[str,str]],
+        date_range: Optional[tuple[str, str]],
         initial_mindmap: Optional[str],
     ) -> list:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
-        
+
         tool_prompt = f"{instructions} {focus} You can use news search to find relevant information about the topic. \nUse the Bigdata API to search for news articles related to the topic and use them to inform your response."
-        
+
         if initial_mindmap:
             tool_prompt += f"\nStarting from the following mind map:\n{initial_mindmap}"
         if date_range is not None:
@@ -275,9 +268,9 @@ class MindMapGenerator:
             if response_dict["tool_calls"] is not None:
                 tool_call_id = response_dict["id"][0]
                 arguments = response_dict["arguments"][0]
-                search_list = arguments.get("search_list", []) # ty: ignore[possibly-missing-attribute]
-                entities_list = arguments.get("entities_list", []) # ty: ignore[possibly-missing-attribute]
-                keywords_list = arguments.get("keywords_list", []) # ty: ignore[possibly-missing-attribute]
+                search_list = arguments.get("search_list", [])  # ty: ignore[possibly-missing-attribute]
+                entities_list = arguments.get("entities_list", [])  # ty: ignore[possibly-missing-attribute]
+                keywords_list = arguments.get("keywords_list", [])  # ty: ignore[possibly-missing-attribute]
                 return (
                     tool_call_id,
                     response_dict["tool_calls"],
@@ -298,7 +291,7 @@ class MindMapGenerator:
         focus: str,
         map_type: str,
         instructions: Optional[str],
-        date_range: Optional[tuple[str,str]],
+        date_range: Optional[tuple[str, str]],
         tool_calls,
         tool_call_id,
         context,
@@ -330,7 +323,7 @@ class MindMapGenerator:
         focus: str,
         map_type: str,
         instructions: Optional[str],
-        date_range: Optional[tuple[str,str]],
+        date_range: Optional[tuple[str, str]],
         initial_mindmap: str,
         context: str,
         tool_calls,
@@ -339,7 +332,7 @@ class MindMapGenerator:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
         refine_prompt = f"{instructions} {prompts_dict[map_type]['qualifier']}: {main_theme} {focus}.\nBased on these instructions, enhance the given mindmap with the information below. Only return the mindmap without extra text.\nIMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant.\n{enforce_structure}."
-        
+
         if date_range is not None:
             refine_prompt += f"\nYour search will be conducted over the range: {date_range[0]} - {date_range[1]}"
 
@@ -367,16 +360,25 @@ class MindMapGenerator:
         Optionally log intermediate steps to disk.
         """
 
-        messages = self.compose_base_message(main_theme=main_theme, focus=focus, map_type=map_type, instructions=instructions)
+        messages = self.compose_base_message(
+            main_theme=main_theme,
+            focus=focus,
+            map_type=map_type,
+            instructions=instructions,
+        )
 
         llm_kwargs = self.llm_model_config_base.get_llm_kwargs(
             remove_max_tokens=True, remove_timeout=True
         )
         if allow_grounding:
             messages = self.compose_tool_call_message(
-            main_theme=main_theme, focus=focus, map_type=map_type, instructions=instructions, date_range=date_range,
-            initial_mindmap=None
-        )
+                main_theme=main_theme,
+                focus=focus,
+                map_type=map_type,
+                instructions=instructions,
+                date_range=date_range,
+                initial_mindmap=None,
+            )
             tool_call_id, tool_calls, search_list, entities_list, keywords_list = (
                 self.send_tool_call(messages, self.llm_base, llm_kwargs)
             )
@@ -461,7 +463,7 @@ class MindMapGenerator:
             map_type=map_type,
             instructions=instructions,
             date_range=date_range,
-            initial_mindmap=initial_mindmap
+            initial_mindmap=initial_mindmap,
         )
         llm_kwargs = self.llm_model_config_reasoning.get_llm_kwargs(
             remove_max_tokens=True, remove_timeout=True
@@ -491,7 +493,7 @@ class MindMapGenerator:
                 initial_mindmap=initial_mindmap,
                 tool_calls=tool_calls,
                 tool_call_id=tool_call_id,
-                context=context
+                context=context,
             )
             mindmap_text = self.llm_reasoning.get_response(refinement_messages)
 
@@ -518,7 +520,6 @@ class MindMapGenerator:
             }
             save_results_to_file(result_dict, output_dir, filename)
             return result_dict
-   
 
     def generate_or_load_refined(
         self,
@@ -660,10 +661,10 @@ class MindMapGenerator:
         one_shot = self.generate_one_shot(
             main_theme=main_theme,
             focus=focus,
-            allow_grounding=False, 
-            instructions=instructions, 
-            map_type=map_type, 
-            **llm_kwargs
+            allow_grounding=False,
+            instructions=instructions,
+            map_type=map_type,
+            **llm_kwargs,
         )
         prev_mindmap = one_shot["mindmap_json"]
         print(prev_mindmap)
@@ -672,7 +673,6 @@ class MindMapGenerator:
         for i, (date_range, month_name) in enumerate(
             zip(month_intervals, month_names), start=0
         ):
-
             refined = self.generate_refined(
                 main_theme=main_theme,
                 focus=focus,
@@ -716,14 +716,18 @@ class MindMapGenerator:
         if date_range is None:
             date_range_filter = RollingDateRange.LAST_THIRTY_DAYS
         else:
-            date_range_filter = AbsoluteDateRange(start=date_range[0], end=date_range[1])
+            date_range_filter = AbsoluteDateRange(
+                start=date_range[0], end=date_range[1]
+            )
 
         if entities_list:
             print(f"Entities List: {entities_list}")
             entity_objs = []
             for entity_name in entities_list:
                 try:
-                    suggestions = self.bigdata_connection.knowledge_graph.autosuggest(entity_name, limit=1)
+                    suggestions = self.bigdata_connection.knowledge_graph.autosuggest(
+                        entity_name, limit=1
+                    )
                     if suggestions:  # Check if list is not empty
                         entity = suggestions[0]
                         entity_objs.append(entity)
@@ -732,14 +736,20 @@ class MindMapGenerator:
                 except Exception as e:
                     print(f"Warning: Autosuggest failed for '{entity_name}': {e}")
                     continue
-            
-            confirmed_entities = [entity.id for entity, orig_str in zip(entity_objs, entities_list) if entity.name.lower() in orig_str.lower() or orig_str.lower() in entity.name.lower()]
+
+            confirmed_entities = [
+                entity.id
+                for entity, orig_str in zip(entity_objs, entities_list)
+                if entity.name.lower() in orig_str.lower()
+                or orig_str.lower() in entity.name.lower()
+            ]
             if confirmed_entities:
-                
                 entities = BigdataAny([Entity(entity) for entity in confirmed_entities])
             else:
                 entities = None
-            print(f"Searching with entities: {[entity.name for entity, orig_str in zip(entity_objs, entities_list) if entity.name in orig_str or orig_str in entity.name]}")
+            print(
+                f"Searching with entities: {[entity.name for entity, orig_str in zip(entity_objs, entities_list) if entity.name in orig_str or orig_str in entity.name]}"
+            )
         else:
             entities = None
         if keywords_list:
@@ -748,7 +758,9 @@ class MindMapGenerator:
         else:
             keywords = None
 
-        queries: list[QueryComponent] = [Similarity(sentence) for sentence in search_list]
+        queries: list[QueryComponent] = [
+            Similarity(sentence) for sentence in search_list
+        ]
         if entities:
             queries = [query & entities for query in queries]
         if keywords:
@@ -778,7 +790,6 @@ class MindMapGenerator:
         """
         doctexts = []
         for (text_query, date_range), result in results.items():
-
             dictitem = text_query.to_dict()
             if dictitem["type"] == "similarity":
                 sentence = dictitem["value"]

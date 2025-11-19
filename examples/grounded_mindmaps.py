@@ -2,7 +2,6 @@ import logging
 
 from dotenv import load_dotenv
 
-from bigdata_research_tools.mindmap.mindmap import MindMap
 from bigdata_research_tools.mindmap.mindmap_generator import MindMapGenerator
 from bigdata_research_tools.visuals.mindmap_visuals import plot_mindmap
 
@@ -91,7 +90,7 @@ def test_refined_mindmap2(
         focus=focus,
         main_theme=main_theme,
         initial_mindmap=base_mindmap,
-        date_range = ("2025-10-01", "2025-10-31"),
+        date_range=("2025-10-01", "2025-10-31"),
         output_dir="./refined_mindmaps",
         filename="refined_mindmap.json",
         map_type=map_type,
@@ -125,10 +124,14 @@ def test_dynamic_mindmap(
             ("2025-10-01", "2025-10-31"),
             ("2025-11-01", "2025-11-30"),
         ],
-        month_names=["September_2025", "October_2025", "November_2025", ],
+        month_names=[
+            "September_2025",
+            "October_2025",
+            "November_2025",
+        ],
     )
-    logger.info("Results: %s", mindmap["base_mindmap"]['mindmap_json'])
-    logger.info("Results: %s", mindmap["October_2025"]['mindmap_json'])
+    logger.info("Results: %s", mindmap["base_mindmap"]["mindmap_json"])
+    logger.info("Results: %s", mindmap["October_2025"]["mindmap_json"])
     logger.info("")
 
 

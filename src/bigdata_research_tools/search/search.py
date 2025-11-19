@@ -13,14 +13,13 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Literal, overload, cast
+from typing import Literal, Sequence, cast, overload
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
 from bigdata_client.document import Document
 from bigdata_client.models.advanced_search_query import QueryComponent
 from bigdata_client.models.search import DocumentType, SortBy
-from matplotlib.pylab import Sequence
 from tqdm import tqdm
 
 from bigdata_research_tools.client import bigdata_connection, init_bigdata_client
@@ -31,7 +30,9 @@ from bigdata_research_tools.tracing import (
     send_trace,
 )
 
-NORMALIZED_DATE_RANGE = Sequence[tuple[datetime, datetime] | AbsoluteDateRange | RollingDateRange]
+NORMALIZED_DATE_RANGE = Sequence[
+    tuple[datetime, datetime] | AbsoluteDateRange | RollingDateRange
+]
 
 INPUT_DATE_RANGE = (
     tuple[datetime, datetime]
@@ -40,9 +41,7 @@ INPUT_DATE_RANGE = (
     | NORMALIZED_DATE_RANGE
 )
 
-SEARCH_QUERY_RESULTS_TYPE = dict[
-    tuple[QueryComponent, str], list[Document]
-]
+SEARCH_QUERY_RESULTS_TYPE = dict[tuple[QueryComponent, str], list[Document]]
 
 REQUESTS_PER_MINUTE_LIMIT = 300
 MAX_WORKERS = 4
@@ -281,7 +280,10 @@ def normalize_date_range(
     if isinstance(date_ranges, (AbsoluteDateRange, RollingDateRange, tuple)):
         return cast(NORMALIZED_DATE_RANGE, [date_ranges])
     if isinstance(date_ranges, Sequence):
-        if all(isinstance(dr, (tuple, AbsoluteDateRange, RollingDateRange)) for dr in date_ranges):
+        if all(
+            isinstance(dr, (tuple, AbsoluteDateRange, RollingDateRange))
+            for dr in date_ranges
+        ):
             return list(date_ranges)
 
     return date_ranges

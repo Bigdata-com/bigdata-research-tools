@@ -37,8 +37,9 @@ The algorithm guarantees no text overflow, no ellipsis, and proper spacing while
 maintaining visual hierarchy and readability.
 """
 
-import matplotlib
 from typing import Any
+
+import matplotlib
 
 matplotlib.use("Agg")  # Use non-interactive backend
 import math
