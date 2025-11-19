@@ -90,6 +90,7 @@ def search_by_companies(
             - entity_country: str
             - entity_ticker: str
             - text: str
+            - sentiment: float (if available)
             - other_entities: str
             - entities: List[Dict[str, Any]]
                 - key: str
@@ -98,6 +99,9 @@ def search_by_companies(
                 - start: int
                 - end: int
             - masked_text: str
+            - source_name: str (if applicable)
+            - source_rank: int (if applicable)
+            - url: str (if applicable)
             - other_entities_map: List[Tuple[int, str]]
     """
     workflow_start = datetime.now()
@@ -248,6 +252,7 @@ def process_screener_search_results(
             - entity_country: str
             - entity_ticker: str
             - text: str
+            - sentiment: float (if available)
             - other_entities: str
             - entities: List[Dict[str, Any]]
             - topics: List[Dict[str, Any]]
@@ -338,6 +343,7 @@ def process_screener_search_results(
                             "entity_country": reporting_entity.country,
                             "entity_ticker": reporting_entity.ticker,
                             "text": chunk.text,
+                            "sentiment": chunk.sentiment if chunk.sentiment else None,
                             "other_entities": ", ".join(
                                 e["name"] for e in other_entities
                             ),
@@ -378,6 +384,7 @@ def process_screener_search_results(
                             "entity_country": entity_key.country,
                             "entity_ticker": entity_key.ticker,
                             "text": chunk.text,
+                            "sentiment": chunk.sentiment if chunk.sentiment else None,
                             "other_entities": ", ".join(
                                 e["name"] for e in other_entities
                             ),
