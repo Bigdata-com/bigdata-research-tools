@@ -48,7 +48,7 @@ INPUT_DATE_RANGE = (
 )
 
 SEARCH_QUERY_RESULTS_TYPE = dict[
-    tuple[QueryComponent, AbsoluteDateRange | RollingDateRange], list[Document]
+    tuple[QueryComponent, str], list[Document]
 ]
 
 REQUESTS_PER_MINUTE_LIMIT = 300

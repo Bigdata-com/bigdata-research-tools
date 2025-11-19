@@ -29,14 +29,10 @@ from bigdata_research_tools.mindmap.mindmap_utils import (
     prompts_dict,
     save_results_to_file,
 )
+from bigdata_client.models.advanced_search_query import QueryComponent
+from bigdata_research_tools.search.search import SEARCH_QUERY_RESULTS_TYPE
 
-# from bigdata_research_tools.search.query_builder import (
-#     EntitiesToSearch,
-#     build_batched_query,
-#     create_date_ranges,
-# )
-# cannot use query builder because it is to error-prone to build EntitiesToSearch based on the LLM output
-from bigdata_research_tools.search.search import run_search
+from bigdata_research_tools.search.search import run_search, INPUT_DATE_RANGE
 
 logger: Logger = getLogger(__name__)
 
@@ -261,7 +257,7 @@ class MindMapGenerator:
 
     def send_tool_call(
         self, messages: list, llm_client: LLMEngine, llm_kwargs: dict
-    ) -> list:
+    ) -> tuple[str | None, dict | None, list | None, list | None, list | None]:
         llm_kwargs.update(
             {
                 "tool_choice": {
@@ -341,7 +337,7 @@ class MindMapGenerator:
         initial_mindmap: str,
         context: str,
         tool_calls,
-        tool_call_id,
+        tool_call_id: str | None,
     ) -> list:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
@@ -754,7 +750,7 @@ class MindMapGenerator:
         else:
             keywords = None
 
-        queries = [Similarity(sentence) for sentence in search_list]
+        queries: list[QueryComponent] = [Similarity(sentence) for sentence in search_list]
         if entities:
             queries = [query & entities for query in queries]
         if keywords:
@@ -784,10 +780,10 @@ class MindMapGenerator:
         """
         doctexts = []
         for (text_query, date_range), result in results.items():
-            for item in text_query.items:
-                dictitem = item.to_dict()
-                if dictitem["type"] == "similarity":
-                    sentence = dictitem["value"]
+
+            dictitem = text_query.to_dict()
+            if dictitem["type"] == "similarity":
+                sentence = dictitem["value"]
             docstr = f"###Query: {sentence}\n ### Results:\n"
             for doc in result:
                 headline = getattr(doc, "headline", "No headline")

@@ -38,6 +38,7 @@ maintaining visual hierarchy and readability.
 """
 
 import matplotlib
+from typing import Any
 
 matplotlib.use("Agg")  # Use non-interactive backend
 import math
@@ -609,7 +610,7 @@ class MindmapPlotter:
         self, ax, layout, x_theme, x_main, x_sub, main_positions, theme_y
     ) -> Dict:
         """Check for text and rectangle overflow, return adjustments needed."""
-        issues = {
+        issues: dict[str, Any] = {
             "theme_overflow": False,
             "main_overflows": {},
             "sub_overflows": {},

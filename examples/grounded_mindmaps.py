@@ -22,7 +22,7 @@ def test_one_shot_mindmap(
     map_type,
     instructions,
     llm_base_config: str = "openai::gpt-4o-mini",
-) -> MindMap:
+):
     """Test one-shot mind map generation with base LLM."""
     logger.info("=" * 60)
     logger.info("TEST 1: One-Shot Mind Map Generation with Base LLM")
@@ -48,7 +48,7 @@ def test_refined_mindmap(
     instructions,
     base_mindmap: str,
     llm_base_config: str = "openai::o3-mini",
-) -> MindMap:
+):
     """Test refined mindmap generation with reasoning LLM sent in the base config."""
     logger.info("=" * 60)
     logger.info("TEST 2: Refined MindMap Generation with Reasoning LLM in Base Config")
@@ -74,9 +74,9 @@ def test_refined_mindmap2(
     map_type,
     instructions,
     base_mindmap: str,
-    llm_base_config: str | None = None,
+    llm_base_config: str,
     llm_reasoning_config: str = "openai::o3-mini",
-) -> MindMap:
+):
     """Test refined mindmap generation with reasoning LLM sent in the reasoning config."""
     logger.info("=" * 60)
     logger.info(
@@ -107,7 +107,7 @@ def test_dynamic_mindmap(
     instructions,
     llm_base_config: str = "openai::gpt-4o-mini",
     llm_reasoning_config: str = "openai::o3-mini",
-) -> MindMap:
+):
     """Test dynamic mindmap generation with two LLMs."""
     logger.info("=" * 60)
     logger.info("TEST 4: Dynamic MindMap Generation with Two LLMs")
