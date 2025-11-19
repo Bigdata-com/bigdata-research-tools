@@ -26,7 +26,7 @@ def risk_analyzer_example(
 
     analyzer = RiskAnalyzer(
         main_theme=risk_scenario,
-        companies=companies[:3],
+        companies=companies,
         start_date="2025-01-01",
         end_date="2025-01-31",
         keywords=keywords,

@@ -36,8 +36,6 @@ class Motivation:
         else:
             self.llm_model_config = llm_model_config
 
-        logger.info(f"LLM Config {self.llm_model_config}")
-
         self.llm_engine = LLMEngine(
             model=self.llm_model_config.model, **self.llm_model_config.connection_config
         )
@@ -45,9 +43,8 @@ class Motivation:
     def _get_default_model_config(self, model: str) -> LLMConfig:
         """Get default LLM model configuration."""
         if any(rm in model for rm in REASONING_MODELS):
-            print(model)
             return LLMConfig(
-                model=model, reasoning_effort="high", seed=42, max_completion_tokens=1000,
+                model=model, reasoning_effort="high", seed=42, max_completion_tokens=None,
             )
         else:
             return LLMConfig(
@@ -143,8 +140,6 @@ class Motivation:
                 remove_json_formatting=True, remove_timeout=True
             ),
         )
-
-        logger.info(f"Motivation {motivation}")
 
         return motivation.strip()
 

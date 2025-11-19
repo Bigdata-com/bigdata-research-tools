@@ -90,9 +90,6 @@ class RiskAnalyzer(Workflow):
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
 
-        logger.info(f"LLM Config {self.llm_model_config}")
-        logger.info(f"LLM Config {type(self.llm_model_config)}")
-
     def create_taxonomy(self):
         """Create a risk taxonomy based on the main theme and focus.
         Returns:
@@ -271,7 +268,7 @@ class RiskAnalyzer(Workflow):
         df_industry = get_scored_df(
             df_labeled, index_columns=["Industry"], pivot_column="Sub-Scenario"
         )
-        logger.info(f"LLM CONFIG {self.llm_model_config}")
+
         motivation_generator = Motivation(llm_model_config=self.llm_model_config)
         motivation_df = motivation_generator.generate_company_motivations(
             df=df_labeled.rename(columns={"Sub-Scenario": "Theme"}),
