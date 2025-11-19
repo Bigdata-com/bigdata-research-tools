@@ -39,7 +39,7 @@ class ThematicScreener(Workflow):
         sources: list[str] | None = None,
         rerank_threshold: float | None = None,
         focus: str | None = None,
-        ground_mindmap: bool | None = None,
+        ground_mindmap: bool = False,
     ):
         """
         This class will screen a universe's (specified in 'companies') exposure to a given theme ('main_theme').
@@ -149,7 +149,7 @@ class ThematicScreener(Workflow):
             theme_tree, _ = mindmap_generator.generate_one_shot(
                 main_theme=self.main_theme,
                 focus=self.focus,
-                allow_grounding=self.ground_mindmap if self.ground_mindmap else False,
+                allow_grounding=self.ground_mindmap,
                 instructions=None,
                 date_range=None,
                 map_type="theme",
