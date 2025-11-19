@@ -44,7 +44,10 @@ class Motivation:
         """Get default LLM model configuration."""
         if any(rm in model for rm in REASONING_MODELS):
             return LLMConfig(
-                model=model, reasoning_effort="high", seed=42, max_completion_tokens=300
+                model=model,
+                reasoning_effort="high",
+                seed=42,
+                max_completion_tokens=None,
             )
         else:
             return LLMConfig(

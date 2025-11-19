@@ -59,6 +59,7 @@ class LLMConfig(BaseModel):
             self.reasoning_effort = (
                 self.reasoning_effort if self.reasoning_effort is not None else "high"
             )
+            self.max_completion_tokens = None
             if self.temperature is not None:
                 warnings.warn(
                     "The selected model does not support temperature settings. "
@@ -112,7 +113,7 @@ class AsyncLLMProvider(ABC):
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:
@@ -202,7 +203,7 @@ class AsyncLLMEngine:
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
     ) -> dict[str, list[dict] | str]:
@@ -244,8 +245,7 @@ class LLMProvider(ABC):
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
-        temperature: float = 0,
+        tools: list[dict],
         **kwargs,
     ) -> dict[str, list[dict] | str]:
         """
@@ -331,8 +331,7 @@ class LLMEngine:
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
-        temperature: float = 0,
+        tools: list[dict],
         **kwargs,
     ) -> dict[str, list[dict] | str]:
         """
@@ -352,9 +351,7 @@ class LLMEngine:
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
-        return self.provider.get_tools_response(
-            chat_history, tools, temperature, **kwargs
-        )
+        return self.provider.get_tools_response(chat_history, tools, **kwargs)
 
 
 class NotInitializedLLMProviderError(Exception):

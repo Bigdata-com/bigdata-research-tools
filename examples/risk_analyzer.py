@@ -34,6 +34,7 @@ def risk_analyzer_example(
         control_entities=control_entities,
         focus=focus,  # Optional focus to narrow the theme,
         llm_model_config=llm_model_config,
+        ground_mindmap=False,
     )
 
     class PrintObserver(Observer):
