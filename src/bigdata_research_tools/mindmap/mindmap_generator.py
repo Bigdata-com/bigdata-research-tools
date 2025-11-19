@@ -4,7 +4,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger, getLogger
-from typing import Any, Optional
+from typing import Optional
 
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
 from bigdata_client.models.advanced_search_query import QueryComponent
@@ -205,7 +205,9 @@ class MindMapGenerator:
     ) -> list:
         # Explicit, step-by-step prompt (robust, as in working repo, minus Keywords)
         if instructions is None:
-            instructions = prompts_dict[map_type]["default_instructions"].format(main_theme=main_theme, analyst_focus=focus)
+            instructions = prompts_dict[map_type]["default_instructions"].format(
+                main_theme=main_theme, analyst_focus=focus
+            )
 
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
         messages = [
@@ -235,7 +237,9 @@ class MindMapGenerator:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
         if instructions is None:
-            instructions = prompts_dict[map_type]["default_instructions"].format(main_theme=main_theme, analyst_focus=focus)
+            instructions = prompts_dict[map_type]["default_instructions"].format(
+                main_theme=main_theme, analyst_focus=focus
+            )
 
         tool_prompt = f"{instructions} {focus} You can use news search to find relevant information about the topic. \nUse the Bigdata API to search for news articles related to the topic and use them to inform your response."
 
@@ -309,7 +313,9 @@ class MindMapGenerator:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
         if instructions is None:
-            instructions = prompts_dict[map_type]["default_instructions"].format(main_theme=main_theme, analyst_focus=focus)
+            instructions = prompts_dict[map_type]["default_instructions"].format(
+                main_theme=main_theme, analyst_focus=focus
+            )
 
         final_prompt = f"{instructions} {focus}. \nIMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant.\n{enforce_structure}"
 
@@ -348,7 +354,9 @@ class MindMapGenerator:
         enforce_structure = prompts_dict[map_type]["enforce_structure_string"]
 
         if instructions is None:
-            instructions = prompts_dict[map_type]["default_instructions"].format(main_theme=main_theme, analyst_focus=focus)
+            instructions = prompts_dict[map_type]["default_instructions"].format(
+                main_theme=main_theme, analyst_focus=focus
+            )
 
         refine_prompt = f"{instructions} {prompts_dict[map_type]['qualifier']}: {main_theme} {focus}.\nBased on these instructions, enhance the given mindmap with the information below. Only return the mindmap without extra text.\nIMPORTANT: Only create additional branches if the tool call results contain explicit information suggesting that new branches would be relevant.\n{enforce_structure}."
 
@@ -437,7 +445,7 @@ class MindMapGenerator:
                     mindmap_text
                 )  ## check if correct
                 df = format_mindmap_to_dataframe(mindmap_text)
-                return None, {
+                return MindMap("", 0), {
                     "mindmap_text": mindmap_text,
                     "mindmap_df": df,
                     "mindmap_json": theme_tree.to_json(),
@@ -470,7 +478,7 @@ class MindMapGenerator:
         date_range: Optional[tuple[str, str]] = None,
         chunk_limit: int = 20,
         **llm_kwargs,
-    ) -> tuple[MindMap, dict]:
+    ) -> tuple[MindMap | None, dict]:
         """
         Refine an initial mind map: LLM proposes searches, search is run, LLM refines mind map with search results.
         Optionally log intermediate steps to disk.
@@ -560,7 +568,7 @@ class MindMapGenerator:
             print(f"Loaded existing result for {filename}_{i}.json")
         else:
             try:
-                result = self.generate_refined(
+                _, result = self.generate_refined(
                     instructions=instructions,
                     focus=focus,
                     main_theme=main_theme,
@@ -574,8 +582,7 @@ class MindMapGenerator:
                     filename=f"{filename}_{i}.json",
                 )
                 # save_results_to_file(result, output_dir, )
-            except Exception as e:
-                print(e)
+            except Exception:
                 _, result = self.generate_refined(
                     instructions=instructions,
                     focus=focus,
@@ -586,7 +593,7 @@ class MindMapGenerator:
                     output_dir=output_dir,
                     filename=f"{filename}_{i}.json",
                 )
-                # save_results_to_file(result, output_dir, f"{filename}_{i}.json")
+
         return result
 
     def bootstrap_refined(
@@ -604,7 +611,7 @@ class MindMapGenerator:
         filename: str = "refined_mindmap",
         n_elements: int = 50,
         max_workers: int = 10,
-    ) -> dict:
+    ) -> list[dict]:
         """
         Generate multiple refined mindmaps in parallel using ThreadPoolExecutor.
 
@@ -669,7 +676,7 @@ class MindMapGenerator:
         map_type: str = "risk",
         output_dir: str = "./dynamic_mindmaps",
         **llm_kwargs,
-    ) -> tuple[dict[str,MindMap], dict]:
+    ) -> tuple[dict[str, MindMap], dict]:
         """
         Dynamic/iterative mind map generation over time intervals.
         Returns a list of dicts, one per interval.

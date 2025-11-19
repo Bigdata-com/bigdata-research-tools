@@ -30,7 +30,7 @@ def thematic_screener_example(
         end_date="2024-02-28",
         document_type=DocumentType.TRANSCRIPTS,
         fiscal_year=2024,
-        ground_mindmap=True
+        ground_mindmap=True,
     )
 
     class PrintObserver(Observer):

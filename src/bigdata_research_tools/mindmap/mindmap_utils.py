@@ -8,28 +8,30 @@ prompts_dict = {
     "theme": {
         "qualifier": "Main Theme",
         "user_prompt_message": "Your given Theme is: {main_theme}",
-        "default_instructions": ("Forget all previous prompts."
-	"You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies."
-	"Your objective is to generate a comprehensive tree structure of distinct sub-themes that will guide the analyst's research process."
-	"Follow these steps strictly:"
-	"1. **Understand the Core Theme {main_theme}**:"
-	"   - The theme {main_theme} is a central concept. All components are essential for a thorough understanding."
-	"2. **Create a Taxonomy of Sub-themes for {main_theme}**:"
-	"   - Decompose the main theme {main_theme} into concise, focused, and self-contained sub-themes."
-	"   - Each sub-theme should represent a singular, concise, informative, and clear aspect of the main theme."
-	"   - Expand the sub-theme to be relevant for the {main_theme}: a single word is not informative enough."  
-	"   - Prioritize clarity and specificity in your sub-themes."
-	"   - Avoid repetition and strive for diverse angles of exploration."
-	"   - Provide a comprehensive list of potential sub-themes."
-	"3. **Iterate Based on the Analyst's Focus {analyst_focus}**:"
-	"   - If no specific {analyst_focus} is provided, transition directly to formatting the JSON response."
-	"4. **Format Your Response as a JSON Object**:"
-	"   - Each node in the JSON object must include:"
-	"     - `node`: an integer representing the unique identifier for the node."
-	"     - `label`: a string for the name of the sub-theme."
-	"     - `summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}."
-	"       - For the node referring to the first node {main_theme}, just define briefly in maximum 15 words the theme {main_theme}."
-	"     - `children`: an array of child nodes."),
+        "default_instructions": (
+            "Forget all previous prompts."
+            "You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies."
+            "Your objective is to generate a comprehensive tree structure of distinct sub-themes that will guide the analyst's research process."
+            "Follow these steps strictly:"
+            "1. **Understand the Core Theme {main_theme}**:"
+            "   - The theme {main_theme} is a central concept. All components are essential for a thorough understanding."
+            "2. **Create a Taxonomy of Sub-themes for {main_theme}**:"
+            "   - Decompose the main theme {main_theme} into concise, focused, and self-contained sub-themes."
+            "   - Each sub-theme should represent a singular, concise, informative, and clear aspect of the main theme."
+            "   - Expand the sub-theme to be relevant for the {main_theme}: a single word is not informative enough."
+            "   - Prioritize clarity and specificity in your sub-themes."
+            "   - Avoid repetition and strive for diverse angles of exploration."
+            "   - Provide a comprehensive list of potential sub-themes."
+            "3. **Iterate Based on the Analyst's Focus {analyst_focus}**:"
+            "   - If no specific {analyst_focus} is provided, transition directly to formatting the JSON response."
+            "4. **Format Your Response as a JSON Object**:"
+            "   - Each node in the JSON object must include:"
+            "     - `node`: an integer representing the unique identifier for the node."
+            "     - `label`: a string for the name of the sub-theme."
+            "     - `summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}."
+            "       - For the node referring to the first node {main_theme}, just define briefly in maximum 15 words the theme {main_theme}."
+            "     - `children`: an array of child nodes."
+        ),
         "enforce_structure_string": (
             """IMPORTANT: Your response MUST be a valid JSON object. Each node in the JSON object must include:\n"
 	                    "- `node`: an integer representing the unique identifier for the node.\n"
@@ -65,7 +67,8 @@ prompts_dict = {
     "risk": {
         "qualifier": "Risk Scenario",
         "user_prompt_message": "Your given Risk Scenario is: {main_theme}",
-        "default_instructions": ("Forget all previous prompts."
+        "default_instructions": (
+            "Forget all previous prompts."
             "You are assisting a professional risk analyst tasked with creating a taxonomy to classify the impact of the Risk Scenario '**{main_theme}**' on companies."
             "Your objective is to generate a **comprehensive tree structure** that maps the **risk spillovers** stemming from the Risk Scenario '**{main_theme}**', and generates related sub-scenarios."
             "Key Instructions:"
@@ -112,7 +115,8 @@ prompts_dict = {
             "    - If you don't understand the analyst focus ('{analyst_focus}'), ask an open-ended question to the analyst."
             "5. **Review and Expand the Tree for Missing Risks**:"
             "    - After incorporating the analyst's focus, review the tree structure to ensure it includes a **broad range of risks** and sub-scenarios."
-            "    - Add any missing risks or sub-scenarios to the tree."),
+            "    - Add any missing risks or sub-scenarios to the tree."
+        ),
         "enforce_structure_string": (
             """IMPORTANT: Your response MUST be a valid JSON object. Each node in the JSON object must include:\n"
             "    - `node`: an integer representing the unique identifier for the node.\n"

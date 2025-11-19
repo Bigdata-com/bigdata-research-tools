@@ -11,7 +11,6 @@ from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_ca
 from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.mindmap.mindmap import (
     MindMap,
-    generate_risk_tree,
 )
 from bigdata_research_tools.mindmap.mindmap_generator import MindMapGenerator
 from bigdata_research_tools.portfolio.motivation import Motivation
@@ -104,13 +103,17 @@ class RiskAnalyzer(Workflow):
         #     llm_model_config=self.llm_model_config,
         # )
 
-        mindmap_generator = MindMapGenerator(llm_model_config_base=self.llm_model_config)
-        risk_tree, _ = mindmap_generator.generate_one_shot(main_theme = self.main_theme,
-                                                           focus = self.focus,
-                                                           allow_grounding = self.ground_mindmap,
-                                                           instructions = None,
-                                                           date_range = None,
-                                                           map_type = "risk")
+        mindmap_generator = MindMapGenerator(
+            llm_model_config_base=self.llm_model_config
+        )
+        risk_tree, _ = mindmap_generator.generate_one_shot(
+            main_theme=self.main_theme,
+            focus=self.focus,
+            allow_grounding=self.ground_mindmap,
+            instructions=None,
+            date_range=None,
+            map_type="risk",
+        )
 
         risk_summaries = risk_tree.get_terminal_summaries()
         terminal_labels = risk_tree.get_terminal_labels()

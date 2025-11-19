@@ -9,7 +9,6 @@ from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
 from bigdata_research_tools.llm.base import LLMConfig
-from bigdata_research_tools.mindmap.mindmap import generate_theme_tree
 from bigdata_research_tools.mindmap.mindmap_generator import MindMapGenerator
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
@@ -40,7 +39,7 @@ class ThematicScreener(Workflow):
         sources: list[str] | None = None,
         rerank_threshold: float | None = None,
         focus: str | None = None,
-        ground_mindmap: bool = None
+        ground_mindmap: bool | None = None,
     ):
         """
         This class will screen a universe's (specified in 'companies') exposure to a given theme ('main_theme').
@@ -144,13 +143,17 @@ class ThematicScreener(Workflow):
             #     llm_model_config=self.llm_model_config,
             # )
 
-            mindmap_generator = MindMapGenerator(llm_model_config_base=self.llm_model_config)
-            theme_tree, _ = mindmap_generator.generate_one_shot(main_theme = self.main_theme,
-                                                           focus = self.focus,
-                                                           allow_grounding = self.ground_mindmap,
-                                                           instructions = None,
-                                                           date_range = None,
-                                                           map_type = "theme")
+            mindmap_generator = MindMapGenerator(
+                llm_model_config_base=self.llm_model_config
+            )
+            theme_tree, _ = mindmap_generator.generate_one_shot(
+                main_theme=self.main_theme,
+                focus=self.focus,
+                allow_grounding=self.ground_mindmap if self.ground_mindmap else False,
+                instructions=None,
+                date_range=None,
+                map_type="theme",
+            )
 
             theme_summaries = theme_tree.get_terminal_summaries()
             terminal_labels = theme_tree.get_terminal_labels()

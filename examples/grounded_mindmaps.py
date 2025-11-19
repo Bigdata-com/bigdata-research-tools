@@ -29,7 +29,7 @@ def test_one_shot_mindmap(
     mindmap_generator = MindMapGenerator(
         llm_model_config_base=llm_base_config,
     )
-    mindmap = mindmap_generator.generate_one_shot(
+    _, mindmap = mindmap_generator.generate_one_shot(
         instructions=instructions,
         focus=focus,
         main_theme=main_theme,
@@ -55,7 +55,7 @@ def test_refined_mindmap(
     mindmap_generator = MindMapGenerator(
         llm_model_config_base=llm_base_config,
     )
-    mindmap = mindmap_generator.generate_refined(
+    _, mindmap = mindmap_generator.generate_refined(
         focus=focus,
         main_theme=main_theme,
         initial_mindmap=base_mindmap,
@@ -86,7 +86,7 @@ def test_refined_mindmap2(
         llm_model_config_base=llm_base_config,
         llm_model_config_reasoning=llm_reasoning_config,
     )
-    mindmap = mindmap_generator.generate_refined(
+    _, mindmap = mindmap_generator.generate_refined(
         focus=focus,
         main_theme=main_theme,
         initial_mindmap=base_mindmap,
@@ -115,7 +115,7 @@ def test_dynamic_mindmap(
         llm_model_config_base=llm_base_config,
         llm_model_config_reasoning=llm_reasoning_config,
     )
-    mindmap = mindmap_generator.generate_dynamic(
+    _, mindmap = mindmap_generator.generate_dynamic(
         instructions=instructions,
         focus=focus,
         main_theme=main_theme,
