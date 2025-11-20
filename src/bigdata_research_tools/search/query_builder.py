@@ -73,7 +73,7 @@ def build_similarity_queries(sentences: list[str]) -> list[QueryComponent]:
 
 
 def build_batched_query(
-    sentences: list[str],
+    sentences: list[str] | None,
     keywords: list[str] | None,
     entities: EntitiesToSearch | None,
     control_entities: EntitiesToSearch | None,

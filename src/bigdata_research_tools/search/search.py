@@ -13,7 +13,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Literal, overload
+from typing import Literal, Sequence, cast, overload
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
@@ -30,17 +30,18 @@ from bigdata_research_tools.tracing import (
     send_trace,
 )
 
-NORMALIZED_DATE_RANGE = (
-    list[tuple[datetime, datetime]]
-    | list[RollingDateRange]
-    | list[tuple[datetime, datetime] | RollingDateRange]
+NORMALIZED_DATE_RANGE = Sequence[
+    tuple[datetime, datetime] | AbsoluteDateRange | RollingDateRange
+]
+
+INPUT_DATE_RANGE = (
+    tuple[datetime, datetime]
+    | RollingDateRange
+    | AbsoluteDateRange
+    | NORMALIZED_DATE_RANGE
 )
 
-INPUT_DATE_RANGE = tuple[datetime, datetime] | RollingDateRange | NORMALIZED_DATE_RANGE
-
-SEARCH_QUERY_RESULTS_TYPE = dict[
-    tuple[QueryComponent, AbsoluteDateRange | RollingDateRange], list[Document]
-]
+SEARCH_QUERY_RESULTS_TYPE = dict[tuple[QueryComponent, str], list[Document]]
 
 REQUESTS_PER_MINUTE_LIMIT = 300
 MAX_WORKERS = 4
@@ -246,7 +247,15 @@ class SearchManager:
                 as_completed(futures), total=len(futures), desc="Querying Bigdata..."
             ):
                 query, date_range = futures[future]
+
                 try:
+                    if isinstance(date_range, AbsoluteDateRange):
+                        date_range = f"{date_range.start_dt.isoformat()}_{date_range.end_dt.isoformat()}"
+                    elif isinstance(date_range, tuple):
+                        date_range = (
+                            f"{date_range[0].isoformat()}_{date_range[1].isoformat()}"
+                        )
+
                     results[(query, date_range)] = future.result()
                 except Exception as e:
                     raise e
@@ -268,8 +277,14 @@ class SearchManager:
 def normalize_date_range(
     date_ranges: INPUT_DATE_RANGE,
 ) -> NORMALIZED_DATE_RANGE:
-    if not isinstance(date_ranges, list):
-        date_ranges = [date_ranges]
+    if isinstance(date_ranges, (AbsoluteDateRange, RollingDateRange, tuple)):
+        return cast(NORMALIZED_DATE_RANGE, [date_ranges])
+    if isinstance(date_ranges, Sequence):
+        if all(
+            isinstance(dr, (tuple, AbsoluteDateRange, RollingDateRange))
+            for dr in date_ranges
+        ):
+            return list(date_ranges)
 
     return date_ranges
 
@@ -340,8 +355,9 @@ def run_search(
         If `only_results` is False, returns a mapping of the tuple of search query and date range to
         the list of the corresponding search results.
     """
-    date_ranges = normalize_date_range(date_ranges)
-    date_ranges.sort(key=lambda x: x[0])
+    date_ranges = list(normalize_date_range(date_ranges))
+    if isinstance(date_ranges[0], tuple) or isinstance(date_ranges[0], list):
+        date_ranges.sort(key=lambda x: x[0])
 
     workflow_start = datetime.now()
     workflow_status = WorkflowStatus.UNKNOWN

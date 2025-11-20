@@ -30,7 +30,7 @@ themes_default_llm_model_config: dict[str, Any] = {
 
 
 @dataclass
-class SemanticTree:
+class MindMap:
     """
     A hierarchical tree structure where each node represents a semantically meaningful unit, or node, that guide the analyst's research process.
 
@@ -44,36 +44,36 @@ class SemanticTree:
         summary (str): A brief explanation of the node's relevance. For the root node,
             this describes the overall relevance of the tree; for sub-nodes, it explains their
             connection to the parent node.
-        children (list[SemanticTree] | None): A list of child nodes representing sub-units.
+        children (list[MindMap] | None): A list of child nodes representing sub-units.
         keywords (list[str] | None): A list of keywords summarizing the current node.
     """
 
     label: str
     node: int
     summary: str = ""
-    children: list["SemanticTree"] = field(default_factory=list)
+    children: list["MindMap"] = field(default_factory=list)
     keywords: list[str] = field(default_factory=list)
 
     def __str__(self) -> str:
         return self.as_string()
 
     @staticmethod
-    def from_dict(tree_dict: dict) -> "SemanticTree":
+    def from_dict(tree_dict: dict) -> "MindMap":
         """
-        Create a SemanticTree object from a dictionary.
+        Create a MindMap object from a dictionary.
 
         Args:
-            tree_dict (dict): A dictionary representing the SemanticTree structure.
+            tree_dict (dict): A dictionary representing the MindMap structure.
 
         Returns:
-            SemanticTree: The SemanticTree object generated from the dictionary.
+            MindMap: The MindMap object generated from the dictionary.
         """
         # Handle case sensitivity in keys
         tree_dict = dict_keys_to_lowercase(tree_dict)
 
-        tree = SemanticTree(**tree_dict)  # ty: ignore[missing-argument]
+        tree = MindMap(**tree_dict)  # ty: ignore[missing-argument]
         tree.children = [
-            SemanticTree.from_dict(child) for child in tree_dict.get("children", [])
+            MindMap.from_dict(child) for child in tree_dict.get("children", [])
         ]
         return tree
 
@@ -110,7 +110,7 @@ class SemanticTree:
         Extract the label summaries from the tree.
 
         Returns:
-            dict[str, str]: Dictionary with all the labels of the SemanticTree as keys and their associated summaries as values.
+            dict[str, str]: Dictionary with all the labels of the MindMap as keys and their associated summaries as values.
         """
         label_summary = {self.label: self.summary}
         for child in self.children:
@@ -119,7 +119,7 @@ class SemanticTree:
 
     def get_summaries(self) -> list[str]:
         """
-        Extract the node summaries from a SemanticTree.
+        Extract the node summaries from a MindMap.
 
         Returns:
             list[str]: List of all 'summary' values in the tree, including its children.
@@ -134,7 +134,7 @@ class SemanticTree:
         Extract the items (labels, summaries) from terminal nodes of the tree.
 
         Returns:
-            dict[str, str]: Dictionary with the labels of the SemanticTree as keys and
+            dict[str, str]: Dictionary with the labels of the MindMap as keys and
             their associated summaries as values, only using terminal nodes.
         """
         label_summary = {}
@@ -192,11 +192,27 @@ class SemanticTree:
             self._visualize_graphviz()
         elif engine == "plotly":
             self._visualize_plotly()
+        elif engine == "matplotlib":
+            self._visualize_matplotlib()
         else:
             raise ValueError(
                 f"Unsupported engine '{engine}'. "
-                f"Supported engines are 'graphviz' and 'plotly'."
+                f"Supported engines are 'graphviz', 'plotly', and 'matplotlib'."
             )
+
+    def _visualize_matplotlib(self):
+        """
+        Auxiliary function to visualize the tree using Matplotlib.
+
+        Returns:
+            A Matplotlib Plot rendering the mindmap.
+        """
+        import matplotlib
+
+        matplotlib.use("Agg")  # Use non-interactive backend
+        from bigdata_research_tools.visuals.mindmap_visuals import plot_mindmap
+
+        plot_mindmap(self.to_dataframe(), main_theme=self.label)
 
     def _visualize_graphviz(self) -> graphviz.Digraph:
         """
@@ -214,7 +230,7 @@ class SemanticTree:
             splines="curved",
         )
 
-        def add_nodes(node: SemanticTree):
+        def add_nodes(node: MindMap):
             # Determine if the node is a terminal (leaf) node
             is_terminal = not node.children
 
@@ -272,7 +288,7 @@ class SemanticTree:
                 "please install `bigdata_research_tools[plotly]` to enable them."
             )
 
-        def extract_labels(node: SemanticTree, parent_label=""):
+        def extract_labels(node: MindMap, parent_label=""):
             labels.append(node.label)
             parents.append(parent_label)
             for child in node.children:
@@ -330,14 +346,49 @@ class SemanticTree:
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(self._to_dict(), f, ensure_ascii=False, indent=2, **kwargs)
 
+    def to_rows(self, parent_label=None):
+        """
+        Flatten tree to rows for DataFrame: each row is (Parent, Label, Node, Summary)
+        """
+        rows = []
+        rows.append(
+            {
+                "Parent": parent_label,
+                "Label": self.label,
+                "Node": self.node,
+                "Summary": self.summary,
+            }
+        )
+        for child in self.children:
+            rows.extend(child.to_rows(parent_label=self.label))
+        return rows
+
+    def to_dataframe(self, leaves_only=False):
+        import pandas as pd
+
+        rows = self.to_rows(parent_label=None)
+        # Exclude rows where Parent is None or Parent == self.label (root node)
+        filtered = [row for row in rows if row["Parent"] not in (None, self.label)]
+        if leaves_only:
+            # Only keep rows that are leaves (i.e., have no children)
+            filtered = [
+                row
+                for row in filtered
+                if row["Label"] not in {r["Parent"] for r in filtered}
+            ]
+        return pd.DataFrame(filtered)
+
+    def to_json(self):
+        return json.dumps(self._to_dict(), indent=2)
+
 
 def generate_theme_tree(
     main_theme: str,
     focus: str = "",
     llm_model_config: LLMConfig | dict | str = "openai::gpt-4o-mini",
-) -> SemanticTree:
+) -> MindMap:
     """
-    Generate a `SemanticTree` class from a main theme and focus.
+    Generate a `MindMap` class from a main theme and focus.
 
     Args:
         main_theme (str): The primary theme to analyze.
@@ -354,7 +405,7 @@ def generate_theme_tree(
             - `seed` (int)
 
     Returns:
-        SemanticTree: The generated theme tree.
+        MindMap: The generated theme tree.
     """
     if isinstance(llm_model_config, dict):
         llm_model_config = LLMConfig(**llm_model_config)
@@ -380,7 +431,7 @@ def generate_theme_tree(
     tree_str = repair_json(tree_str)
     tree_dict = ast.literal_eval(tree_str)
 
-    return SemanticTree.from_dict(tree_dict)
+    return MindMap.from_dict(tree_dict)
 
 
 def dict_keys_to_lowercase(d: dict[str, Any]) -> dict[str, Any]:
@@ -404,10 +455,10 @@ def dict_keys_to_lowercase(d: dict[str, Any]) -> dict[str, Any]:
 
 def stringify_label_summaries(label_summaries: dict[str, str]) -> list[str]:
     """
-    Convert the label summaries of a SemanticTree into a list of strings.
+    Convert the label summaries of a MindMap into a list of strings.
 
     Args:
-        label_summaries (dict[str, str]): A dictionary of label summaries of SemanticTree.
+        label_summaries (dict[str, str]): A dictionary of label summaries of MindMap.
             Expected format: {label: summary}.
     Returns:
         List[str]: A list of strings, each one containing a label and its summary, i.e.
@@ -420,9 +471,9 @@ def generate_risk_tree(
     main_theme: str,
     focus: str = "",
     llm_model_config: LLMConfig | dict | str = "openai::gpt-4o-mini",
-) -> SemanticTree:
+) -> MindMap:
     """
-    Generate a `SemanticTree` class from a main theme and analyst focus.
+    Generate a `MindMap` class from a main theme and analyst focus.
 
     Args:
         main_theme (str): The primary theme to analyze.
@@ -440,7 +491,7 @@ def generate_risk_tree(
             - `seed` (int)
 
     Returns:
-        SemanticTree: The generated theme tree.
+        MindMap: The generated theme tree.
     """
     if isinstance(llm_model_config, dict):
         llm_model_config = LLMConfig(**llm_model_config)
@@ -465,7 +516,7 @@ def generate_risk_tree(
 
     tree_dict = ast.literal_eval(tree_str)
 
-    return SemanticTree.from_dict(tree_dict)
+    return MindMap.from_dict(tree_dict)
 
 
 def get_default_tree_config(llm_model: str) -> LLMConfig:
@@ -475,7 +526,6 @@ def get_default_tree_config(llm_model: str) -> LLMConfig:
             model=llm_model,
             reasoning_effort="high",
             seed=42,
-            max_completion_tokens=300,
             response_format={"type": "json_object"},
         )
     else:
@@ -485,7 +535,6 @@ def get_default_tree_config(llm_model: str) -> LLMConfig:
             top_p=1,
             frequency_penalty=0,
             presence_penalty=0,
-            max_completion_tokens=300,
             seed=42,
             response_format={"type": "json_object"},
         )

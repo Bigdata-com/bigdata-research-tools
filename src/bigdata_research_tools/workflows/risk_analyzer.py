@@ -9,6 +9,10 @@ from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_category
 from bigdata_research_tools.llm.base import LLMConfig
+from bigdata_research_tools.mindmap.mindmap import (
+    MindMap,
+)
+from bigdata_research_tools.mindmap.mindmap_generator import MindMapGenerator
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
@@ -16,10 +20,6 @@ from bigdata_research_tools.tracing import (
     WorkflowStatus,
     WorkflowTraceEvent,
     send_trace,
-)
-from bigdata_research_tools.tree import (
-    SemanticTree,
-    generate_risk_tree,
 )
 from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.workflows.utils import get_scored_df
@@ -44,6 +44,7 @@ class RiskAnalyzer(Workflow):
         sources: list[str] | None = None,
         rerank_threshold: float | None = None,
         focus: str = "",
+        ground_mindmap: bool = False,
     ):
         """
         This class will screen a universe's (specified in 'companies') exposure to a given theme ('main_theme').
@@ -79,6 +80,7 @@ class RiskAnalyzer(Workflow):
         self.sources = sources
         self.rerank_threshold = rerank_threshold
         self.focus = focus
+        self.ground_mindmap = ground_mindmap
 
         if isinstance(llm_model_config, dict):
             self.llm_model_config = LLMConfig(**llm_model_config)
@@ -90,15 +92,27 @@ class RiskAnalyzer(Workflow):
     def create_taxonomy(self):
         """Create a risk taxonomy based on the main theme and focus.
         Returns:
-            SemanticTree: The generated risk tree.
+            MindMap: The generated risk tree.
             List[str]: A list of risk summaries for the terminal nodes.
             List[str]: A list of terminal labels for the risk categories.
         """
 
-        risk_tree = generate_risk_tree(
+        # risk_tree = generate_risk_tree(
+        #     main_theme=self.main_theme,
+        #     focus=self.focus,
+        #     llm_model_config=self.llm_model_config,
+        # )
+
+        mindmap_generator = MindMapGenerator(
+            llm_model_config_base=self.llm_model_config
+        )
+        risk_tree, _ = mindmap_generator.generate_one_shot(
             main_theme=self.main_theme,
             focus=self.focus,
-            llm_model_config=self.llm_model_config,
+            allow_grounding=self.ground_mindmap,
+            instructions=None,
+            date_range=None,
+            map_type="risk",
         )
 
         risk_summaries = risk_tree.get_terminal_summaries()
@@ -174,7 +188,7 @@ class RiskAnalyzer(Workflow):
         self,
         df_sentences,
         terminal_labels,
-        risk_tree: SemanticTree,
+        risk_tree: MindMap,
         additional_prompt_fields: list[str] | None = None,
     ):
         """
@@ -183,7 +197,7 @@ class RiskAnalyzer(Workflow):
         Args:
             df_sentences (DataFrame): The DataFrame containing the search results.
             terminal_labels (List[str]): The terminal labels for the risk categories.
-            risk_tree (SemanticTree): The SemanticTree object containing the risk taxonomy.
+            risk_tree (MindMap): The MindMap object containing the risk taxonomy.
             prompt_fields (Dict): Additional fields to be used in the labeling prompt.
 
         Returns:
@@ -257,6 +271,7 @@ class RiskAnalyzer(Workflow):
         df_industry = get_scored_df(
             df_labeled, index_columns=["Industry"], pivot_column="Sub-Scenario"
         )
+
         motivation_generator = Motivation(llm_model_config=self.llm_model_config)
         motivation_df = motivation_generator.generate_company_motivations(
             df=df_labeled.rename(columns={"Sub-Scenario": "Theme"}),
@@ -264,6 +279,7 @@ class RiskAnalyzer(Workflow):
             word_range=word_range,
             use_case=MotivationType.RISK_ANALYZER,
         )
+        print(motivation_df)
 
         return df_company, df_industry, motivation_df
 
@@ -273,7 +289,7 @@ class RiskAnalyzer(Workflow):
         df_company: DataFrame,
         df_industry: DataFrame,
         motivation_df: DataFrame,
-        risk_tree: SemanticTree,
+        risk_tree: MindMap,
         export_path: str,
     ):
         """
@@ -330,7 +346,7 @@ class RiskAnalyzer(Workflow):
             - df_company: The DataFrame with the output by company.
             - df_industry: The DataFrame with the output by industry.
             - df_motivation: The DataFrame with the generated motivations.
-            - risk_tree: The SemanticTree created for the screening.
+            - risk_tree: The MindMap created for the screening.
         """
 
         if export_path and not check_excel_dependencies():
