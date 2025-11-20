@@ -68,7 +68,7 @@ def _look_up_entities_binary_search(
 
         try:
             batch_lookup = bigdata.knowledge_graph.get_entities(batch)
-            entities.extend([BigdataEntity.from_sdk(ent) for ent in batch_lookup])
+            entities.extend([BigdataEntity.from_sdk(ent) for ent in batch_lookup if ent is not None])
         except ValidationError as e:
             non_entities_found = findall(non_entity_key_pattern, str(e))
             non_entities.extend(non_entities_found)
