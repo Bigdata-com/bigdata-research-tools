@@ -1,19 +1,18 @@
 from logging import Logger, getLogger
 from os import environ
 from time import sleep
-from typing import Optional
 
 from bigdata_client import Bigdata
 
 logger: Logger = getLogger(__name__)
 
-_bigdata_client: Optional[Bigdata] = None
+_bigdata_client: Bigdata | None = None
 
 
 def init_bigdata_client(
-    user: Optional[str] = None,
-    password: Optional[str] = None,
-    api_key: Optional[str] = None,
+    user: str | None = None,
+    password: str | None = None,
+    api_key: str | None = None,
     retries: int = 5,
     wait_time: int = 3,
 ) -> Bigdata:

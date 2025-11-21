@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from importlib.metadata import version
 from logging import Logger, getLogger
 
@@ -23,16 +22,17 @@ class TraceEventNames(Enum):
     WORKFLOW_EXECUTION = "BigdataResearchToolsWorkflowExecution"
     QUERY_UNITS_CONSUMPTION = "BigdataResearchToolsQueryUnitsConsumption"
 
+
 class TraceEventABC(ABC):
     @abstractmethod
-    def to_trace_event(self) -> tracking_services.TraceEvent:
-        ...
+    def to_trace_event(self) -> tracking_services.TraceEvent: ...
+
 
 class WorkflowTraceEvent(BaseModel, TraceEventABC):
     start_date: datetime
     end_date: datetime
     name: str
-    llm_model: Optional[str]
+    llm_model: str | None
     status: WorkflowStatus
 
     @computed_field
@@ -51,9 +51,9 @@ class WorkflowTraceEvent(BaseModel, TraceEventABC):
                 "workflow_duration_seconds": self.duration,
                 "bigdata_research_tools_version": __version__,
                 "bigdata_client_version": version("bigdata-client"),
-            }
+            },
         )
-    
+
 
 class ReportSearchUsageTraceEvent(BaseModel, TraceEventABC):
     workflow_name: str
@@ -73,8 +73,9 @@ class ReportSearchUsageTraceEvent(BaseModel, TraceEventABC):
                 "query_units": self.query_units,
                 "bigdata_research_tools_version": __version__,
                 "bigdata_client_version": version("bigdata-client"),
-            }
+            },
         )
+
 
 def send_trace(bigdata: Bigdata, trace: TraceEventABC):
     tracking_services.send_trace(bigdata, trace.to_trace_event())

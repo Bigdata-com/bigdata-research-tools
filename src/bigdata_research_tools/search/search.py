@@ -7,13 +7,13 @@ search requests efficiently while respecting request-per-minute (RPM) limits
 of the Bigdata API.
 """
 
-from datetime import datetime
 import itertools
 import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Optional, Tuple, Union
+from datetime import datetime
+from typing import Literal, Sequence, cast, overload
 
 from bigdata_client import Bigdata
 from bigdata_client.daterange import AbsoluteDateRange, RollingDateRange
@@ -23,16 +23,25 @@ from bigdata_client.models.search import DocumentType, SortBy
 from tqdm import tqdm
 
 from bigdata_research_tools.client import bigdata_connection, init_bigdata_client
-from bigdata_research_tools.tracing import ReportSearchUsageTraceEvent, WorkflowTraceEvent, send_trace, WorkflowStatus
+from bigdata_research_tools.tracing import (
+    ReportSearchUsageTraceEvent,
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
 
-DATE_RANGE_TYPE = Union[
-    AbsoluteDateRange,
-    RollingDateRange,
-    List[Union[AbsoluteDateRange, RollingDateRange]],
+NORMALIZED_DATE_RANGE = Sequence[
+    tuple[datetime, datetime] | AbsoluteDateRange | RollingDateRange
 ]
-SEARCH_QUERY_RESULTS_TYPE = Dict[
-    Tuple[QueryComponent, Union[AbsoluteDateRange, RollingDateRange]], List[Document]
-]
+
+INPUT_DATE_RANGE = (
+    tuple[datetime, datetime]
+    | RollingDateRange
+    | AbsoluteDateRange
+    | NORMALIZED_DATE_RANGE
+)
+
+SEARCH_QUERY_RESULTS_TYPE = dict[tuple[QueryComponent, str], list[Document]]
 
 REQUESTS_PER_MINUTE_LIMIT = 300
 MAX_WORKERS = 4
@@ -50,8 +59,8 @@ class SearchManager:
     def __init__(
         self,
         rpm: int = REQUESTS_PER_MINUTE_LIMIT,
-        bucket_size: int = None,
-        bigdata: Bigdata = None,
+        bucket_size: int | None = None,
+        bigdata: Bigdata | None = None,
         **kwargs,
     ):
         """
@@ -88,7 +97,7 @@ class SearchManager:
                 self.tokens = min(self.bucket_size, self.tokens + new_tokens)
                 self.last_refill = now
 
-    def _acquire_token(self, timeout: float = None) -> bool:
+    def _acquire_token(self, timeout: float | None = None) -> bool:
         """
         Attempt to acquire a token for executing a search request.
 
@@ -115,14 +124,14 @@ class SearchManager:
     def _search(
         self,
         query: QueryComponent,
-        date_range: Union[AbsoluteDateRange, RollingDateRange] = None,
+        date_range: tuple[datetime, datetime] | RollingDateRange,
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
-        timeout: float = None,
-        rerank_threshold: float = None,
+        timeout: float | None = None,
+        rerank_threshold: float | None = None,
         **kwargs,
-    ) -> Optional[List[Document]]:
+    ) -> list[Document] | None:
         """
         Execute a single search with rate limiting.
 
@@ -150,13 +159,20 @@ class SearchManager:
             logging.warning("Timed out attempting to acquire rate limit token")
             return None
 
-        if isinstance(date_range, tuple):
-            date_range = AbsoluteDateRange(*date_range)
+        date_filter: AbsoluteDateRange | RollingDateRange
+
+        if date_range and isinstance(date_range, tuple):
+            date_filter = AbsoluteDateRange(
+                start=date_range[0],
+                end=date_range[1],
+            )
+        else:
+            date_filter = date_range
 
         try:
             query_obj = self.bigdata.search.new(
                 query=query,
-                date_range=date_range,
+                date_range=date_filter,
                 sortby=sortby,
                 scope=scope,
                 rerank_threshold=rerank_threshold,
@@ -171,14 +187,14 @@ class SearchManager:
 
     def concurrent_search(
         self,
-        queries: List[QueryComponent],
-        date_ranges: DATE_RANGE_TYPE = None,
+        queries: list[QueryComponent],
+        date_ranges: NORMALIZED_DATE_RANGE,
         sortby: SortBy = SortBy.RELEVANCE,
         scope: DocumentType = DocumentType.ALL,
         limit: int = 10,
         max_workers: int = MAX_WORKERS,
-        timeout: float = None,
-        rerank_threshold: float = None,
+        timeout: float | None = None,
+        rerank_threshold: float | None = None,
         **kwargs,
     ) -> SEARCH_QUERY_RESULTS_TYPE:
         """
@@ -231,9 +247,18 @@ class SearchManager:
                 as_completed(futures), total=len(futures), desc="Querying Bigdata..."
             ):
                 query, date_range = futures[future]
+
                 try:
+                    if isinstance(date_range, AbsoluteDateRange):
+                        date_range = f"{date_range.start_dt.isoformat()}_{date_range.end_dt.isoformat()}"
+                    elif isinstance(date_range, tuple):
+                        date_range = (
+                            f"{date_range[0].isoformat()}_{date_range[1].isoformat()}"
+                        )
+
                     results[(query, date_range)] = future.result()
                 except Exception as e:
+                    raise e
                     logging.error(f"Error in search {query, date_range}: {e}")
 
         return results
@@ -248,35 +273,72 @@ class SearchManager:
         with self._quota_lock:
             return self.quota_consumed
 
-def normalize_date_range(date_ranges: DATE_RANGE_TYPE) -> DATE_RANGE_TYPE:
-    if not isinstance(date_ranges, list):
-        date_ranges = [date_ranges]
 
-    # Convert mutable AbsoluteDateRange into hashable objects
-    for i, dr in enumerate(date_ranges):
-        if isinstance(dr, AbsoluteDateRange):
-            date_ranges[i] = (dr.start_dt.strftime("%Y-%m-%d %H:%M:%S"), dr.end_dt.strftime("%Y-%m-%d %H:%M:%S"))
+def normalize_date_range(
+    date_ranges: INPUT_DATE_RANGE,
+) -> NORMALIZED_DATE_RANGE:
+    if isinstance(date_ranges, (AbsoluteDateRange, RollingDateRange, tuple)):
+        return cast(NORMALIZED_DATE_RANGE, [date_ranges])
+    if isinstance(date_ranges, Sequence):
+        if all(
+            isinstance(dr, (tuple, AbsoluteDateRange, RollingDateRange))
+            for dr in date_ranges
+        ):
+            return list(date_ranges)
+
     return date_ranges
+
 
 RUN_SEARCH_NAME: str = "RunSearch"
 
+
+@overload
 def run_search(
-    queries: List[QueryComponent],
-    date_ranges: DATE_RANGE_TYPE = None,
+    queries: list[QueryComponent],
+    date_ranges: INPUT_DATE_RANGE,
+    sortby: SortBy = SortBy.RELEVANCE,
+    scope: DocumentType = DocumentType.ALL,
+    limit: int = 10,
+    rerank_threshold: float | None = None,
+    workflow_name: str = RUN_SEARCH_NAME,
+    *,
+    only_results: Literal[False],
+    **kwargs,
+) -> SEARCH_QUERY_RESULTS_TYPE: ...
+
+
+@overload
+def run_search(
+    queries: list[QueryComponent],
+    date_ranges: INPUT_DATE_RANGE,
+    sortby: SortBy = SortBy.RELEVANCE,
+    scope: DocumentType = DocumentType.ALL,
+    limit: int = 10,
+    rerank_threshold: float | None = None,
+    workflow_name: str = RUN_SEARCH_NAME,
+    *,
+    only_results: Literal[True],
+    **kwargs,
+) -> list[list[Document]]: ...
+
+
+def run_search(
+    queries: list[QueryComponent],
+    date_ranges: INPUT_DATE_RANGE,
     sortby: SortBy = SortBy.RELEVANCE,
     scope: DocumentType = DocumentType.ALL,
     limit: int = 10,
     only_results: bool = True,
-    rerank_threshold: float = None,
+    rerank_threshold: float | None = None,
     workflow_name: str = RUN_SEARCH_NAME,
     **kwargs,
-) -> Union[SEARCH_QUERY_RESULTS_TYPE, list[list[Document]]]:
+) -> SEARCH_QUERY_RESULTS_TYPE | list[list[Document]]:
     """
     Execute multiple searches concurrently using the Bigdata client, with rate limiting.
 
     Args:
         queries (list[QueryComponent]): A list of QueryComponent objects.
-        date_ranges (Optional[Union[AbsoluteDateRange, RollingDateRange, List[Union[AbsoluteDateRange, RollingDateRange]]]]):
+        date_ranges (Union[tuple[datetime, datetime], RollingDateRange, list[tuple[datetime, datetime] | RollingDateRange],]):
             Date range filter for the search results.
         sortby (SortBy): The sorting criterion for the search results. Defaults to SortBy.RELEVANCE.
         scope (DocumentType): The scope of the documents to include. Defaults to DocumentType.ALL.
@@ -293,15 +355,14 @@ def run_search(
         If `only_results` is False, returns a mapping of the tuple of search query and date range to
         the list of the corresponding search results.
     """
-    date_ranges = normalize_date_range(date_ranges)
-    date_ranges.sort(key=lambda x: x[0])
+    date_ranges = list(normalize_date_range(date_ranges))
+    if isinstance(date_ranges[0], tuple) or isinstance(date_ranges[0], list):
+        date_ranges.sort(key=lambda x: x[0])
 
     workflow_start = datetime.now()
     workflow_status = WorkflowStatus.UNKNOWN
-    start_date = date_ranges[0][0] if date_ranges else None
-    end_date = date_ranges[-1][1] if date_ranges else None     
     manager = None
-    try: 
+    try:
         manager = SearchManager(**kwargs)
         query_results = manager.concurrent_search(
             queries=queries,
@@ -318,25 +379,44 @@ def run_search(
         workflow_status = WorkflowStatus.FAILED
         raise
     finally:
-        if manager:
-            send_trace(
-                bigdata_connection(), ReportSearchUsageTraceEvent(
-                    workflow_name=workflow_name,
-                    document_type=scope.value,
-                    start_date=start_date,
-                    end_date=end_date,
-                    query_units=manager.get_quota_consumed(),
-                )
-            )
-        if workflow_name == RUN_SEARCH_NAME:
-            send_trace(bigdata_connection(), WorkflowTraceEvent(
-                name=workflow_name,
-                start_date=workflow_start,
-                end_date=datetime.now(),
-                llm_model=None,
-                status=workflow_status,
-            ))
+        start_date = "Unknown"
+        end_date = "Unknown"
+        try:
+            # We only know the exact start and end date if date_ranges is a list of tuples
+            # With rolling date ranges we cannot determine the exact dates or if empty list
+            if date_ranges and all(isinstance(dr, tuple) for dr in date_ranges):
+                start_date = date_ranges[0][0]
+                end_date = date_ranges[-1][1]
+                if isinstance(start_date, datetime):
+                    start_date = start_date.isoformat()
+                if isinstance(end_date, datetime):
+                    end_date = end_date.isoformat()
 
+            if manager:
+                send_trace(
+                    bigdata_connection(),
+                    ReportSearchUsageTraceEvent(
+                        workflow_name=workflow_name,
+                        document_type=scope.value,
+                        start_date=start_date,
+                        end_date=end_date,
+                        query_units=manager.get_quota_consumed(),
+                    ),
+                )
+        except Exception:
+            # Failed to send trace event, however in a try - finally block we should not raise exceptions
+            pass
+        if workflow_name == RUN_SEARCH_NAME:
+            send_trace(
+                bigdata_connection(),
+                WorkflowTraceEvent(
+                    name=workflow_name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=None,
+                    status=workflow_status,
+                ),
+            )
 
     if only_results:
         return list(query_results.values())

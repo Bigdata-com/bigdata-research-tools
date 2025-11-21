@@ -1,40 +1,50 @@
 from datetime import datetime
 from logging import Logger, getLogger
-from typing import Dict, List, Optional, Tuple
 
 from bigdata_client.models.entities import Company
 from bigdata_client.models.search import DocumentType
 from pandas import DataFrame, merge
 
-from bigdata_research_tools.workflows.base import Workflow
 from bigdata_research_tools.client import init_bigdata_client
-from bigdata_research_tools.excel import check_excel_dependencies
+from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_category
+from bigdata_research_tools.llm.base import LLMConfig
+from bigdata_research_tools.mindmap.mindmap import (
+    MindMap,
+)
+from bigdata_research_tools.mindmap.mindmap_generator import MindMapGenerator
 from bigdata_research_tools.portfolio.motivation import Motivation
+from bigdata_research_tools.prompts.motivation import MotivationType
 from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.themes import ThemeTree, generate_risk_tree
-from bigdata_research_tools.tracing import WorkflowTraceEvent, send_trace, WorkflowStatus
-from bigdata_research_tools.workflows.utils import get_scored_df, save_to_excel
+from bigdata_research_tools.tracing import (
+    WorkflowStatus,
+    WorkflowTraceEvent,
+    send_trace,
+)
+from bigdata_research_tools.workflows.base import Workflow
+from bigdata_research_tools.workflows.utils import get_scored_df
 
 logger: Logger = getLogger(__name__)
 
 
 class RiskAnalyzer(Workflow):
     name: str = "RiskAnalyzer"
+
     def __init__(
         self,
-        llm_model: str,
+        llm_model_config: str | LLMConfig | dict,
         main_theme: str,
-        companies: List[Company],
+        companies: list[Company],
         start_date: str,
         end_date: str,
         document_type: DocumentType,
-        keywords: Optional[List[str]] = None,
-        control_entities: Optional[Dict[str, List[str]]] = None,
-        fiscal_year: Optional[int] = None,
-        sources: Optional[List[str]] = None,
-        rerank_threshold: Optional[float] = None,
+        keywords: list[str] | None = None,
+        control_entities: dict[str, list[str]] | None = None,
+        fiscal_year: int | list[int] | None = None,
+        sources: list[str] | None = None,
+        rerank_threshold: float | None = None,
         focus: str = "",
+        ground_mindmap: bool = False,
     ):
         """
         This class will screen a universe's (specified in 'companies') exposure to a given theme ('main_theme').
@@ -50,7 +60,7 @@ class RiskAnalyzer(Workflow):
             end_date (str): The end date for searching relevant documents.
                 Format: YYYY-MM-DD.
             document_type (DocumentType): Specifies the type of documents to search over
-            fiscal_year (int): The fiscal year that will be analyzed.
+            fiscal_year (int | list[int] | None): The fiscal year that will be analyzed.
             sources (Optional[List[str]]): Used to filter search results by the sources of the documents.
                 If not provided, the search is run across all available sources.
             rerank_threshold (Optional[float]): The threshold for reranking the search results.
@@ -59,7 +69,6 @@ class RiskAnalyzer(Workflow):
                 If used, generated sub-themes will be based on this.
         """
         super().__init__()
-        self.llm_model = llm_model
         self.main_theme = main_theme
         self.companies = companies
         self.start_date = start_date
@@ -71,20 +80,39 @@ class RiskAnalyzer(Workflow):
         self.sources = sources
         self.rerank_threshold = rerank_threshold
         self.focus = focus
+        self.ground_mindmap = ground_mindmap
+
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+        elif isinstance(llm_model_config, str):
+            self.llm_model_config = LLMConfig(model=llm_model_config)
+        elif isinstance(llm_model_config, LLMConfig):
+            self.llm_model_config = llm_model_config
 
     def create_taxonomy(self):
         """Create a risk taxonomy based on the main theme and focus.
         Returns:
-            ThemeTree: The generated risk tree.
+            MindMap: The generated risk tree.
             List[str]: A list of risk summaries for the terminal nodes.
             List[str]: A list of terminal labels for the risk categories.
         """
 
-        self.provider, self.model = self.llm_model.split("::")
-        risk_tree = generate_risk_tree(
+        # risk_tree = generate_risk_tree(
+        #     main_theme=self.main_theme,
+        #     focus=self.focus,
+        #     llm_model_config=self.llm_model_config,
+        # )
+
+        mindmap_generator = MindMapGenerator(
+            llm_model_config_base=self.llm_model_config
+        )
+        risk_tree, _ = mindmap_generator.generate_one_shot(
             main_theme=self.main_theme,
             focus=self.focus,
-            llm_model_config={"provider": self.provider, "model": self.model},
+            allow_grounding=self.ground_mindmap,
+            instructions=None,
+            date_range=None,
+            map_type="risk",
         )
 
         risk_summaries = risk_tree.get_terminal_summaries()
@@ -94,15 +122,15 @@ class RiskAnalyzer(Workflow):
 
     def retrieve_results(
         self,
-        sentences: List[str],
-        freq: str = "3M",
+        sentences: list[str],
+        frequency: str = "3M",
         document_limit: int = 10,
         batch_size: int = 10,
     ) -> DataFrame:
         """Retrieve search results based on the provided sentences and parameters.
         Args:
             sentences (List[str]): List of sentences to search for.
-            freq (str): The frequency of the date ranges. Supported values:
+            frequency (str): The frequency of the date ranges. Supported values:
                 - 'Y': Yearly intervals.
                 - 'M': Monthly intervals.
                 - 'W': Weekly intervals.
@@ -126,16 +154,17 @@ class RiskAnalyzer(Workflow):
             fiscal_year=self.fiscal_year,
             sources=self.sources,
             rerank_threshold=self.rerank_threshold,
-            freq=freq,
+            frequency=frequency,
             document_limit=document_limit,
             batch_size=batch_size,
+            workflow_name=RiskAnalyzer.name,
         )
 
         return df_sentences
 
     def _add_prompt_fields(
-        self, df_sentences: DataFrame, additional_prompt_fields: Optional[List] = None
-    ) -> List[Dict]:
+        self, df_sentences: DataFrame, additional_prompt_fields: list[str] | None = None
+    ) -> list[dict]:
         """
         Add additional fields from the DataFrame for the labeling prompt.
 
@@ -159,8 +188,8 @@ class RiskAnalyzer(Workflow):
         self,
         df_sentences,
         terminal_labels,
-        risk_tree: ThemeTree,
-        additional_prompt_fields: Optional[List] = None,
+        risk_tree: MindMap,
+        additional_prompt_fields: list[str] | None = None,
     ):
         """
         Label the search results with our theme labels.
@@ -168,7 +197,7 @@ class RiskAnalyzer(Workflow):
         Args:
             df_sentences (DataFrame): The DataFrame containing the search results.
             terminal_labels (List[str]): The terminal labels for the risk categories.
-            risk_tree (ThemeTree): The ThemeTree object containing the risk taxonomy.
+            risk_tree (MindMap): The MindMap object containing the risk taxonomy.
             prompt_fields (Dict): Additional fields to be used in the labeling prompt.
 
         Returns:
@@ -176,16 +205,16 @@ class RiskAnalyzer(Workflow):
         """
 
         prompt_fields = self._add_prompt_fields(df_sentences, additional_prompt_fields)
-
         # Label the search results with our theme labels
         ## To Do: generalize the labeler or pass it as an argument
         # to allow for different labelers to be used.
-        labeler = RiskLabeler(llm_model=self.llm_model)
+        labeler = RiskLabeler(llm_model_config=self.llm_model_config)
         df_labels = labeler.get_labels(
             main_theme=self.main_theme,
             labels=terminal_labels,
             texts=df_sentences["masked_text"].tolist(),
             textsconfig=prompt_fields,
+            timeout=self.llm_model_config.timeout,
         )
 
         # Merge and process results
@@ -225,7 +254,7 @@ class RiskAnalyzer(Workflow):
         return df, df_clean
 
     def generate_results(
-        self, df_labeled: DataFrame, word_range: Tuple[int, int] = (50, 100)
+        self, df_labeled: DataFrame, word_range: tuple[int, int] = (50, 100)
     ):
         """Generate the Pivot Tables with factor Scores for companies and industries."""
 
@@ -242,12 +271,15 @@ class RiskAnalyzer(Workflow):
         df_industry = get_scored_df(
             df_labeled, index_columns=["Industry"], pivot_column="Sub-Scenario"
         )
-        motivation_generator = Motivation(model=self.llm_model)
+
+        motivation_generator = Motivation(llm_model_config=self.llm_model_config)
         motivation_df = motivation_generator.generate_company_motivations(
             df=df_labeled.rename(columns={"Sub-Scenario": "Theme"}),
             theme_name=self.main_theme,
             word_range=word_range,
+            use_case=MotivationType.RISK_ANALYZER,
         )
+        print(motivation_df)
 
         return df_company, df_industry, motivation_df
 
@@ -257,7 +289,7 @@ class RiskAnalyzer(Workflow):
         df_company: DataFrame,
         df_industry: DataFrame,
         motivation_df: DataFrame,
-        risk_tree: ThemeTree,
+        risk_tree: MindMap,
         export_path: str,
     ):
         """
@@ -274,7 +306,7 @@ class RiskAnalyzer(Workflow):
                 file_path=export_path,
                 tables={
                     "Semantic Labels": (df_labeled, (0, 0)),
-                    "By Company": (df_company, (2, 5)),
+                    "By Company": (df_company, (2, 4)),
                     "By Industry": (df_industry, (2, 2)),
                     "Motivations": (motivation_df, (0, 0)),
                 },
@@ -282,16 +314,18 @@ class RiskAnalyzer(Workflow):
             ## Save risk tree to json
             risk_tree.save_json(export_path.replace(".xlsx", "_mindmap.json"))
         else:
-            logger.warning("No export path provided. Results will not be saved.")
+            logger.warning(
+                "No export path provided. Results will not be saved to Excel."
+            )
 
     def screen_companies(
         self,
         document_limit: int = 10,
         batch_size: int = 10,
         frequency: str = "3M",
-        word_range: Tuple[int, int] = (50, 100),
-        export_path: str = None,
-    ) -> Dict:
+        word_range: tuple[int, int] = (50, 100),
+        export_path: str | None = None,
+    ) -> dict:
         """
         Screen companies for the Executive Narrative Factor.
 
@@ -311,7 +345,8 @@ class RiskAnalyzer(Workflow):
             - df_labeled: The DataFrame with the labeled search results.
             - df_company: The DataFrame with the output by company.
             - df_industry: The DataFrame with the output by industry.
-            - risk_tree: The ThemeTree created for the screening.
+            - df_motivation: The DataFrame with the generated motivations.
+            - risk_tree: The MindMap created for the screening.
         """
 
         if export_path and not check_excel_dependencies():
@@ -327,22 +362,41 @@ class RiskAnalyzer(Workflow):
         workflow_status = WorkflowStatus.UNKNOWN
 
         try:
-            self.notify_observers(f"Generating risk taxonomy")
+            self.notify_observers("Generating risk taxonomy")
             risk_tree, risk_summaries, terminal_labels = self.create_taxonomy()
 
-            self.notify_observers(f"Risk taxonomy generated with {len(terminal_labels)} leafs")
+            self.notify_observers(
+                f"Risk taxonomy generated with {len(terminal_labels)} leafs"
+            )
             self.notify_observers(risk_tree.as_string())
-            self.notify_observers(f"Searching companies for risk exposure")
+            self.notify_observers("Searching companies for risk exposure")
             df_sentences = self.retrieve_results(
                 sentences=risk_summaries,
-                freq=frequency,
+                frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
             )
-            self.notify_observers(f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies.")
-            self.notify_observers(df_sentences[["timestamp_utc", "sentence_id", "headline", "entity_name", "text", "other_entities"]].head(10).to_markdown(index=False))
+            self.notify_observers(
+                f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies."
+            )
+            self.notify_observers(
+                df_sentences[
+                    [
+                        "timestamp_utc",
+                        "sentence_id",
+                        "headline",
+                        "entity_name",
+                        "text",
+                        "other_entities",
+                    ]
+                ]
+                .head(10)
+                .to_markdown(index=False)
+            )
 
-            self.notify_observers(f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} risks")
+            self.notify_observers(
+                f"Labelling {len(df_sentences)} chunks with {len(terminal_labels)} risks"
+            )
             df, df_labeled = self.label_search_results(
                 df_sentences=df_sentences,
                 terminal_labels=terminal_labels,
@@ -353,7 +407,9 @@ class RiskAnalyzer(Workflow):
                     "headline",
                 ],
             )
-            self.notify_observers(f"Labeling completed. {len(df_labeled)} chunks labeled with risk factors.")
+            self.notify_observers(
+                f"Labeling completed. {len(df_labeled)} chunks labeled with risk factors."
+            )
             self.notify_observers("Post-processing results")
             df_company, df_industry, df_motivation = self.generate_results(
                 df_labeled, word_range
@@ -361,7 +417,7 @@ class RiskAnalyzer(Workflow):
             self.notify_observers("Results post-processed")
             # Export to Excel if path provided
             if export_path:
-                self.notify_observers(f"Exporting results to disk")
+                self.notify_observers("Exporting results to disk")
                 self.save_results(
                     df_labeled,
                     df_company,
@@ -370,19 +426,24 @@ class RiskAnalyzer(Workflow):
                     risk_tree,
                     export_path=export_path,
                 )
-                self.notify_observers(f"Results exported")
+                self.notify_observers("Results exported")
             workflow_status = WorkflowStatus.SUCCESS
         except BaseException:
             workflow_status = WorkflowStatus.FAILED
             raise
         finally:
-            send_trace(bigdata_client, WorkflowTraceEvent(
-                name=RiskAnalyzer.name,
-                start_date=workflow_start,
-                end_date=datetime.now(),
-                llm_model=self.llm_model,
-                status=workflow_status,
-            ))
+            send_trace(
+                bigdata_client,
+                WorkflowTraceEvent(
+                    name=RiskAnalyzer.name,
+                    start_date=workflow_start,
+                    end_date=datetime.now(),
+                    llm_model=self.llm_model_config.model
+                    if isinstance(self.llm_model_config, LLMConfig)
+                    else str(self.llm_model_config),
+                    status=workflow_status,
+                ),
+            )
         return {
             "df_labeled": df_labeled,
             "df_company": df_company,

@@ -1,14 +1,13 @@
 from datetime import datetime
 from logging import Logger, getLogger
-from typing import Dict, List, Optional, Union
 
 from bigdata_client.models.search import DocumentType
 from pandas import merge
 
 from bigdata_research_tools.client import init_bigdata_client
-from bigdata_research_tools.excel import check_excel_dependencies
+from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.narrative_labeler import NarrativeLabeler
-from bigdata_research_tools.llm.base import LLMEngine
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.search import search_narratives
 from bigdata_research_tools.tracing import (
     WorkflowStatus,
@@ -16,7 +15,6 @@ from bigdata_research_tools.tracing import (
     send_trace,
 )
 from bigdata_research_tools.workflows.base import Workflow
-from bigdata_research_tools.workflows.utils import save_to_excel
 
 logger: Logger = getLogger(__name__)
 
@@ -26,14 +24,14 @@ class NarrativeMiner(Workflow):
 
     def __init__(
         self,
-        narrative_sentences: List[str],
+        narrative_sentences: list[str],
         start_date: str,
         end_date: str,
-        llm_model: Union[str, LLMEngine],
+        llm_model_config: str | LLMConfig | dict,
         document_type: DocumentType,
-        fiscal_year: Optional[int],
-        sources: Optional[List[str]] = None,
-        rerank_threshold: Optional[float] = None,
+        fiscal_year: int | list[int] | None = None,
+        sources: list[str] | None = None,
+        rerank_threshold: float | None = None,
     ):
         """
         This class will track a set of user-defined narratives (specified in narrative_sentences) over
@@ -44,7 +42,7 @@ class NarrativeMiner(Workflow):
                                These will be used in both the search and the labelling of the search result chunks.
             start_date:        The start date for searching relevant documents (format: YYYY-MM-DD).
             end_date:          The end date for searching relevant documents (format: YYYY-MM-DD).
-            llm_model:         Specifies the LLM to be used in text processing and analysis. Also accepts an instance of LLMEngine.
+            llm_model_config:  Specifies the LLM to be used in text processing and analysis. Also accepts a LLMConfig object.
             document_type:     Specifies the type of documents to search over.
             fiscal_year:       The fiscal year for which filings or transcripts should be analyzed.
             sources:           Used to filter search results by the sources of the documents.
@@ -52,7 +50,6 @@ class NarrativeMiner(Workflow):
             rerank_threshold:  Enable the cross-encoder by setting the value between [0, 1].
         """
         super().__init__()
-        self.llm_model = llm_model
         self.narrative_sentences = narrative_sentences
         self.sources = sources
         self.fiscal_year = fiscal_year
@@ -61,20 +58,27 @@ class NarrativeMiner(Workflow):
         self.end_date = end_date
         self.rerank_threshold = rerank_threshold
 
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+        elif isinstance(llm_model_config, str):
+            self.llm_model_config = LLMConfig(model=llm_model_config)
+        elif isinstance(llm_model_config, LLMConfig):
+            self.llm_model_config = llm_model_config
+
     def mine_narratives(
         self,
         document_limit: int = 10,
         batch_size: int = 10,
-        freq: str = "3M",
-        export_path: Optional[str] = None,
-    ) -> Dict:
+        frequency: str = "3M",
+        export_path: str | None = None,
+    ) -> dict:
         """
         Mine narratives
 
         Args:
             document_limit: Maximum number of documents to analyze.
             batch_size: Size of batches for processing.
-            freq: Frequency for analysis ('M' for monthly).
+            frequency: Frequency for analysis ('M' for monthly).
             export_path: Optional path to export results to an Excel file.
 
         Returns:
@@ -94,14 +98,14 @@ class NarrativeMiner(Workflow):
 
         try:
             # Run a search via BigData API with our mining parameters
-            self.notify_observers(f"Searching documents for relevant content")
+            self.notify_observers("Searching documents for relevant content")
             df_sentences = search_narratives(
                 sentences=self.narrative_sentences,
                 sources=self.sources,
                 rerank_threshold=self.rerank_threshold,
                 start_date=self.start_date,
                 end_date=self.end_date,
-                freq=freq,
+                frequency=frequency,
                 document_limit=document_limit,
                 batch_size=batch_size,
                 scope=self.document_type,
@@ -114,10 +118,11 @@ class NarrativeMiner(Workflow):
             )
             self.notify_observers("Labelling search results")
             # Label the search results with our narrative sentences
-            labeler = NarrativeLabeler(llm_model=self.llm_model)
+            labeler = NarrativeLabeler(llm_model_config=self.llm_model_config)
             df_labels = labeler.get_labels(
                 self.narrative_sentences,
                 texts=df_sentences["text"].tolist(),
+                timeout=self.llm_model_config.timeout,
             )
             self.notify_observers(
                 f"Labelling completed. {len(df_labels)} labels generated."
@@ -136,28 +141,26 @@ class NarrativeMiner(Workflow):
                 return {}
             # Export to Excel if path provided
             if export_path:
-                self.notify_observers(f"Exporting results to excel")
+                self.notify_observers("Exporting results to excel")
                 save_to_excel(
                     export_path, tables={"Semantic Labels": (df_labeled, (0, 0))}
                 )
-                self.notify_observers(f"Results exported")
+                self.notify_observers("Results exported")
 
             workflow_status = WorkflowStatus.SUCCESS
         except BaseException:
             workflow_status = WorkflowStatus.FAILED
             raise
         finally:
-            if isinstance(self.llm_model, LLMEngine):
-                llm_model_str = self.llm_model.model
-            else:
-                llm_model_str = self.llm_model
             send_trace(
                 bigdata_client,
                 WorkflowTraceEvent(
                     name=NarrativeMiner.name,
                     start_date=workflow_start,
                     end_date=datetime.now(),
-                    llm_model=llm_model_str,
+                    llm_model=self.llm_model_config.model
+                    if isinstance(self.llm_model_config, LLMConfig)
+                    else str(self.llm_model_config),
                     status=workflow_status,
                 ),
             )

@@ -4,23 +4,32 @@ import asyncio
 import random
 import time
 from json import loads
-from typing import AsyncGenerator, Generator, Union
+from typing import AsyncGenerator, Generator
 
 try:
-    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-    from openai import AsyncAzureOpenAI, AzureOpenAI, OpenAIError
+    from azure.identity import (  # ty: ignore[unresolved-import]
+        DefaultAzureCredential,
+        get_bearer_token_provider,
+    )
+    from openai import (  # ty: ignore[unresolved-import]
+        AsyncAzureOpenAI,
+        AzureOpenAI,
+        OpenAIError,
+    )
 except ImportError:
     raise ImportError(
         "Missing optional dependency for Azure LLM OpenAI provider, "
-        "please install `bigdata_research_tools[azure]` to enable them."
+        "please install `bigdata_research_tools[azure,openai]` to enable them."
     )
 
-from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
+from bigdata_research_tools.llm.base import (
+    AsyncLLMProvider,
+    LLMProvider,
+    NotInitializedLLMProviderError,
+)
 
 
 class AsyncAzureProvider(AsyncLLMProvider):
-    provider_name = "azure"
-
     def __init__(
         self,
         model: str,
@@ -50,6 +59,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
 
                 self._client = AsyncAzureOpenAI(
                     azure_ad_token_provider=token_provider,
+                    **self.connection_config,
                 )
 
     async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
@@ -63,8 +73,11 @@ class AsyncAzureProvider(AsyncLLMProvider):
                 Reference examples of the format accepted: https://cookbook.openai.com/examples/how_to_format_inputs_to_chatgpt_models.
             kwargs (dict): Additional arguments to pass to the OpenAI API.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         max_retries = 5
         delay = 1 + random.random()  # initial delay in seconds
+        last_exception = None
         for attempt in range(max_retries):
             try:
                 chat_completion = await self._client.chat.completions.create(
@@ -73,18 +86,21 @@ class AsyncAzureProvider(AsyncLLMProvider):
 
                 return chat_completion.choices[0].message.content
             except Exception as e:
-                if attempt == max_retries - 1:
-                    raise
                 await asyncio.sleep(delay)
                 delay = 2 * delay + random.random()  # exponential backoff
+                last_exception = e
+
+        raise RuntimeError(
+            f"Max retries exceeded when calling {AsyncAzureProvider.__name__}"
+        ) from last_exception
 
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, Union[list[dict], str]]:
+    ) -> dict[str, list[dict] | str]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -102,6 +118,8 @@ class AsyncAzureProvider(AsyncLLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         response = await self._client.chat.completions.create(
             messages=chat_history,
             model=self.model,
@@ -137,6 +155,8 @@ class AsyncAzureProvider(AsyncLLMProvider):
         Returns:
             Generator[str, None, None]: A generator that yields the response from the LLM model.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         async for delta in await self._client.chat.completions.create(
             model=self.model, messages=chat_history, stream=True, **kwargs
         ):
@@ -147,8 +167,6 @@ class AsyncAzureProvider(AsyncLLMProvider):
 
 
 class AzureProvider(LLMProvider):
-    provider_name = "azure"
-
     def __init__(
         self,
         model: str,
@@ -178,6 +196,7 @@ class AzureProvider(LLMProvider):
 
                 self._client = AzureOpenAI(
                     azure_ad_token_provider=token_provider,
+                    **self.connection_config,
                 )
 
     def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
@@ -191,9 +210,11 @@ class AzureProvider(LLMProvider):
                 Reference examples of the format accepted: https://cookbook.openai.com/examples/how_to_format_inputs_to_chatgpt_models.
             kwargs (dict): Additional arguments to pass to the OpenAI API.
         """
-
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         max_retries = 5
         delay = 1 + random.random()  # initial delay in seconds
+        last_exception = None
         for attempt in range(max_retries):
             try:
                 chat_completion = self._client.chat.completions.create(
@@ -202,18 +223,21 @@ class AzureProvider(LLMProvider):
 
                 return chat_completion.choices[0].message.content
             except Exception as e:
-                if attempt == max_retries - 1:
-                    raise
                 time.sleep(delay)
                 delay = 2 * delay + random.random()  # exponential backoff
+                last_exception = e
+
+        raise RuntimeError(
+            f"Max retries exceeded when calling {AsyncAzureProvider.__name__}"
+        ) from last_exception
 
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, Union[list[dict], str]]:
+    ) -> dict[str, list[dict] | str]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -231,6 +255,8 @@ class AzureProvider(LLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         response = self._client.chat.completions.create(
             messages=chat_history,
             model=self.model,
@@ -266,6 +292,8 @@ class AzureProvider(LLMProvider):
         Returns:
             Generator[str, None, None]: A generator that yields the response from the LLM model.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         for delta in self._client.chat.completions.create(
             model=self.model, messages=chat_history, stream=True, **kwargs
         ):

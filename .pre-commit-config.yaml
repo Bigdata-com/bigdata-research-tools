@@ -1,12 +1,22 @@
 # See https://pre-commit.com for more information
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.1.1
+  - repo: local
     hooks:
-      - id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        name: isort (python)
-        args: [--profile, black]
+      - id: make-lint
+        name: Execute Python linters
+        entry: make lint-check
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: make-format
+        name: Format Python code
+        entry: make format-check
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: make-type-check
+        name: Type check Python code
+        entry: make type-check
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

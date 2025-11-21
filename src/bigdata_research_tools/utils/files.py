@@ -1,10 +1,9 @@
 import importlib.util
 import os
 from pathlib import Path
-from typing import List
 
 
-def check_libraries_installed(libraries: List[str]) -> bool:
+def check_libraries_installed(libraries: list[str]) -> bool:
     """
     Check if the received Python libraries are installed.
     """

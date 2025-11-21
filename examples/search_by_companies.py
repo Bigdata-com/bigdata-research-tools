@@ -11,29 +11,30 @@ Prerequisites:
 """
 
 import logging
-from dotenv import load_dotenv
+from pathlib import Path
+
 from bigdata_client.models.search import DocumentType
+from dotenv import load_dotenv
 
 from bigdata_research_tools.client import bigdata_connection
 from bigdata_research_tools.search.screener_search import search_by_companies
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(levelname)s: %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main(
+    output_file: str = "search_by_companies_results.xlsx",
+):
     """Basic example of search_by_companies usage."""
-    
+
     # Load environment variables
     print(f"Environment variables loaded: {load_dotenv()}")
-    
+
     # Connect to Bigdata API
     bigdata = bigdata_connection()
-    
+
     # Get some companies to search for using tickers (more reliable)
     tickers = ["AAPL", "MSFT", "TSLA"]
     companies = []
@@ -46,23 +47,23 @@ def main():
         if results:
             companies.extend(results)
             logger.info(f"Found: {results[0].name} ({ticker})")
-    
+
     if not companies:
         logger.error("No companies found. Check ticker symbols.")
         return
-    
+
     logger.info(f"Searching for recent news across {len(companies)} companies...")
-    
+
     # Search for documents mentioning these companies (using working pattern)
     try:
         results_df = search_by_companies(
             companies=companies,
-            sentences=sentences,                   
+            sentences=sentences,
             start_date="2024-01-01",
-            end_date="2024-06-30",            # Use a shorter, more recent range
-            scope=DocumentType.NEWS,           # Search news articles
-            document_limit=20,                 # More documents per query
-            batch_size=5                       # Process 5 companies at a time
+            end_date="2024-06-30",  # Use a shorter, more recent range
+            scope=DocumentType.NEWS,  # Search news articles
+            document_limit=20,  # More documents per query
+            batch_size=5,  # Process 5 companies at a time
         )
     except ValueError as e:
         if "No rows to process" in str(e):
@@ -74,40 +75,42 @@ def main():
             return
         else:
             raise
-    
+
     # Display results
     if not results_df.empty:
         logger.info(f"Found {len(results_df)} relevant documents")
-        
+
         # Show breakdown by company
-        company_counts = results_df['entity_name'].value_counts()
+        company_counts = results_df["entity_name"].value_counts()
         logger.info("Documents by company:")
         for company, count in company_counts.items():
             logger.info(f"  {company}: {count} documents")
-        
+
         # Show some sample headlines
         logger.info("Sample headlines:")
-        for headline in results_df['headline'].head(3):
+        for headline in results_df["headline"].head(3):
             logger.info(f"  - {headline}")
-        
+
         # Export to Excel (fix timezone issues)
-        output_file = "search_by_companies_results.xlsx"
-        
+
         # Create a copy for Excel export with timezone-naive timestamps
         excel_df = results_df.copy()
-        
+
         # Convert any timezone-aware datetime columns to timezone-naive for Excel compatibility
         for col in excel_df.columns:
-            if excel_df[col].dtype.name.startswith('datetime'):
+            if excel_df[col].dtype.name.startswith("datetime"):
                 if excel_df[col].dt.tz is not None:
                     excel_df[col] = excel_df[col].dt.tz_localize(None)
-        
+
         excel_df.to_excel(output_file, index=False)
         logger.info(f"Results exported to {output_file}")
-        
+
     else:
         logger.warning("No documents found. Try different search terms or date range.")
 
 
 if __name__ == "__main__":
-    main()
+    output_path = Path("outputs/run_search_results.xlsx")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    main(output_file=str(output_path))

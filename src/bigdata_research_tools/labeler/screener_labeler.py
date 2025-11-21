@@ -1,20 +1,9 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 from logging import Logger, getLogger
-from typing import List, Optional, Union
 
 from pandas import DataFrame, Series
 
-from bigdata_research_tools.labeler.labeler import (
-    Labeler,
-    get_prompts_for_labeler,
-    parse_labeling_response,
-)
-from bigdata_research_tools.llm.base import LLMEngine
+from bigdata_research_tools.labeler.labeler import Labeler
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
     get_screener_system_prompt,
@@ -29,10 +18,9 @@ class ScreenerLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model: Union[str, LLMEngine],
-        label_prompt: Optional[str] = None,
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
+        label_prompt: str | None = None,
         unknown_label: str = "unclear",
-        temperature: float = 0,
     ):
         """
         Args:
@@ -41,17 +29,17 @@ class ScreenerLabeler(Labeler):
             label_prompt: Prompt provided by user to label the search result chunks.
                 If not provided, then our default labelling prompt is used.
             unknown_label: Label for unclear classifications.
-            temperature: Temperature to use in the LLM model.
         """
-        super().__init__(llm_model, unknown_label, temperature)
+        super().__init__(llm_model_config, unknown_label)
         self.label_prompt = label_prompt
 
     def get_labels(
         self,
         main_theme: str,
-        labels: List[str],
-        texts: List[str],
-        max_workers: int = 50,
+        labels: list[str],
+        texts: list[str],
+        timeout: int | None = 20,
+        max_workers: int = 55,
     ) -> DataFrame:
         """
         Process thematic labels for texts.
@@ -60,6 +48,7 @@ class ScreenerLabeler(Labeler):
             main_theme: The main theme to analyze.
             labels: Labels for labelling the chunks.
             texts: List of chunks to label.
+            timeout: Timeout for each LLM request.
             max_workers: Maximum number of concurrent workers.
 
         Returns:
@@ -72,15 +61,27 @@ class ScreenerLabeler(Labeler):
         system_prompt = self.label_prompt or get_screener_system_prompt(
             main_theme, labels, unknown_label=self.unknown_label
         )
-        prompts = get_prompts_for_labeler(texts)
+        prompts = self.get_prompts_for_labeler(texts)
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers
+            prompts,
+            system_prompt,
+            max_workers=max_workers,
+            timeout=timeout,
+            processing_callbacks=[
+                self.parse_labeling_response,
+                self._deserialize_label_response,
+            ],
         )
-        responses = [parse_labeling_response(response) for response in responses]
-        return self._deserialize_label_responses(responses)
 
-    def post_process_dataframe(self, df: DataFrame) -> DataFrame:
+        return self._convert_to_label_df(responses)
+
+    def post_process_dataframe(
+        self,
+        df: DataFrame,
+        extra_fields: dict | None = None,
+        extra_columns: list[str] | None = None,
+    ) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -147,20 +148,33 @@ class ScreenerLabeler(Labeler):
         df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
         df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
 
-        df = df.rename(
-            columns={
-                "document_id": "Document ID",
-                "entity_name": "Company",
-                "entity_sector": "Sector",
-                "entity_industry": "Industry",
-                "entity_country": "Country",
-                "entity_ticker": "Ticker",
-                "headline": "Headline",
-                "text": "Quote",
-                "motivation": "Motivation",
-                "label": "Theme",
-            }
-        )
+        columns_map = {
+            "document_id": "Document ID",
+            "entity_name": "Company",
+            "entity_sector": "Sector",
+            "entity_industry": "Industry",
+            "entity_country": "Country",
+            "entity_ticker": "Ticker",
+            "headline": "Headline",
+            "text": "Quote",
+            "motivation": "Motivation",
+            "label": "Theme",
+        }
+
+        optional_fields = ["topics", "source_name", "source_rank", "url"]
+        for field in optional_fields:
+            if field in df.columns:
+                columns_map[field] = field.replace("_", " ").title()
+
+        if extra_fields:
+            columns_map.update(extra_fields)
+            if "quotes" in extra_fields.keys():
+                if "quotes" in df.columns:
+                    df["quotes"] = df.apply(
+                        replace_company_placeholders, axis=1, col_name="quotes"
+                    )
+                else:
+                    logger.warning("quotes column not in df")
 
         # Select and order columns
         export_columns = [
@@ -177,6 +191,15 @@ class ScreenerLabeler(Labeler):
             "Motivation",
             "Theme",
         ]
+
+        if extra_columns:
+            export_columns += extra_columns
+
+        for field in optional_fields:
+            if field in df.columns:
+                export_columns += [field.replace("_", " ").title()]
+
+        df = df.rename(columns=columns_map)
 
         sort_columns = [
             "Date",

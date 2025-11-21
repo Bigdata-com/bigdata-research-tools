@@ -1,24 +1,22 @@
-# Minimal makefile for Sphinx documentation
-#
+.PHONY: tests lint format
 
-# You can set these variables from the command line, and also
-# from the environment for the first two.
-SPHINXOPTS    ?=
-SPHINXBUILD   ?= sphinx-build
-SOURCEDIR     = docs
-BUILDDIR      = build
+install-pre-commit:
+	@uvx pre-commit install
 
-# Put it first so that "make" without argument is like "make help".
-help:
-	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+tests:
+	@uv run -m pytest --cov --cov-report term --cov-report xml:./coverage-reports/coverage.xml -s tests/*
 
-.PHONY: help Makefile
+lint:
+	@uvx ruff check --extend-select I --fix src/bigdata_research_tools/ examples/ tutorial/ tests/
 
-# Catch-all target: route all unknown targets to Sphinx using the new
-# "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-%: Makefile
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+lint-check:
+	@uvx ruff check --extend-select I src/bigdata_research_tools/ examples/ tutorial/ tests/
 
+format:
+	@uvx ruff format src/bigdata_research_tools/ examples/ tutorial/ tests/
 
-create-docs:
-	@uv run $(MAKE) clean html
+format-check:
+	@uvx ruff format --check bigdata_thematic_screener/ tests/
+
+type-check:
+	@uvx ty@0.0.1a26 check --python-version 3.13 src/bigdata_research_tools/ examples/ tests/ # tutorial/ # Fix version to 3.13 due to this issue https://github.com/astral-sh/ty/issues/1355 # Ignore tutorials, the issues come from this open issue https://github.com/astral-sh/ty/issues/1297

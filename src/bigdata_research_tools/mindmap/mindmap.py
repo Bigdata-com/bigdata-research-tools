@@ -1,24 +1,21 @@
-"""
-Module that includes all functions to create or extract
-information related to the sub-theme tree structure.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-Author: Jelena Starovic (jstarovic@ravenpack.com)
-"""
-
 import ast
 import json
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from logging import Logger, getLogger
+from typing import Any
 
+import graphviz
 from json_repair import repair_json
 from pandas import DataFrame
 
 from bigdata_research_tools.llm import LLMEngine
+from bigdata_research_tools.llm.base import REASONING_MODELS, LLMConfig
 from bigdata_research_tools.prompts.risk import compose_risk_system_prompt_focus
 from bigdata_research_tools.prompts.themes import compose_themes_system_prompt
 
-themes_default_llm_model_config: Dict[str, Any] = {
+logger: Logger = getLogger(__name__)
+
+themes_default_llm_model_config: dict[str, Any] = {
     "provider": "openai",
     "model": "gpt-4o-mini",
     "kwargs": {
@@ -33,55 +30,52 @@ themes_default_llm_model_config: Dict[str, Any] = {
 
 
 @dataclass
-class ThemeTree:
+class MindMap:
     """
-    A hierarchical tree structure rooted in a main theme, branching into distinct sub-themes
-    that guide the analyst's research process.
+    A hierarchical tree structure where each node represents a semantically meaningful unit, or node, that guide the analyst's research process.
 
-    Each node in the tree provides a unique identifier, a descriptive label, and a summary
-    explaining its relevance.
+    Each node in the tree provides a unique identifier, a descriptive label, and a summary (and optionally keywords)
+    explaining its relevance. Nodes can have child nodes, allowing the tree
+    to represent nested or related concepts, categories, or classifications.
 
     Args:
-        label (str): The name of the theme or sub-theme.
+        label (str): The name of the current node.
         node (int): A unique identifier for the node.
-        summary (str): A brief explanation of the node’s relevance. For the root node
-            (main theme), this describes the overall theme; for sub-nodes, it explains their
-            connection to the parent theme.
-        children (Optional[List[ThemeTree]]): A list of child nodes representing sub-themes.
-        keywords (Optional[List[str]]): A list of keywords summarizing the main theme. Currently used by RiskAnalyzer to ensure branches are relevant.
+        summary (str): A brief explanation of the node's relevance. For the root node,
+            this describes the overall relevance of the tree; for sub-nodes, it explains their
+            connection to the parent node.
+        children (list[MindMap] | None): A list of child nodes representing sub-units.
+        keywords (list[str] | None): A list of keywords summarizing the current node.
     """
 
     label: str
     node: int
-    summary: str = None
-    children: List["ThemeTree"] = None
-    keywords: Optional[List[str]] = None
-
-    def __post_init__(self):
-        self.children = self.children or []
+    summary: str = ""
+    children: list["MindMap"] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
 
     def __str__(self) -> str:
         return self.as_string()
 
     @staticmethod
-    def from_dict(tree_dict: dict) -> "ThemeTree":
+    def from_dict(tree_dict: dict) -> "MindMap":
         """
-        Create a ThemeTree object from a dictionary.
+        Create a MindMap object from a dictionary.
 
         Args:
-            tree_dict (dict): A dictionary representing the ThemeTree structure.
+            tree_dict (dict): A dictionary representing the MindMap structure.
 
         Returns:
-            ThemeTree: The ThemeTree object generated from the dictionary.
+            MindMap: The MindMap object generated from the dictionary.
         """
         # Handle case sensitivity in keys
         tree_dict = dict_keys_to_lowercase(tree_dict)
 
-        theme_tree = ThemeTree(**tree_dict)
-        theme_tree.children = [
-            ThemeTree.from_dict(child) for child in tree_dict.get("children", [])
+        tree = MindMap(**tree_dict)  # ty: ignore[missing-argument]
+        tree.children = [
+            MindMap.from_dict(child) for child in tree_dict.get("children", [])
         ]
-        return theme_tree
+        return tree
 
     def as_string(self, prefix: str = "") -> str:
         """
@@ -111,21 +105,21 @@ class ThemeTree:
             s += child.as_string(prefix=child_prefix)
         return s
 
-    def get_label_summaries(self) -> Dict[str, str]:
+    def get_label_summaries(self) -> dict[str, str]:
         """
         Extract the label summaries from the tree.
 
         Returns:
-            dict[str, str]: Dictionary with all the labels of the ThemeTree as keys and their associated summaries as values.
+            dict[str, str]: Dictionary with all the labels of the MindMap as keys and their associated summaries as values.
         """
         label_summary = {self.label: self.summary}
         for child in self.children:
             label_summary.update(child.get_label_summaries())
         return label_summary
 
-    def get_summaries(self) -> List[str]:
+    def get_summaries(self) -> list[str]:
         """
-        Extract the node summaries from a ThemeTree.
+        Extract the node summaries from a MindMap.
 
         Returns:
             list[str]: List of all 'summary' values in the tree, including its children.
@@ -135,12 +129,12 @@ class ThemeTree:
             summaries.extend(child.get_summaries())
         return summaries
 
-    def get_terminal_label_summaries(self) -> Dict[str, str]:
+    def get_terminal_label_summaries(self) -> dict[str, str]:
         """
         Extract the items (labels, summaries) from terminal nodes of the tree.
 
         Returns:
-            dict[str, str]: Dictionary with the labels of the ThemeTree as keys and
+            dict[str, str]: Dictionary with the labels of the MindMap as keys and
             their associated summaries as values, only using terminal nodes.
         """
         label_summary = {}
@@ -150,7 +144,7 @@ class ThemeTree:
             label_summary.update(child.get_terminal_label_summaries())
         return label_summary
 
-    def get_terminal_labels(self) -> List[str]:
+    def get_terminal_labels(self) -> list[str]:
         """
         Extract the terminal labels from the tree.
 
@@ -159,7 +153,7 @@ class ThemeTree:
         """
         return list(self.get_terminal_label_summaries().keys())
 
-    def get_terminal_summaries(self) -> List[str]:
+    def get_terminal_summaries(self) -> list[str]:
         """
         Extract summaries from terminal nodes of the tree.
 
@@ -195,30 +189,38 @@ class ThemeTree:
                 - 'plotly': A Plotly figure object for rendering the mindmap.
         """
         if engine == "graphviz":
-            return self._visualize_graphviz()
+            self._visualize_graphviz()
         elif engine == "plotly":
-            return self._visualize_plotly()
+            self._visualize_plotly()
+        elif engine == "matplotlib":
+            self._visualize_matplotlib()
         else:
             raise ValueError(
                 f"Unsupported engine '{engine}'. "
-                f"Supported engines are 'graphviz' and 'plotly'."
+                f"Supported engines are 'graphviz', 'plotly', and 'matplotlib'."
             )
 
-    def _visualize_graphviz(self) -> "graphviz.Digraph":
+    def _visualize_matplotlib(self):
+        """
+        Auxiliary function to visualize the tree using Matplotlib.
+
+        Returns:
+            A Matplotlib Plot rendering the mindmap.
+        """
+        import matplotlib
+
+        matplotlib.use("Agg")  # Use non-interactive backend
+        from bigdata_research_tools.visuals.mindmap_visuals import plot_mindmap
+
+        plot_mindmap(self.to_dataframe(), main_theme=self.label)
+
+    def _visualize_graphviz(self) -> graphviz.Digraph:
         """
         Auxiliary function to visualize the tree using Graphviz.
 
         Returns:
             A Graphviz Digraph object for rendering the mindmap.
         """
-        try:
-            import graphviz
-        except ImportError:
-            raise ImportError(
-                "Missing optional dependency for theme visualization, "
-                "please install `bigdata_research_tools[graphviz]` to enable them."
-            )
-
         mindmap = graphviz.Digraph()
 
         # Set direction to left-right
@@ -228,7 +230,7 @@ class ThemeTree:
             splines="curved",
         )
 
-        def add_nodes(node):
+        def add_nodes(node: MindMap):
             # Determine if the node is a terminal (leaf) node
             is_terminal = not node.children
 
@@ -282,11 +284,11 @@ class ThemeTree:
             import plotly.express as px
         except ImportError:
             raise ImportError(
-                "Missing optional dependency for theme visualization, "
+                "Missing optional dependency for tree visualization, "
                 "please install `bigdata_research_tools[plotly]` to enable them."
             )
 
-        def extract_labels(node: ThemeTree, parent_label=""):
+        def extract_labels(node: MindMap, parent_label=""):
             labels.append(node.label)
             parents.append(parent_label)
             for child in node.children:
@@ -344,14 +346,49 @@ class ThemeTree:
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(self._to_dict(), f, ensure_ascii=False, indent=2, **kwargs)
 
+    def to_rows(self, parent_label=None):
+        """
+        Flatten tree to rows for DataFrame: each row is (Parent, Label, Node, Summary)
+        """
+        rows = []
+        rows.append(
+            {
+                "Parent": parent_label,
+                "Label": self.label,
+                "Node": self.node,
+                "Summary": self.summary,
+            }
+        )
+        for child in self.children:
+            rows.extend(child.to_rows(parent_label=self.label))
+        return rows
+
+    def to_dataframe(self, leaves_only=False):
+        import pandas as pd
+
+        rows = self.to_rows(parent_label=None)
+        # Exclude rows where Parent is None or Parent == self.label (root node)
+        filtered = [row for row in rows if row["Parent"] not in (None, self.label)]
+        if leaves_only:
+            # Only keep rows that are leaves (i.e., have no children)
+            filtered = [
+                row
+                for row in filtered
+                if row["Label"] not in {r["Parent"] for r in filtered}
+            ]
+        return pd.DataFrame(filtered)
+
+    def to_json(self):
+        return json.dumps(self._to_dict(), indent=2)
+
 
 def generate_theme_tree(
     main_theme: str,
     focus: str = "",
-    llm_model_config: Dict[str, Any] = None,
-) -> ThemeTree:
+    llm_model_config: LLMConfig | dict | str = "openai::gpt-4o-mini",
+) -> MindMap:
     """
-    Generate a `ThemeTree` class from a main theme and focus.
+    Generate a `MindMap` class from a main theme and focus.
 
     Args:
         main_theme (str): The primary theme to analyze.
@@ -368,11 +405,20 @@ def generate_theme_tree(
             - `seed` (int)
 
     Returns:
-        ThemeTree: The generated theme tree.
+        MindMap: The generated theme tree.
     """
-    ll_model_config = llm_model_config or themes_default_llm_model_config
-    model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
-    llm = LLMEngine(model=model_str)
+    if isinstance(llm_model_config, dict):
+        llm_model_config = LLMConfig(**llm_model_config)
+    elif isinstance(llm_model_config, str):
+        llm_model_config = get_default_tree_config(llm_model_config)
+
+    logger.debug(f"LLM Model Config: {llm_model_config}")
+
+    model_str = llm_model_config.model
+    chat_params = llm_model_config.get_llm_kwargs(
+        remove_max_tokens=True, remove_timeout=True
+    )
+    llm = LLMEngine(model=model_str, **llm_model_config.connection_config)
 
     system_prompt = compose_themes_system_prompt(main_theme, analyst_focus=focus)
 
@@ -381,14 +427,14 @@ def generate_theme_tree(
         {"role": "user", "content": main_theme},
     ]
 
-    tree_str = llm.get_response(chat_history, **ll_model_config.get("kwargs", {}))
+    tree_str = llm.get_response(chat_history, **chat_params)
     tree_str = repair_json(tree_str)
     tree_dict = ast.literal_eval(tree_str)
 
-    return ThemeTree.from_dict(tree_dict)
+    return MindMap.from_dict(tree_dict)
 
 
-def dict_keys_to_lowercase(d: Dict[str, Any]) -> Dict[str, Any]:
+def dict_keys_to_lowercase(d: dict[str, Any]) -> dict[str, Any]:
     """
     Convert all keys in a dictionary to lowercase, including nested dictionaries.
 
@@ -407,12 +453,12 @@ def dict_keys_to_lowercase(d: Dict[str, Any]) -> Dict[str, Any]:
     return new_dict
 
 
-def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
+def stringify_label_summaries(label_summaries: dict[str, str]) -> list[str]:
     """
-    Convert the label summaries of a ThemeTree into a list of strings.
+    Convert the label summaries of a MindMap into a list of strings.
 
     Args:
-        label_summaries (dict[str, str]): A dictionary of label summaries of ThemeTree.
+        label_summaries (dict[str, str]): A dictionary of label summaries of MindMap.
             Expected format: {label: summary}.
     Returns:
         List[str]: A list of strings, each one containing a label and its summary, i.e.
@@ -424,10 +470,10 @@ def stringify_label_summaries(label_summaries: Dict[str, str]) -> List[str]:
 def generate_risk_tree(
     main_theme: str,
     focus: str = "",
-    llm_model_config: Dict[str, Any] = None,
-) -> ThemeTree:
+    llm_model_config: LLMConfig | dict | str = "openai::gpt-4o-mini",
+) -> MindMap:
     """
-    Generate a `ThemeTree` class from a main theme and analyst focus.
+    Generate a `MindMap` class from a main theme and analyst focus.
 
     Args:
         main_theme (str): The primary theme to analyze.
@@ -445,21 +491,50 @@ def generate_risk_tree(
             - `seed` (int)
 
     Returns:
-        ThemeTree: The generated theme tree.
+        MindMap: The generated theme tree.
     """
-    ll_model_config = llm_model_config or themes_default_llm_model_config
-    model_str = f"{ll_model_config['provider']}::{ll_model_config['model']}"
-    llm = LLMEngine(model=model_str)
+    if isinstance(llm_model_config, dict):
+        llm_model_config = LLMConfig(**llm_model_config)
+    elif isinstance(llm_model_config, str):
+        llm_model_config = get_default_tree_config(llm_model_config)
+
+    logger.debug(f"LLM Model Config: {llm_model_config}")
+
+    model_str = llm_model_config.model
+    chat_params = llm_model_config.get_llm_kwargs(
+        remove_max_tokens=True, remove_timeout=True
+    )
+    llm = LLMEngine(model=model_str, **llm_model_config.connection_config)
 
     system_prompt = compose_risk_system_prompt_focus(main_theme, focus)
 
     tree_str = llm.get_response(
-        [{"role": "user", "content": system_prompt}],
-        **ll_model_config.get("kwargs", {}),
+        [{"role": "system", "content": system_prompt}], **chat_params
     )
 
     tree_str = repair_json(tree_str)
 
     tree_dict = ast.literal_eval(tree_str)
 
-    return ThemeTree.from_dict(tree_dict)
+    return MindMap.from_dict(tree_dict)
+
+
+def get_default_tree_config(llm_model: str) -> LLMConfig:
+    """Get default LLM model configuration for tree generation."""
+    if any(rm in llm_model for rm in REASONING_MODELS):
+        return LLMConfig(
+            model=llm_model,
+            reasoning_effort="high",
+            seed=42,
+            response_format={"type": "json_object"},
+        )
+    else:
+        return LLMConfig(
+            model=llm_model,
+            temperature=0,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            seed=42,
+            response_format={"type": "json_object"},
+        )

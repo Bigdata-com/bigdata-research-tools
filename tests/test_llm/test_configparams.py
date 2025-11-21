@@ -1,24 +1,23 @@
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
 
 from bigdata_research_tools.llm.base import (
-    AsyncLLMEngine,
-    AsyncLLMProvider,
-    LLMEngine,
     LLMProvider,
 )
 
 
 class DummyLLMProviderWithConfig(LLMProvider):
-    def __init__(self, model: str = None, **connection_config):
+    def __init__(self, model: str | None = None, **connection_config):
         super().__init__(model, **connection_config)
         self.configured = False
-        self.connection_config = connection_config or {}
-        self.configure_connection(**connection_config)
+        self.connection_params = {}
+        self.configure_connection(**self.connection_config)
 
     def configure_connection(
-        self, api_key: str = None, base_url: str = None, timeout: int = 30, **kwargs
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: int = 30,
+        **kwargs,
     ):
         """Mock configure function that requires connection parameters"""
         if not api_key:
@@ -26,11 +25,13 @@ class DummyLLMProviderWithConfig(LLMProvider):
         if not base_url:
             raise ValueError("base_url is required")
 
-        self.connection_params = {
-            "api_key": api_key,
-            "base_url": base_url,
-            "timeout": timeout,
-        }
+        self.connection_params.update(
+            {
+                "api_key": api_key,
+                "base_url": base_url,
+                "timeout": timeout,
+            }
+        )
         self.configured = True
 
     async def get_response(self, chat_history, **kwargs):
@@ -53,14 +54,18 @@ class DummyLLMProviderWithConfig(LLMProvider):
 
 
 class DummyLLMProviderWithConfigNonRequiredParams(LLMProvider):
-    def __init__(self, model: str = None, **connection_config):
+    def __init__(self, model: str | None = None, **connection_config):
         super().__init__(model, **connection_config)
         self.configured = False
-        self.connection_config = connection_config or {}
-        self.configure_connection(**connection_config)
+        self.connection_params = {}
+        self.configure_connection(**self.connection_config)
 
     def configure_connection(
-        self, api_key: str = None, base_url: str = None, timeout: int = 30, **kwargs
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: int = 30,
+        **kwargs,
     ):
         """Mock configure function that requires connection parameters"""
 
@@ -109,7 +114,7 @@ class TestConnectionConfig:
         """Test configure_connection raises error when one required config parameter is missing"""
 
         with pytest.raises(ValueError, match="api_key is required"):
-            provider = DummyLLMProviderWithConfig(model="test-model")
+            _ = DummyLLMProviderWithConfig(model="test-model")
 
     def test_connection_config_passed_through_init(self):
         """Test that connection_config parameters are accessible through init and auto-configured"""

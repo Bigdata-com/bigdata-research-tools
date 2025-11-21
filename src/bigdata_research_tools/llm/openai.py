@@ -1,30 +1,27 @@
 from __future__ import annotations
 
 from json import loads
-from typing import AsyncGenerator, Generator, Union
+from typing import AsyncGenerator, Generator
 
 try:
-    from openai import AsyncOpenAI, OpenAI
+    from openai import AsyncOpenAI, OpenAI  # ty: ignore[unresolved-import]
 except ImportError:
     raise ImportError(
         "Missing optional dependency for LLM OpenAI provider, "
         "please install `bigdata_research_tools[openai]` to enable them."
     )
 
-from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
+from bigdata_research_tools.llm.base import (
+    AsyncLLMProvider,
+    LLMProvider,
+    NotInitializedLLMProviderError,
+)
 
 
 class AsyncOpenAIProvider(AsyncLLMProvider):
-    provider_name = "openai"
-
-    def __init__(
-        self,
-        model: str,
-        **connection_config,
-    ):
+    def __init__(self, model: str, **connection_config):
         super().__init__(model, **connection_config)
         self._client = None
-        self.connection_config = connection_config or {}
         self.configure_openai_client()
 
     def configure_openai_client(self) -> None:
@@ -50,6 +47,8 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
                 Reference examples of the format accepted: https://cookbook.openai.com/examples/how_to_format_inputs_to_chatgpt_models.
             kwargs (dict): Additional arguments to pass to the OpenAI API.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         chat_completion = await self._client.chat.completions.create(
             messages=chat_history, model=self.model, **kwargs
         )
@@ -59,10 +58,9 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
-        temperature: float = 0,
+        tools: list[dict],
         **kwargs,
-    ) -> dict[str, Union[list[dict], str]]:
+    ) -> dict[str, list[dict] | str]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -80,11 +78,12 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         response = await self._client.chat.completions.create(
             messages=chat_history,
             model=self.model,
             tools=tools,
-            temperature=temperature,
             **kwargs,
         )
         message = response.choices[0].message
@@ -115,6 +114,8 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
         Returns:
             Generator[str, None, None]: A generator that yields the response from the LLM model.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         async for delta in await self._client.chat.completions.create(
             model=self.model, messages=chat_history, stream=True, **kwargs
         ):
@@ -123,8 +124,6 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
 
 
 class OpenAIProvider(LLMProvider):
-    provider_name = "openai"
-
     def __init__(
         self,
         model: str,
@@ -132,7 +131,6 @@ class OpenAIProvider(LLMProvider):
     ):
         super().__init__(model, **connection_config)
         self._client = None
-        self.connection_config = connection_config or {}
         self.configure_openai_client()
 
     def configure_openai_client(self) -> None:
@@ -158,6 +156,8 @@ class OpenAIProvider(LLMProvider):
                 Reference examples of the format accepted: https://cookbook.openai.com/examples/how_to_format_inputs_to_chatgpt_models.
             kwargs (dict): Additional arguments to pass to the OpenAI API.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         chat_completion = self._client.chat.completions.create(
             messages=chat_history, model=self.model, **kwargs
         )
@@ -167,10 +167,9 @@ class OpenAIProvider(LLMProvider):
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
-        temperature: float = 0,
+        tools: list[dict],
         **kwargs,
-    ) -> dict[str, Union[list[dict], str]]:
+    ) -> dict:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -188,23 +187,32 @@ class OpenAIProvider(LLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         response = self._client.chat.completions.create(
             messages=chat_history,
             model=self.model,
             tools=tools,
-            temperature=temperature,
             **kwargs,
         )
         message = response.choices[0].message
         output = {
+            "id": [],
             "func_names": [],
             "arguments": [],
             "text": message.content,
+            "tool_calls": {},
         }
+
         if function_calls := message.tool_calls if message.tool_calls else None:
             output = {
+                "id": [f.id for f in function_calls],
                 "func_names": [f.function.name for f in function_calls],
                 "arguments": [loads(f.function.arguments) for f in function_calls],
+                "tool_calls": response.model_dump()
+                .get("choices", [])[0]
+                .get("message", {})
+                .get("tool_calls", []),
             }
         return output
 
@@ -223,6 +231,8 @@ class OpenAIProvider(LLMProvider):
         Returns:
             Generator[str, None, None]: A generator that yields the response from the LLM model.
         """
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
         for delta in self._client.chat.completions.create(
             model=self.model, messages=chat_history, stream=True, **kwargs
         ):

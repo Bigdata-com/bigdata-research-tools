@@ -1,11 +1,9 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
-from bigdata_research_tools.settings import check_libraries_installed
+from bigdata_research_tools.utils.files import check_libraries_installed
 from bigdata_research_tools.visuals.visuals import ExposureDashboard
 
 
@@ -44,7 +42,7 @@ class RiskExposureDashboard(ExposureDashboard):
         },
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the dashboard with configuration parameters.
 
@@ -61,8 +59,8 @@ class RiskExposureDashboard(ExposureDashboard):
 def create_risk_exposure_dashboard(
     df_company: pd.DataFrame,
     n_companies: int = 10,
-    config: Optional[Dict[str, Any]] = None,
-) -> Tuple[go.Figure, go.Figure]:
+    config: dict[str, Any] | None = None,
+) -> tuple[go.Figure, go.Figure]:
     """
     Creates a comprehensive dashboard for analyzing risk exposure of companies.
 

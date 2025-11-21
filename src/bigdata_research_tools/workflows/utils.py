@@ -2,41 +2,11 @@
 Script with any common helper functions used across the workflows.
 """
 
-from typing import List
-
-from bigdata_client.models.search import DocumentType
 from pandas import DataFrame
 
-from bigdata_research_tools.excel import ExcelManager, check_excel_dependencies
-
-from IPython.display import display, HTML
-
-def display_output_chunks_dataframe(final_df):
-    """
-    Display selected document chunks in a formatted HTML view for better readability.
-    
-    Args:
-        final_df: DataFrame containing semantic labels with document chunks
-    """
-    output_lines = []
-
-    for row, element in final_df.iterrows():
-        # Add lines to the output list with the company in bold
-        output_lines.append(f"<strong>Company:</strong> {element.Company}<br>")
-        output_lines.append(f"<strong>Sector:</strong> {element.Sector}<br>")
-        output_lines.append(f"<strong>Industry:</strong> {element.Industry}<br>")
-        output_lines.append(f"<strong>Date:</strong> {element.Date}<br>")
-        output_lines.append(f"<strong>Headline:</strong> {element.Headline}<br>")
-        output_lines.append(f"<strong>Sentence Identifier:</strong> {element['Document ID']}<br>")
-        output_lines.append(f"<strong>Quote:</strong> <em>{element.Quote}</em><br>")
-        output_lines.append(f"<strong>Sub-Theme Label:</strong> {element.Theme}<br>")
-        output_lines.append("--------------------<br>")
-
-    # Join all lines into a single string and display it
-    display(HTML(''.join(output_lines)))
 
 def get_scored_df(
-    df: DataFrame, index_columns: List[str], pivot_column: str
+    df: DataFrame, index_columns: list[str], pivot_column: str
 ) -> DataFrame:
     """
     Calculate a Composite Score by pivoting the received DataFrame.
@@ -65,29 +35,3 @@ def get_scored_df(
         drop=True
     )
     return df_pivot
-
-
-def save_to_excel(
-    file_path: str,
-    tables: dict[str, tuple[DataFrame, tuple[int, int]]],
-) -> None:
-    """
-    Save multiple DataFrames to an Excel file using ExcelManager.
-
-    Args:
-        file_path: Destination path for the Excel file.
-        tables: A dict mapping sheet names to (DataFrame, position) tuples.
-
-    Returns:
-        None.
-    """
-    if not file_path or not check_excel_dependencies():
-        return
-
-    excel_manager = ExcelManager()
-
-    excel_args = [
-        (df, sheet_name, position) for sheet_name, (df, position) in tables.items()
-    ]
-
-    excel_manager.save_workbook(excel_args, file_path)

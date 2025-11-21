@@ -1,19 +1,19 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
+import json
 import re
 from itertools import zip_longest
 from json import JSONDecodeError, dumps, loads
 from logging import Logger, getLogger
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable
 
 from json_repair import repair_json
 from pandas import DataFrame
 
-from bigdata_research_tools.llm.base import AsyncLLMEngine, LLMEngine
+from bigdata_research_tools.llm.base import (
+    REASONING_MODELS,
+    AsyncLLMEngine,
+    LLMConfig,
+    LLMEngine,
+)
 from bigdata_research_tools.llm.utils import (
     run_concurrent_prompts,
     run_parallel_prompts,
@@ -27,10 +27,9 @@ class Labeler:
 
     def __init__(
         self,
-        llm_model: Union[str, LLMEngine],
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
         # Note that his value is also used in the prompts.
         unknown_label: str = "unclear",
-        temperature: float = 0,
     ):
         """Initialize base Labeler.
 
@@ -38,20 +37,42 @@ class Labeler:
             llm_model: Name of the LLM model to use. Expected format:
                 <provider>::<model>, e.g. "openai::gpt-4o-mini"
             unknown_label: Label for unclear classifications
-            temperature: Temperature to use in the LLM model.
+
         """
-        self.llm_model = llm_model
-        self.temperature = temperature
+        if isinstance(llm_model_config, dict):
+            self.llm_model_config = LLMConfig(**llm_model_config)
+        elif isinstance(llm_model_config, str):
+            self.llm_model_config = self.get_default_labeler_config(llm_model_config)
+        else:
+            self.llm_model_config = llm_model_config
+
         self.unknown_label = unknown_label
 
-    def _deserialize_label_responses(
-        self, responses: List[Dict[str, Any]]
-    ) -> DataFrame:
-        """
-        Deserialize labeling responses into a DataFrame.
+    def get_default_labeler_config(self, model) -> LLMConfig:
+        """Get default LLM model configuration for labeling."""
+        if any(rm in model for rm in REASONING_MODELS):
+            return LLMConfig(
+                model=model,
+                reasoning_effort="high",
+                seed=42,
+                response_format={"type": "json_object"},
+            )
+        else:
+            return LLMConfig(
+                model=model,
+                temperature=0,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+                seed=42,
+                response_format={"type": "json_object"},
+            )
+
+    def _convert_to_label_df(self, response_mapping: list[str]) -> DataFrame:
+        """Convert a labeling response dictionary to a DataFrame.
 
         Args:
-            responses: List of response dictionaries from the LLM.
+            response: A response dictionary from the LLM collecting one or more parsed responses
 
         Returns:
             DataFrame with schema:
@@ -60,146 +81,166 @@ class Labeler:
                 - motivation
                 - label
         """
+        responses_json = {}
+        for response in response_mapping:
+            responses_json.update(json.loads(response))
+        df_labels = DataFrame.from_dict(responses_json, orient="index")
+        df_labels.index = df_labels.index.astype(int)
+        df_labels.sort_index(inplace=True)
+        return df_labels
+
+    def _deserialize_label_response(self, response: str) -> str:
+        response = json.loads(response)
         response_mapping = {}
-        for response in responses:
+        if not response or not isinstance(response, dict):
+            raise ValueError("Response is empty or not a dictionary")
 
-            if not response or not isinstance(response, dict):
-                continue
-
-            for k, v in response.items():
-                try:
-                    response_mapping[k] = {
-                        "motivation": v.get("motivation", ""),
-                        "label": v.get("label", self.unknown_label),
-                        **{
-                            key: value
-                            for key, value in v.items()
-                            if key not in ["motivation", "label"]
-                        },
-                    }
-                    # Add any extra keys present in v
-                    extra_keys = {
+        for k, v in response.items():
+            try:
+                response_mapping[int(k)] = {
+                    "motivation": v.get("motivation", ""),
+                    "label": v.get("label", self.unknown_label),
+                    **{
                         key: value
                         for key, value in v.items()
                         if key not in ["motivation", "label"]
-                    }
-                    response_mapping[k].update(extra_keys)
-                except (KeyError, AttributeError):
-                    response_mapping[k] = {
-                        "motivation": "",
-                        "label": self.unknown_label,
-                    }
+                    },
+                }
+                # Add any extra keys present in v
+                extra_keys = {
+                    key: value
+                    for key, value in v.items()
+                    if key not in ["motivation", "label"]
+                }
+                response_mapping[int(k)].update(extra_keys)
+            except (KeyError, AttributeError):
+                response_mapping[int(k)] = {
+                    "motivation": "",
+                    "label": self.unknown_label,
+                }
+        return json.dumps(response_mapping)
 
-        df_labels = DataFrame.from_dict(response_mapping, orient="index")
-        df_labels.index = df_labels.index.astype(int)
-        return df_labels
+    def deserialize_label_responses_as_df(self, responses: list[str]) -> DataFrame:
+        responses_dict = [
+            json.loads(
+                self._deserialize_label_response(self.parse_labeling_response(response))
+            )
+            for response in responses
+        ]
+        # merge a list of dicts into a single dict
+        merged_responses = {k: v for d in responses_dict for k, v in d.items()}
+        # Deserialize the responses
+        df_labeled = DataFrame.from_dict(merged_responses, orient="index")
+        df_labeled.index = df_labeled.index.astype(int)
+
+        return df_labeled
 
     def _run_labeling_prompts(
-        self, prompts: List[str], system_prompt: str, max_workers: int = 100
-    ) -> List:
+        self,
+        prompts: list[str],
+        system_prompt: str,
+        timeout: int | None,
+        max_workers: int = 100,
+        processing_callbacks: list[Callable[[str], str]] | None = None,
+    ) -> list[str]:
         """
         Get the labels from the prompts.
 
         Args:
             prompts: List of prompts to process
             system_prompt: System prompt for the LLM
+            timeout: Timeout for each LLM request for concurrent calls
             max_workers: Maximum number of concurrent workers
-
+            processing_callbacks: Callback function for handling responses
         Returns:
-            List of responses from the LLM
+            Dict of parsed responses from the LLM
         """
-        llm_kwargs = {
-            "temperature": self.temperature,
-            "response_format": {"type": "json_object"},
-        }
 
         # ADS-140
         # Currently, Bedrock does not support async calls. Its implementation uses synchronous calls.
         # In order to handle Bedrock as a provider we use a different function for running the prompts.
         # We execute parallel calls using ThreadPoolExecutor for Bedrock and async calls for other providers.
+        provider, _ = self.llm_model_config.model.split("::")
 
-        if isinstance(self.llm_model, LLMEngine):
-            engine_provided = True
-            provider = self.llm_model.provider.provider_name
-            model = self.llm_model.provider.model
-            provider_model = f"{provider}::{model}"
-        else:
-            engine_provided = False
-            provider, _ = self.llm_model.split("::")
+        llm_kwargs = self.llm_model_config.get_llm_kwargs(
+            remove_max_tokens=True, remove_timeout=True
+        )
 
         if provider == "bedrock":
-            if engine_provided:
-                llm = LLMEngine(
-                    model=provider_model, **self.llm_model.provider.connection_config
-                )
-            else:
-                llm = LLMEngine(model=self.llm_model)
+            llm = LLMEngine(
+                model=self.llm_model_config.model,
+                **self.llm_model_config.connection_config,
+            )
             return run_parallel_prompts(
                 llm, prompts, system_prompt, max_workers, **llm_kwargs
             )
         else:
-            if engine_provided:
-                llm = AsyncLLMEngine(
-                    model=provider_model, **self.llm_model.provider.connection_config
-                )
-            else:
-                llm = AsyncLLMEngine(model=self.llm_model)
+            llm = AsyncLLMEngine(
+                model=self.llm_model_config.model,
+                **self.llm_model_config.connection_config,
+            )
             return run_concurrent_prompts(
-                llm, prompts, system_prompt, max_workers, **llm_kwargs
+                llm,
+                prompts,
+                system_prompt,
+                timeout,
+                max_workers=max_workers,
+                processing_callbacks=processing_callbacks,
+                **llm_kwargs,
             )
 
+    def parse_labeling_response(self, response: str) -> str:
+        """
+        Parse the response from the LLM model used for labeling.
 
-def get_prompts_for_labeler(
-    texts: List[str],
-    textsconfig: Optional[List[Dict[str, Any]]] = [],
-) -> List[str]:
-    """
-    Generate a list of user messages for each text to be labelled by the labeling system.
+        Args:
+            response: The response from the LLM model used for labeling,
+                as a raw string.
+        Returns:
+            Parsed dictionary. Will be empty if the parsing fails. Keys:
+                - motivation
+                - label
+        """
+        try:
+            # Improve json retrieval robustness by using a regex as first attempt
+            # to extract the json object from the response.
+            # If that fails, we use the json_repair library to try to fix common
+            # json formatting issues.
+            match = re.search(r'\{\s*"\d*":.*?\}\s*\}', response, re.DOTALL)
 
-    Example of generated prompts: [{"sentence_id": 0, "text": "Chunk 0 text here"},
-    {"sentence_id": 1, "text": "Chunk 1 text here"}, ...]
+            if match:
+                response = match.group(0)
+            else:
+                response = repair_json(response, return_objects=False)
+            deserialized_response = loads(response)
+        except JSONDecodeError:
+            logger.error(f"Error deserializing response: {response}")
+            return ""
 
-    Args:
-        texts: texts to get the labels from.
-        textsconfig: Optional fields for the prompts in addition to the text.
+        return json.dumps(deserialized_response)
 
-    Returns:
-        A list of prompts for the labeling system.
-    """
-    return [
-        dumps({"sentence_id": i, **config, "text": text})
-        for i, (config, text) in enumerate(
-            zip_longest(textsconfig, texts, fillvalue={})
-        )
-    ]
+    def get_prompts_for_labeler(
+        self,
+        texts: list[str],
+        textsconfig: list[dict[str, Any]] | None = None,
+    ) -> list[str]:
+        """
+        Generate a list of user messages for each text to be labelled by the labeling system.
 
+        Example of generated prompts: [{"sentence_id": 0, "text": "Chunk 0 text here"},
+        {"sentence_id": 1, "text": "Chunk 1 text here"}, ...]
 
-def parse_labeling_response(response: str) -> Dict:
-    """
-    Parse the response from the LLM model used for labeling.
+        Args:
+            texts: texts to get the labels from.
+            textsconfig: Optional fields for the prompts in addition to the text.
 
-    Args:
-        response: The response from the LLM model used for labeling,
-            as a raw string.
-    Returns:
-        Parsed dictionary. Will be empty if the parsing fails. Keys:
-            - motivation
-            - label
-    """
-    try:
-        # Improve json retrieval robustness by using a regex as first attempt
-        # to extract the json object from the response.
-        # If that fails, we use the json_repair library to try to fix common
-        # json formatting issues.
-        match = re.search(r'\{\s*"\d*":.*?\}\s*\}', response, re.DOTALL)
-
-        if match:
-            response = match.group(0)
-        else:
-            response = repair_json(response, return_objects=False)
-        deserialized_response = loads(response)
-    except JSONDecodeError:
-        logger.error(f"Error deserializing response: {response}")
-        return {}
-
-    return deserialized_response
+        Returns:
+            A list of prompts for the labeling system.
+        """
+        textsconfig = textsconfig or []
+        return [
+            dumps({"sentence_id": i, **config, "text": text})
+            for i, (config, text) in enumerate(
+                zip_longest(textsconfig, texts, fillvalue={})
+            )
+        ]

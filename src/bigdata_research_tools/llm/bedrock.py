@@ -1,26 +1,26 @@
-from os import environ
 from typing import Any, Generator
 
 try:
-    from boto3 import Session
+    from boto3 import Session  # ty: ignore[unresolved-import]
 except ImportError:
     raise ImportError(
         "Missing optional dependency for LLM Bedrock provider, "
         "please install `bigdata_research_tools[bedrock]` to enable them."
     )
 
-from bigdata_research_tools.llm.base import AsyncLLMProvider, LLMProvider
+from bigdata_research_tools.llm.base import (
+    AsyncLLMProvider,
+    LLMProvider,
+    NotInitializedLLMProviderError,
+)
 
 
 class AsyncBedrockProvider(AsyncLLMProvider):
-    provider_name = "bedrock"
-
     # Asynchronous boto3 is tricky, for now use the synchronous client, this will not
     # provide the benefits from async, but will at least let our workflows run for now
     def __init__(self, model: str, **connection_config):
         super().__init__(model, **connection_config)
-        self._client: Session = None
-        self.connection_config = connection_config or {}
+        self._client: Session | None = None
         self.configure_bedrock_client()
 
     def configure_bedrock_client(self) -> None:
@@ -33,14 +33,18 @@ class AsyncBedrockProvider(AsyncLLMProvider):
         if not self._client:
             self._client = Session(**self.connection_config)
 
+    def _get_bedrock_client(self):
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
+        return self._client.client("bedrock-runtime")
+
     def _get_bedrock_input(
         self, chat_history: list[dict[str, str]], **kwargs
-    ) -> tuple[Session, dict[str, Any], str]:
+    ) -> tuple[dict[str, Any], str]:
         """
         Get the input for the Bedrock API.
         :param chat_history: the chat history to get the input from.
         """
-        bedrock_client = self._client.client("bedrock-runtime")
         default_kwargs = {
             "temperature": 0.01,
             "max_tokens": 2048,
@@ -59,6 +63,7 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 system.append({"text": message["content"]})
         if (
             "response_format" in kwargs
+            and isinstance(kwargs["response_format"], dict)
             and kwargs["response_format"].get("type") == "json"
         ):
             formatted_history.append({"role": "assistant", "content": [{"text": "{"}]})
@@ -76,7 +81,7 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 "latency": "optimized" if kwargs.get("low_latency") else "standard"
             },
         }
-        return bedrock_client, model_kwargs, response_prefix
+        return model_kwargs, response_prefix
 
     async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
         """
@@ -94,9 +99,8 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                     Only implemented for a few models. See
                     https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
-            chat_history, **kwargs
-        )
+        bedrock_client = self._get_bedrock_client()
+        model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
         response = bedrock_client.converse(**model_kwargs)
 
         output_message = (
@@ -108,10 +112,10 @@ class AsyncBedrockProvider(AsyncLLMProvider):
     async def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, Union[list[dict], str]]:
+    ) -> dict[str, list[dict] | str]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -129,9 +133,8 @@ class AsyncBedrockProvider(AsyncLLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
-            chat_history, **kwargs
-        )
+        bedrock_client = self._get_bedrock_client()
+        model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
         if tools:
             model_kwargs["toolConfig"] = {"tools": tools}
         response = bedrock_client.converse(**model_kwargs)
@@ -176,12 +179,9 @@ class AsyncBedrockProvider(AsyncLLMProvider):
 
 
 class BedrockProvider(LLMProvider):
-    provider_name = "bedrock"
-
     def __init__(self, model: str, **connection_config):
         super().__init__(model, **connection_config)
-        self._client: Session = None
-        self.connection_config = connection_config or {}
+        self._client: Session | None = None
         self.configure_bedrock_client()
 
     def configure_bedrock_client(self) -> None:
@@ -194,14 +194,18 @@ class BedrockProvider(LLMProvider):
         if not self._client:
             self._client = Session(**self.connection_config)
 
+    def _get_bedrock_client(self):
+        if not self._client:
+            raise NotInitializedLLMProviderError(self)
+        return self._client.client("bedrock-runtime")
+
     def _get_bedrock_input(
         self, chat_history: list[dict[str, str]], **kwargs
-    ) -> tuple[Session, dict[str, Any]]:
+    ) -> tuple[dict[str, Any], str]:
         """
         Get the input for the Bedrock API.
         :param chat_history: the chat history to get the input from.
         """
-        bedrock_client = self._client.client("bedrock-runtime")
         default_kwargs = {
             "temperature": 0.01,
             "max_tokens": 2048,
@@ -220,6 +224,7 @@ class BedrockProvider(LLMProvider):
                 system.append({"text": message["content"]})
         if (
             "response_format" in kwargs
+            and isinstance(kwargs["response_format"], dict)
             and kwargs["response_format"].get("type") == "json"
         ):
             formatted_history.append({"role": "assistant", "content": [{"text": "{"}]})
@@ -237,7 +242,7 @@ class BedrockProvider(LLMProvider):
                 "latency": "optimized" if kwargs.get("low_latency") else "standard"
             },
         }
-        return bedrock_client, model_kwargs, response_prefix
+        return model_kwargs, response_prefix
 
     def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
         """
@@ -255,9 +260,8 @@ class BedrockProvider(LLMProvider):
                     Only implemented for a few models. See
                     https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
-            chat_history, **kwargs
-        )
+        bedrock_client = self._get_bedrock_client()
+        model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
         response = bedrock_client.converse(**model_kwargs)
 
         output_message = (
@@ -269,10 +273,10 @@ class BedrockProvider(LLMProvider):
     def get_tools_response(
         self,
         chat_history: list[dict[str, str]],
-        tools: list[dict[str, str]],
+        tools: list[dict],
         temperature: float = 0,
         **kwargs,
-    ) -> dict[str, Union[list[dict], str]]:
+    ) -> dict[str, list[dict] | str]:
         """
         Get the response from an LLM model from OpenAI with tools.
         Args:
@@ -290,9 +294,8 @@ class BedrockProvider(LLMProvider):
                 - arguments (list[dict]): List of arguments for each function
                 - text (str): The text content of the message, if any.
         """
-        bedrock_client, model_kwargs, output_prefix = self._get_bedrock_input(
-            chat_history, **kwargs
-        )
+        bedrock_client = self._get_bedrock_client()
+        model_kwargs, output_prefix = self._get_bedrock_input(chat_history, **kwargs)
         if tools:
             model_kwargs["toolConfig"] = {"tools": tools}
         response = bedrock_client.converse(**model_kwargs)

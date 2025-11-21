@@ -1,23 +1,14 @@
-"""
-Module for managing labeling operations.
-
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-"""
-
 from logging import Logger, getLogger
-from typing import List, Optional, Any, Dict
+from typing import Any
 
 from pandas import DataFrame, Series
 
-from bigdata_research_tools.labeler.labeler import (
-    Labeler,
-    get_prompts_for_labeler,
-    parse_labeling_response,
-)
+from bigdata_research_tools.labeler.labeler import Labeler
+from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.prompts.labeler import (
     get_other_entity_placeholder,
-    get_target_entity_placeholder,
     get_risk_system_prompt,
+    get_target_entity_placeholder,
 )
 
 logger: Logger = getLogger(__name__)
@@ -28,12 +19,11 @@ class RiskLabeler(Labeler):
 
     def __init__(
         self,
-        llm_model: str,
-        label_prompt: Optional[str] = None,
+        llm_model_config: str | LLMConfig | dict = "openai::gpt-4o-mini",
+        label_prompt: str | None = None,
         # TODO (cpinto, 2025.02.07) This value is also in the prompt used.
         #  Changing it here would break the process.
         unknown_label: str = "unclear",
-        temperature: float = 0,
     ):
         """
         Args:
@@ -42,18 +32,18 @@ class RiskLabeler(Labeler):
             label_prompt: Prompt provided by user to label the search result chunks.
                 If not provided, then our default labelling prompt is used.
             unknown_label: Label for unclear classifications
-            temperature: Temperature to use in the LLM model.
         """
-        super().__init__(llm_model, unknown_label, temperature)
+        super().__init__(llm_model_config, unknown_label)
         self.label_prompt = label_prompt
 
     def get_labels(
         self,
         main_theme: str,
-        labels: List[str],
-        texts: List[str],
+        labels: list[str],
+        texts: list[str],
         max_workers: int = 50,
-        textsconfig: Optional[List[Dict[str, Any]]] = [],
+        timeout: int | None = 55,
+        textsconfig: list[dict[str, Any]] | None = None,
     ) -> DataFrame:
         """
         Process thematic labels for texts.
@@ -62,6 +52,7 @@ class RiskLabeler(Labeler):
             main_theme: The main theme to analyze.
             labels: Labels for labelling the chunks.
             texts: List of chunks to label.
+            timeout: Timeout for each LLM request.
             max_workers: Maximum number of concurrent workers.
 
         Returns:
@@ -77,16 +68,27 @@ class RiskLabeler(Labeler):
             else self.label_prompt
         )
 
-        prompts = get_prompts_for_labeler(texts, textsconfig)
+        prompts = self.get_prompts_for_labeler(texts, textsconfig)
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers
+            prompts,
+            system_prompt,
+            max_workers=max_workers,
+            timeout=timeout,
+            processing_callbacks=[
+                self.parse_labeling_response,
+                self._deserialize_label_response,
+            ],
         )
-        responses = [parse_labeling_response(response) for response in responses]
 
-        return self._deserialize_label_responses(responses)
+        return self._convert_to_label_df(responses)
 
-    def post_process_dataframe(self, df: DataFrame, extra_fields: dict, extra_columns: List[str]) -> DataFrame:
+    def post_process_dataframe(
+        self,
+        df: DataFrame,
+        extra_fields: dict | None,
+        extra_columns: list[str] | None,
+    ) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -153,31 +155,35 @@ class RiskLabeler(Labeler):
         df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
         df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
 
-        df["Document ID"] = df["document_id"] if "document_id" in df.columns else df["rp_document_id"]
-        
+        df["Document ID"] = (
+            df["document_id"] if "document_id" in df.columns else df["rp_document_id"]
+        )
+
         columns_map = {
-                "entity_name": "Company",
-                "entity_sector": "Sector",
-                "entity_industry": "Industry",
-                "entity_country": "Country",
-                "entity_ticker": "Ticker",
-                "headline": "Headline",
-                "text": "Quote",
-                "motivation": "Motivation",
-                "label": "Sub-Scenario"
-            }
+            "entity_name": "Company",
+            "entity_sector": "Sector",
+            "entity_industry": "Industry",
+            "entity_country": "Country",
+            "entity_ticker": "Ticker",
+            "headline": "Headline",
+            "text": "Quote",
+            "motivation": "Motivation",
+            "label": "Sub-Scenario",
+        }
+        optional_fields = ["topics", "source_name", "source_rank", "url"]
+        for field in optional_fields:
+            if field in df.columns:
+                columns_map[field] = field.replace("_", " ").title()
 
         if extra_fields:
             columns_map.update(extra_fields)
             if "quotes" in extra_fields.keys():
                 if "quotes" in df.columns:
-                    df["quotes"] = df.apply(replace_company_placeholders, axis=1, col_name = 'quotes')
+                    df["quotes"] = df.apply(
+                        replace_company_placeholders, axis=1, col_name="quotes"
+                    )
                 else:
-                    print("quotes column not in df")
-
-        df = df.rename(
-            columns=columns_map
-        )
+                    logger.warning("quotes column not in df")
 
         # Select and order columns
         export_columns = [
@@ -194,15 +200,22 @@ class RiskLabeler(Labeler):
             "Motivation",
             "Sub-Scenario",
         ]
-        
+
         if extra_columns:
             export_columns += extra_columns
+
+        for field in optional_fields:
+            if field in df.columns:
+                export_columns += [field.replace("_", " ").title()]
+
+        df = df.rename(columns=columns_map)
 
         return df[export_columns]
 
 
-def replace_company_placeholders(row: Series, col_name: str = 'motivation') -> str:
-
+def replace_company_placeholders(
+    row: Series, col_name: str = "motivation"
+) -> str | list[str]:
     """
     Replace company placeholders in text.
 
@@ -220,16 +233,25 @@ def replace_company_placeholders(row: Series, col_name: str = 'motivation') -> s
         if row.get("other_entities_map"):
             for entity_id, entity_name in row["other_entities_map"]:
                 text = text.replace(
-                    f"{get_other_entity_placeholder()}_{entity_id}", entity_name)
-    
+                    f"{get_other_entity_placeholder()}_{entity_id}", entity_name
+                )
+
     elif isinstance(text, list):
-        text = [t.replace(get_target_entity_placeholder(), row["entity_name"]) for t in text]
+        text = [
+            t.replace(get_target_entity_placeholder(), row["entity_name"]) for t in text
+        ]
         if row.get("other_entities_map"):
             for entity_id, entity_name in row["other_entities_map"]:
-                text = [t.replace(f"{get_other_entity_placeholder()}_{entity_id}", entity_name) for t in text]
+                text = [
+                    t.replace(
+                        f"{get_other_entity_placeholder()}_{entity_id}", entity_name
+                    )
+                    for t in text
+                ]
 
     return text
 
+
 # Function to map risk_factor to risk_category
 def map_risk_category(risk_factor, mapping):
-    return mapping.get(risk_factor, 'Not Applicable')
+    return mapping.get(risk_factor, "Not Applicable")
