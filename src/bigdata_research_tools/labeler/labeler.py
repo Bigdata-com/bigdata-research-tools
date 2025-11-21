@@ -120,6 +120,21 @@ class Labeler:
                 }
         return json.dumps(response_mapping)
 
+    def deserialize_label_responses_as_df(self, responses: list[str]) -> DataFrame:
+        responses_dict = [
+            json.loads(
+                self._deserialize_label_response(self.parse_labeling_response(response))
+            )
+            for response in responses
+        ]
+        # merge a list of dicts into a single dict
+        merged_responses = {k: v for d in responses_dict for k, v in d.items()}
+        # Deserialize the responses
+        df_labeled = DataFrame.from_dict(merged_responses, orient="index")
+        df_labeled.index = df_labeled.index.astype(int)
+
+        return df_labeled
+
     def _run_labeling_prompts(
         self,
         prompts: list[str],
