@@ -79,20 +79,17 @@ pip install bigdata-research-tools
 Install additional packages for specific features:
 
 ```bash
-# For Excel export functionality
-pip install bigdata-research-tools[excel]
-
-# For visualization features
-pip install bigdata-research-tools[plotly]
-
-# For OpenAI integration, also via Azure
+# For OpenAI integration
 pip install bigdata-research-tools[openai]
+
+# For Azure OpenAI integration
+pip install bigdata-research-tools[azure]
 
 # For AWS Bedrock integration
 pip install bigdata-research-tools[bedrock]
 
 # For all optional features
-pip install bigdata-research-tools[excel,plotly,openai]
+pip install bigdata-research-tools[azure,bedrock,openai]
 ```
 
 ---
@@ -104,6 +101,8 @@ pip install bigdata-research-tools[excel,plotly,openai]
 Set up your credentials using environment variables:
 
 ```bash
+export BIGDATA_API_KEY="your_api_key"
+# or
 export BIGDATA_USERNAME="your_username"
 export BIGDATA_PASSWORD="your_password"
 ```
@@ -113,6 +112,8 @@ export BIGDATA_PASSWORD="your_password"
 Create a `.env` file in your project directory:
 
 ```bash
+BIGDATA_API_KEY="your_api_key"
+# or
 BIGDATA_USERNAME="your_username"
 BIGDATA_PASSWORD="your_password"
 ```
@@ -170,7 +171,7 @@ watchlist = bigdata.watchlists.get("watchlist_id")
 companies = bigdata.knowledge_graph.get_entities(watchlist.items)
 
 screener = ThematicScreener(
-    llm_model="openai::gpt-4o-mini",
+    llm_model_config="openai::gpt-4o-mini",
     main_theme="Electric Vehicles",
     companies=companies,
     start_date="2024-01-01",
@@ -191,7 +192,7 @@ Parameters to initialize the `ThematicScreener` class.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `llm_model` | `str` | ✅ | LLM model identifier |
+| `llm_model_config` | `str` | ✅ | LLM model identifier |
 | `main_theme` | `str` | ✅ | Main theme to analyze |
 | `companies` | `List[Company]` | ✅ | List of companies to screen (see [Company Objects](#company-objects)) |
 | `start_date` | `str` | ✅ | Start date (YYYY-MM-DD) |
@@ -243,7 +244,7 @@ watchlist = bigdata.watchlists.get("watchlist_id")
 companies = bigdata.knowledge_graph.get_entities(watchlist.items)
 
 analyzer = RiskAnalyzer(
-    llm_model="openai::gpt-4o-mini",
+    llm_model_config="openai::gpt-4o-mini",
     main_theme="Supply Chain Disruption",
     companies=companies,
     start_date="2024-01-01",
@@ -265,7 +266,7 @@ Parameters to initialize the `RiskAnalyzer` class.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `llm_model` | `str` | ✅ | LLM model identifier |
+| `llm_model_config` | `str` | ✅ | LLM model identifier |
 | `main_theme` | `str` | ✅ | Main risk theme |
 | `companies` | `List[Company]` | ✅ | Companies to analyze (see [Company Objects](#company-objects)) |
 | `start_date` | `str` | ✅ | Analysis start date |
@@ -318,7 +319,7 @@ narrative_miner = NarrativeMiner(
         "Machine Learning Innovation",
         "Data Privacy Concerns"
     ],
-    llm_model="openai::gpt-4o-mini",
+    llm_model_config="openai::gpt-4o-mini",
     start_date="2024-01-01",
     end_date="2024-12-31",
     fiscal_year=2024,
@@ -341,7 +342,7 @@ Parameters to initialize the `NarrativeMiner` class.
 | `narrative_sentences` | `List[str]` | ✅ | List of narrative sentences to track |
 | `start_date` | `str` | ✅ | Start date in YYYY-MM-DD format |
 | `end_date` | `str` | ✅ | End date in YYYY-MM-DD format |
-| `llm_model` | `str` | ✅ | LLM model in format "provider::model" |
+| `llm_model_config` | `str` | ✅ | LLM model in format "provider::model" |
 | `document_type` | `DocumentType` | ✅ |  Document scope (see [Document Types](#document-types))|
 | `fiscal_year` | `int` | ❌ | Fiscal year for transcripts/filings. Set to `None` for news |
 | `sources` | `List[str]` | ❌ | Filter by specific news sources |
