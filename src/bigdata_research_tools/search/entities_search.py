@@ -20,11 +20,8 @@ from bigdata_research_tools.search.screener_search import mask_sentences
 from bigdata_research_tools.labeler.risk_labeler import (
     replace_company_placeholders,
 )
+from bigdata_research_tools.search.models import BigdataEntity
 
-
-import os
-os.environ["BIGDATA_OTHER_ENTITY_PLACEHOLDER"] = "Other Entity"
-os.environ["BIGDATA_TARGET_ENTITY_PLACEHOLDER"] = "Target Entity"
 
 def entity_type_checker(entities):
     unique_types = set(type(entity).__name__ for entity in entities)
@@ -42,8 +39,67 @@ def entity_type_checker(entities):
         return type_field_map[unique_types.pop()]
     else:
         raise ValueError("Multiple entity types found in the provided watchlist.")
+    
+def entity_type_checker(entities: list[BigdataEntity]):
+    unique_types = set([entity.entity_type if entity.entity_type else None for entity in entities])
+    type_field_map = {
+            'PEOP':'people',
+            'PRDT': 'products',
+            'ORGA':'org',
+            'PLCE':'place',
+            'TOPC':'topic',
+            'CMDT':'concepts',
+            'CURR':'concepts',
+            'NATL':'concepts',
+            'SUST':'concepts',
+            'ECON':'concepts',
+            'ORGT':'concepts',
+            'POSI':'concepts',
+            'PROD':'concepts',
+            'TEAM':'concepts',
+            'SECT':'concepts',
+            'OTHR':'concepts',
+            "ASTR":'concepts',
+            "ANML":'concepts',
+            "BUSI":'concepts',
+            "CHAR":'concepts',
+            "COLR":'concepts',
+            "CURT":'concepts',
+            "ELEM":'concepts',
+            "EMOT":'concepts',
+            "ETHN":'concepts',
+            "FCTY":'concepts',
+            "FINC":'concepts',
+            "FRTS":'concepts',
+            "INRT":'concepts',
+            "INSE":'concepts',
+            "LAND":'concepts',
+            "LAWS":'concepts',
+            "MDCO":'concepts',
+            "MSIC":'concepts',
+            "PHYS":'concepts',
+            "PLNT":'concepts',
+            "PLTC":'concepts',
+            "PRDT":'concepts',
+            "SCIE":'concepts',
+            "SCTY":'concepts',
+            "SESO":'concepts',
+            "SHPE":'concepts',
+            "SOCI":'concepts',
+            "SPOR":'concepts',
+            "STAT":'concepts',
+            "TEAM":'concepts',
+            "TECH":'concepts',
+            "VEGT":'concepts',
+            "WTHR":'concepts',
+            'COMP':'companies'
+        }
+    if len(unique_types) == 1:
+        return type_field_map[unique_types.pop()]
+    else:
+        raise ValueError("Multiple entity types found in the provided watchlist.")
 
-def search_by_entities(entities: list,
+def search_by_entities(entities: list[BigdataEntity],
     sentences: List[str],
     start_date: str,
     end_date: str,
@@ -172,8 +228,7 @@ def search_by_entities(entities: list,
             results=results,
             chunks_entities=chunks_entities,
             watchlist=entities,
-            document_type=scope,
-            enhance_sentiment=enhance_sentiment)
+            document_type=scope)
 
         return df        
         
@@ -280,8 +335,12 @@ def process_entity_search_results(
                             "entity_country": entity_key.country,
                             "document_type": document_type.value,
                             "entity_name": entity_key.name,
+                            "entity_type": entity_key.entity_type,
                             "text": chunk.text,
-                            "sentiment": chunk.sentiment if chunk.sentiment else None,
+                            "sentiment": chunk.sentiment,
+                            "other_entities": ", ".join(
+                                e["name"] for e in other_entities
+                            ),
                             "other_entities_name": [e["name"] for e in other_entities],
                             "other_entities_id": [e["key"] for e in other_entities],
                             "other_entities_type": [e["type"] for e in other_entities],
@@ -306,6 +365,7 @@ def process_entity_search_results(
                                     "reporting_entity_industry": reporting_entity.industry if reporting_entity.industry else None,
                                     "reporting_entity_country": reporting_entity.country if reporting_entity.country else None,
                                     "reporting_entity_ticker": reporting_entity.ticker if reporting_entity.ticker else None,
+                                    "reporting_entity_type": reporting_entity.entity_type if reporting_entity.entity_type else None,
                                 })
                                 rows.append(row_dict_copy)
                 else:

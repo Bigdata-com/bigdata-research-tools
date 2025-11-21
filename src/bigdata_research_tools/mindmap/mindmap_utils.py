@@ -153,7 +153,7 @@ prompts_dict = {
         "user_prompt_message": "Your given Risk Scenario is: {main_theme}",
         "default_instructions": (
             "Forget all previous prompts."
-            "You are assisting a professional risk analyst tasked with creating a taxonomy to classify the impact of the Risk Scenario '**{main_theme}**' on other entities, such countries, commodities, geographical places, and organizations."
+            "You are assisting a professional risk analyst tasked with creating a taxonomy to classify the impact of the Risk Scenario '**{main_theme}**' on entities, such as countries, commodities, geographical places, and organizations."
             "Your objective is to generate a **comprehensive tree structure** that maps the **risk spillovers** stemming from the Risk Scenario '**{main_theme}**', and generates related sub-scenarios. "
             "Key Instructions:"
             "1. **Understand the Risk Scenario: '{main_theme}'**:"

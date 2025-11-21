@@ -66,6 +66,8 @@ class EntityRiskLabeler(Labeler):
             else self.label_prompt
         )
 
+        logger.info(f"Using system prompt: {system_prompt}")
+
         prompts = self.get_prompts_for_labeler(texts, textsconfig)
 
         responses = self._run_labeling_prompts(
@@ -146,10 +148,10 @@ class EntityRiskLabeler(Labeler):
             
             columns_map = {
                     "entity_name": "Entity",
+                    "entity_type": "Entity Type",
                     "entity_country": "Country",
                     "headline": "Headline",
                     "text": "Quote",
-                    "bigdata_sentiment": "Bigdata Sentiment",
                     "sentiment": "Sentiment",
                     "motivation": "Motivation",
                     "label": "Sub-Scenario",
@@ -181,22 +183,18 @@ class EntityRiskLabeler(Labeler):
                 "Time Period",
                 "Date",
                 "Entity",
+                "Entity Type",
                 "Country",
                 "Document ID",
                 "Headline",
                 "Quote",
                 "Sentiment",
-                "Bigdata Sentiment",
                 "Motivation",
                 "Sub-Scenario",
                 "Other Entities",
                 "Other Entities IDs",
                 "Other Entities Types"
             ]
-
-            if 'Entity Sentiment' in df.columns:
-                print("Including entity sentiment columns in export")
-                export_columns += ["Entity Sentiment", "Entity Text Sentiment"]
 
             if extra_columns:
                 export_columns += extra_columns
@@ -335,10 +333,10 @@ class EntityScreenerLabeler(Labeler):
             
             columns_map = {
                     "entity_name": "Entity",
+                    "entity_type": "Entity Type",
                     "entity_country": "Country",
                     "headline": "Headline",
                     "text": "Quote",
-                    "bigdata_sentiment": "Bigdata Sentiment",
                     "sentiment": "Sentiment",
                     "motivation": "Motivation",
                     "label": "Theme",
@@ -364,12 +362,12 @@ class EntityScreenerLabeler(Labeler):
                 "Time Period",
                 "Date",
                 "Entity",
+                "Entity Type",
                 "Country",
                 "Document ID",
                 "Headline",
                 "Quote",
                 "Sentiment",
-                "Bigdata Sentiment",
                 "Motivation",
                 "Theme",
                 "Other Entities",
@@ -382,7 +380,9 @@ class EntityScreenerLabeler(Labeler):
 
             return df[export_columns]
 
-def replace_company_placeholders(row: Series) -> str:
+def replace_company_placeholders(
+    row: Series, col_name: str = "motivation"
+) -> str | list[str]:
     """
     Replace company placeholders in text.
 
@@ -394,11 +394,27 @@ def replace_company_placeholders(row: Series) -> str:
     Returns:
         Text with placeholders replaced.
     """
-    text = row["motivation"]
-    text = text.replace(get_target_entity_placeholder(), row["entity_name"])
-    if row.get("other_entities_map"):
-        for entity_id, entity_name in row["other_entities_map"]:
-            text = text.replace(
-                f"{get_other_entity_placeholder()}_{entity_id}", entity_name
-            )
+    text = row[col_name]
+    entity_type = row.get("entity_type", "COMP")
+    if isinstance(text, str):
+        text = text.replace(get_target_entity_placeholder(entity_type), row["entity_name"])
+        if row.get("other_entities_map"):
+            for entity_id, entity_name in row["other_entities_map"]:
+                text = text.replace(
+                    f"{get_other_entity_placeholder(entity_type)}_{entity_id}", entity_name
+                )
+
+    elif isinstance(text, list):
+        text = [
+            t.replace(get_target_entity_placeholder(entity_type), row["entity_name"]) for t in text
+        ]
+        if row.get("other_entities_map"):
+            for entity_id, entity_name in row["other_entities_map"]:
+                text = [
+                    t.replace(
+                        f"{get_other_entity_placeholder(entity_type)}_{entity_id}", entity_name
+                    )
+                    for t in text
+                ]
+
     return text

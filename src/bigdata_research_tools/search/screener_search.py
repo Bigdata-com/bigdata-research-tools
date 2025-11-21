@@ -32,7 +32,7 @@ SEARCH_BY_COMPANIES_NAME: str = "SearchByCompanies"
 
 
 def search_by_companies(
-    companies: list[Company],
+    companies: list[BigdataEntity],
     sentences: list[str],
     start_date: str,
     end_date: str,
@@ -338,6 +338,7 @@ def process_screener_search_results(
                             "document_type": document_type.value,
                             "is_reporting_entity": True,
                             "entity_name": reporting_entity.name,
+                            "entity_type": reporting_entity.entity_type,
                             "entity_sector": reporting_entity.sector,
                             "entity_industry": reporting_entity.industry,
                             "entity_country": reporting_entity.country,
@@ -379,6 +380,7 @@ def process_screener_search_results(
                             "document_type": document_type.value,
                             "is_reporting_entity": False,
                             "entity_name": entity_key.name,
+                            "entity_type": entity_key.entity_type,
                             "entity_sector": entity_key.sector,
                             "entity_industry": entity_key.industry,
                             "entity_country": entity_key.country,
@@ -462,6 +464,7 @@ def mask_entity_coordinates(
     # Process each row
     for idx, row in df.iterrows():
         text = row["text"]
+        entity_type = row["entity_type"]
         entities = sorted(row["entities"], key=lambda x: x["start"], reverse=True)
         masked_text = text
 
@@ -480,20 +483,20 @@ def mask_entity_coordinates(
 
             if entity["key"] == row["entity_id"]:
                 # Mask target entity
-                masked_text = f"{masked_text[:start]}{get_target_entity_placeholder()}{masked_text[end:]}"
+                masked_text = f"{masked_text[:start]}{get_target_entity_placeholder(entity_type)}{masked_text[end:]}"
 
             elif start not in target_start and end not in target_end:
                 # Mask other entities
                 if entity["key"] not in entity_counter:
                     entity_counter[entity["key"]] = i
-                    mask = f"{get_other_entity_placeholder()}_{entity_counter[entity['key']]}"
+                    mask = f"{get_other_entity_placeholder(entity_type)}_{entity_counter[entity['key']]}"
                     masked_text = f"{masked_text[:start]}{mask}{masked_text[end:]}"
                     other_entity_map.append(
                         (entity_counter[entity["key"]], entity["name"])
                     )
                     i += 1
                 else:
-                    mask = f"{get_other_entity_placeholder()}_{entity_counter[entity['key']]}"
+                    mask = f"{get_other_entity_placeholder(entity_type)}_{entity_counter[entity['key']]}"
                     masked_text = f"{masked_text[:start]}{mask}{masked_text[end:]}"
                     other_entity_map.append(
                         (entity_counter[entity["key"]], entity["name"])

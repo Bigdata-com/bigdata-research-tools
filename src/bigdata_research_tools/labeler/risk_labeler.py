@@ -228,23 +228,24 @@ def replace_company_placeholders(
         Text with placeholders replaced.
     """
     text = row[col_name]
+    entity_type = row.get("entity_type", "COMP")
     if isinstance(text, str):
-        text = text.replace(get_target_entity_placeholder(), row["entity_name"])
+        text = text.replace(get_target_entity_placeholder(entity_type), row["entity_name"])
         if row.get("other_entities_map"):
             for entity_id, entity_name in row["other_entities_map"]:
                 text = text.replace(
-                    f"{get_other_entity_placeholder()}_{entity_id}", entity_name
+                    f"{get_other_entity_placeholder(entity_type)}_{entity_id}", entity_name
                 )
 
     elif isinstance(text, list):
         text = [
-            t.replace(get_target_entity_placeholder(), row["entity_name"]) for t in text
+            t.replace(get_target_entity_placeholder(entity_type), row["entity_name"]) for t in text
         ]
         if row.get("other_entities_map"):
             for entity_id, entity_name in row["other_entities_map"]:
                 text = [
                     t.replace(
-                        f"{get_other_entity_placeholder()}_{entity_id}", entity_name
+                        f"{get_other_entity_placeholder(entity_type)}_{entity_id}", entity_name
                     )
                     for t in text
                 ]

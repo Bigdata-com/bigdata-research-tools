@@ -35,6 +35,34 @@ def generate_prompt_template() -> str:
     8. Keeps the statement concise ({min_words}-{max_words} words)
     """
 
+def generate_prompt_template_entity() -> str:
+    """
+    Returns the base prompt template with placeholders for formatting.
+    """
+    return """
+    You are an expert financial analyst with specialized knowledge in thematic investment research.
+    Your task is to generate a concise motivation statement explaining why this entity is included in a thematic watchlist.
+
+    Theme: {theme}
+    Entity: {company}
+
+    This entity has {total_quotes} quotes related to the theme, with exposure to the following sub-themes:
+    {label_summary}
+
+    Here are the quotes with their corresponding labels:
+    {quotes_and_labels}
+
+    Generate a concise motivation statement (2-4 sentences) that:
+    1. ALWAYS begins with the entity name
+    2. Summarizes WHY this entity is included in the thematic watchlist
+    3. References the specific sub-themes (from Label column) where the entity shows strongest exposure (has the most number of elements in 'Quote' column)
+    4. For any numerical figures, make sure to quote the exact metric correctly
+    5. Uses objective, evidence-based language referring to the entity's actual activities
+    6. Maintains a neutral, analytical tone without subjective judgments
+    7. Focuses on facts rather than predictions or recommendations
+    8. Keeps the statement concise ({min_words}-{max_words} words)
+    """
+
 
 def generate_prompt_template_risk() -> str:
     """
@@ -66,6 +94,36 @@ def generate_prompt_template_risk() -> str:
     8. Keeps the statement concise ({min_words}-{max_words} words)
     """
 
+def generate_prompt_template_risk_entity() -> str:
+    """
+    Returns the base prompt template with placeholders for formatting.
+    """
+    return """
+    You are an expert financial analyst with specialized knowledge in corporate risk assessment.
+    Your task is to generate a concise risk statement explaining the key risks this entity is exposed to based on the provided data.
+
+    Inputs:
+    Theme: {theme}
+    Entity: {company}
+
+    This entity has {total_quotes} quotes related to the theme, indicating exposure to the following risk categories:
+    {label_summary}
+
+    Here are the quotes with their corresponding labels:
+    {quotes_and_labels}
+
+    Your task:
+    Generate a concise risk statement (2-4 sentences) that:
+    1. ALWAYS begins with the entity name
+    2. Summarizes the key risks the entity faces within the specified theme
+    3. References the specific risk categories where exposure is most significant
+    4. For any numerical figures, make sure to quote the exact metric correctly
+    5. Uses objective, evidence-based language referring to the entity's actual activities
+    6. Maintains a neutral, analytical tone without subjective judgments
+    7. Focuses on facts rather than predictions or recommendations
+    8. Keeps the statement concise ({min_words}-{max_words} words)
+    """
+
 
 def get_motivation_prompt(
     company: str,
@@ -75,6 +133,7 @@ def get_motivation_prompt(
     max_words: int,
     max_data_points: int = 300,
     use_case: MotivationType = MotivationType.THEMATIC_SCREENER,
+    entity_type: str = "COMP",
 ) -> str:
     """
     Formats the motivation prompt using company data and the prompt template.
@@ -107,9 +166,16 @@ def get_motivation_prompt(
 
     match use_case:
         case MotivationType.RISK_ANALYZER:
-            prompt_template = generate_prompt_template_risk()
+            if entity_type != "COMP":
+                prompt_template = generate_prompt_template_risk_entity()
+            else:
+                prompt_template = generate_prompt_template_risk()
         case MotivationType.THEMATIC_SCREENER:
-            prompt_template = generate_prompt_template()
+            if entity_type != "COMP":
+                prompt_template = generate_prompt_template_entity()
+            else:
+                prompt_template = generate_prompt_template()
+            
         case _:
             raise ValueError(f"Unsupported use_case: {use_case}")
 
