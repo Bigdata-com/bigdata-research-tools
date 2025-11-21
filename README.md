@@ -17,6 +17,7 @@
     - [Risk Analyzer](#risk-analyzer)
     - [Narrative Miner](#narrative-miner)
 6. [Core Functionalities](#core-functionalities)
+    - [MindMap Generator][#mindmap-generator]
     - [Query Builder](#query-builder)
     - [Search Manager](#search-manager)
     - [LLM Integration](#llm-integration)
