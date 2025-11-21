@@ -17,6 +17,7 @@
     - [Risk Analyzer](#risk-analyzer)
     - [Narrative Miner](#narrative-miner)
 6. [Core Functionalities](#core-functionalities)
+    - [MindMap Generator](#mindmap-generator)
     - [Query Builder](#query-builder)
     - [Search Manager](#search-manager)
     - [LLM Integration](#llm-integration)
@@ -170,7 +171,7 @@ watchlist = bigdata.watchlists.get("watchlist_id")
 companies = bigdata.knowledge_graph.get_entities(watchlist.items)
 
 screener = ThematicScreener(
-    llm_model="openai::gpt-4o-mini",
+    llm_model_config="openai::gpt-4o-mini",
     main_theme="Electric Vehicles",
     companies=companies,
     start_date="2024-01-01",
@@ -191,7 +192,7 @@ Parameters to initialize the `ThematicScreener` class.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `llm_model` | `str` | ✅ | LLM model identifier |
+| `llm_model_config` | `str` | ✅ | LLM model identifier |
 | `main_theme` | `str` | ✅ | Main theme to analyze |
 | `companies` | `List[Company]` | ✅ | List of companies to screen (see [Company Objects](#company-objects)) |
 | `start_date` | `str` | ✅ | Start date (YYYY-MM-DD) |
@@ -243,7 +244,7 @@ watchlist = bigdata.watchlists.get("watchlist_id")
 companies = bigdata.knowledge_graph.get_entities(watchlist.items)
 
 analyzer = RiskAnalyzer(
-    llm_model="openai::gpt-4o-mini",
+    llm_model_config="openai::gpt-4o-mini",
     main_theme="Supply Chain Disruption",
     companies=companies,
     start_date="2024-01-01",
@@ -265,7 +266,7 @@ Parameters to initialize the `RiskAnalyzer` class.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `llm_model` | `str` | ✅ | LLM model identifier |
+| `llm_model_config` | `str` | ✅ | LLM model identifier |
 | `main_theme` | `str` | ✅ | Main risk theme |
 | `companies` | `List[Company]` | ✅ | Companies to analyze (see [Company Objects](#company-objects)) |
 | `start_date` | `str` | ✅ | Analysis start date |
@@ -318,7 +319,7 @@ narrative_miner = NarrativeMiner(
         "Machine Learning Innovation",
         "Data Privacy Concerns"
     ],
-    llm_model="openai::gpt-4o-mini",
+    llm_model_config="openai::gpt-4o-mini",
     start_date="2024-01-01",
     end_date="2024-12-31",
     fiscal_year=2024,
@@ -341,7 +342,7 @@ Parameters to initialize the `NarrativeMiner` class.
 | `narrative_sentences` | `List[str]` | ✅ | List of narrative sentences to track |
 | `start_date` | `str` | ✅ | Start date in YYYY-MM-DD format |
 | `end_date` | `str` | ✅ | End date in YYYY-MM-DD format |
-| `llm_model` | `str` | ✅ | LLM model in format "provider::model" |
+| `llm_model_config` | `str` | ✅ | LLM model in format "provider::model" |
 | `document_type` | `DocumentType` | ✅ |  Document scope (see [Document Types](#document-types))|
 | `fiscal_year` | `int` | ❌ | Fiscal year for transcripts/filings. Set to `None` for news |
 | `sources` | `List[str]` | ❌ | Filter by specific news sources |
@@ -366,6 +367,169 @@ results = {
 ```
 ---
 ## Core Functionalities
+
+---
+
+### MindMap Generator
+
+The MindMap Generator creates hierarchical tree structures that decompose complex themes into organized sub-themes, enabling structured research and analysis. It offers three generation modes: one-shot, refined, and dynamic evolution.
+
+#### Basic MindMap Structure
+
+```python
+from bigdata_research_tools.mindmap import MindMapGenerator, MindMap
+
+# Create a generator
+generator = MindMapGenerator(
+    llm_model_config_base="openai::gpt-4o-mini",
+    llm_model_config_reasoning="openai::gpt-4o"  # Optional: for refined generation
+)
+
+# Basic MindMap structure
+mindmap = MindMap(
+    label="Climate Risk",
+    node=1,
+    summary="Climate-related financial risks affecting business operations",
+    children=[
+        MindMap(label="Physical Risks", node=2, summary="Direct climate impacts"),
+        MindMap(label="Transition Risks", node=3, summary="Policy and market changes")
+    ]
+)
+```
+
+#### One-Shot Generation
+
+`generate_one_shot()` creates a complete mind map in a single LLM call, optionally grounded in real-time search results.
+
+```python
+# Simple one-shot generation (no search grounding)
+mindmap, result = generator.generate_one_shot(
+    main_theme="AI in Healthcare",
+    focus="Focus on diagnostic applications and regulatory challenges",
+    allow_grounding=False,
+    map_type="theme"  # or "risk" for risk analysis
+)
+
+# One-shot with search grounding
+mindmap, result = generator.generate_one_shot(
+    main_theme="Supply Chain Disruptions",
+    focus="Post-pandemic resilience strategies",
+    allow_grounding=True,
+    date_range=("2024-01-01", "2024-12-31"),
+    map_type="risk"
+)
+
+print(f"Generated mindmap with {len(mindmap.get_terminal_labels())} terminal nodes")
+# Result includes: mindmap_text, mindmap_df, mindmap_json, search_queries (if grounded)
+```
+
+**How One-Shot Works:**
+1. **Without grounding**: LLM generates mind map purely from its training knowledge
+2. **With grounding**: LLM proposes search queries → searches executed → LLM creates mind map using search results
+3. **Use cases**: Initial exploration, baseline analysis, quick prototyping
+
+#### Refined Generation
+
+`generate_refined()` enhances an existing mind map by having the LLM propose targeted searches, then incorporating the results to expand and improve the structure.
+
+```python
+# Start with an initial mindmap (from one-shot or manual creation)
+initial_mindmap_json = mindmap.to_json()
+
+# Refine using search-based enhancement
+refined_mindmap, result = generator.generate_refined(
+    main_theme="Cybersecurity Threats",
+    focus="Enterprise security and incident response",
+    initial_mindmap=initial_mindmap_json,
+    map_type="risk",
+    date_range=("2024-06-01", "2024-12-31"),
+    chunk_limit=25,  # Results per search query
+    output_dir="./refined_outputs",
+    filename="cybersecurity_refined.json"
+)
+
+print(f"Search queries used: {result['search_queries']}")
+print(f"Refined mindmap has {len(refined_mindmap.get_terminal_labels())} terminal nodes")
+```
+
+**How Refined Generation Works:**
+1. **Analysis**: LLM analyzes the initial mind map and identifies knowledge gaps
+2. **Search Proposal**: LLM proposes specific search queries to fill those gaps
+3. **Search Execution**: Queries are executed against Bigdata's news/documents database  
+4. **Enhancement**: LLM incorporates search results to expand/refine the mind map
+5. **Output**: Enhanced mind map with real-world grounding and additional detail
+
+**Use cases**: 
+- Adding depth and specificity to broad themes
+
+#### Dynamic Evolution
+
+`generate_dynamic()` creates mind maps that evolve over time intervals, showing how themes develop and change across different periods.
+
+```python
+from bigdata_research_tools.search.query_builder import create_date_ranges
+
+# Create time intervals
+month_intervals = create_date_ranges("2024-01-01", "2024-06-30", "M")
+month_names = ["Jan2024", "Feb2024", "Mar2024", "Apr2024", "May2024", "Jun2024"]
+
+# Generate evolving mindmaps
+mindmap_objects, results = generator.generate_dynamic(
+    main_theme="ESG Investment Trends",
+    focus="Institutional investor behavior and regulatory changes",
+    month_intervals=month_intervals,
+    month_names=month_names,
+    map_type="theme",
+    chunk_limit=20,
+    output_dir="./dynamic_evolution"
+)
+
+# Access evolution over time
+for month, mindmap_obj in mindmap_objects.items():
+    print(f"{month}: {len(mindmap_obj.get_terminal_labels())} terminal nodes")
+```
+
+**How Dynamic Generation Works:**
+1. **Base Generation**: Creates initial mind map for the overall theme
+2. **Iterative Refinement**: For each time interval:
+   - Uses previous month's mind map as starting point
+   - Searches for period-specific information 
+   - Refines mind map based on that period's context
+   - Uses refined version as input for next iteration
+3. **Evolution Tracking**: Each step builds upon previous knowledge while incorporating new temporal context
+
+**Use cases**:
+- Tracking narrative evolution in financial markets
+- Analyzing how risk factors emerge and develop over time
+- Understanding seasonal or cyclical patterns in business themes
+
+#### Parameters and Configuration
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `main_theme` | `str` | Core topic to analyze |
+| `focus` | `str` | Specific guidance for analysis direction |
+| `allow_grounding` | `bool` | Enable search-based grounding (one-shot only) |
+| `map_type` | `str` | "theme", "risk", or "risk_entity" |
+| `date_range` | `tuple[str, str]` | Search date range (YYYY-MM-DD format) |
+| `chunk_limit` | `int` | Results per search query |
+| `output_dir` | `str` | Directory for saving results |
+
+#### Visualization and Export
+
+```python
+# Visualize the mindmap
+mindmap.visualize(engine="graphviz")  # or "plotly", "matplotlib"
+
+# Export to different formats
+df = mindmap.to_dataframe()  # Pandas DataFrame
+json_str = mindmap.to_json()  # JSON string
+mindmap.save_json("output.json")  # Save to file
+
+# Access terminal nodes (leaf nodes)
+terminal_labels = mindmap.get_terminal_labels()
+terminal_summaries = mindmap.get_terminal_summaries()
+```
 
 ### Query Builder
 
@@ -526,9 +690,8 @@ The library supports multiple LLM providers.
 
 ```python
 # Using OpenAI models
-llm_model = "openai::gpt-4o-mini"     # Cost-effective
-llm_model = "openai::gpt-4o"          # High performance
-llm_model = "openai::gpt-3.5-turbo"   # Fast processing
+llm_model_config = "openai::gpt-4o-mini"     # Cost-effective
+llm_model_config = "openai::gpt-5-mini"          # High performance
 
 
 # Set OpenAI credentials
@@ -540,8 +703,8 @@ os.environ["OPENAI_API_KEY"] = "your_key"
 
 ```python
 # Using Bedrock models
-llm_model = "bedrock::anthropic.claude-3-sonnet-20240229-v1:0"
-llm_model = "bedrock::anthropic.claude-3-haiku-20240307-v1:0"
+llm_model_config = "bedrock::anthropic.claude-3-sonnet-20240229-v1:0"
+llm_model_config = "bedrock::anthropic.claude-3-haiku-20240307-v1:0"
 
 # Set AWS credentials
 import os
@@ -573,7 +736,7 @@ The following snippets shows how to authenticate with an API Key.
 
 ```python
 # Using Azure models
-llm_model = "azure::gpt-4o-mini"
+llm_model_config = "azure::gpt-4o-mini"
 
 # Set Azure credentials
 import os
@@ -586,7 +749,7 @@ If other authentication methods (Entra ID, CLI Authentication) are available the
 
 ```python
 # Using Azure models
-llm_model = "azure::gpt-4o-mini"
+llm_model_config = "azure::gpt-4o-mini"
 
 # Set Azure credentials
 import os
@@ -679,7 +842,7 @@ tesla_company_search = bigdata.knowledge_graph.autosuggest("Tesla Inc.")
 tesla_company = tesla_company_search[0]
 
 analyzer = RiskAnalyzer(
-    llm_model="openai::gpt-4o-mini",
+    llm_model_config="openai::gpt-4o-mini",
     main_theme="Supply Chain Risk",
     companies=[tesla_company],
     start_date="2024-01-01",
@@ -1221,4 +1384,3 @@ Schedule or contact us at legal@ravenpack.com.
 
 **RavenPack** | **Bigdata.com** \
 All rights reserved © 2025
-
