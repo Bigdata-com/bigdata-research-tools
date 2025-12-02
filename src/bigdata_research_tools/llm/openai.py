@@ -19,8 +19,10 @@ from bigdata_research_tools.llm.base import (
 
 
 class AsyncOpenAIProvider(AsyncLLMProvider):
-    def __init__(self, model: str, **connection_config):
-        super().__init__(model, **connection_config)
+    def __init__(
+        self, model: str, api_selection: str | None = None, **connection_config
+    ):
+        super().__init__(model, api_selection=api_selection, **connection_config)
         self._client = None
         self.configure_openai_client()
 
@@ -36,7 +38,7 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
         if not self._client:
             self._client = AsyncOpenAI(**self.connection_config)
 
-    async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
+    async def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:  # ty: ignore
         """
         Get the response from an LLM model from OpenAI.
 
@@ -49,11 +51,19 @@ class AsyncOpenAIProvider(AsyncLLMProvider):
         """
         if not self._client:
             raise NotInitializedLLMProviderError(self)
-        chat_completion = await self._client.chat.completions.create(
-            messages=chat_history, model=self.model, **kwargs
-        )
 
-        return chat_completion.choices[0].message.content
+        if self.api_selection == "chat" or self.api_selection is None:
+            chat_completion = await self._client.chat.completions.create(
+                messages=chat_history, model=self.model, **kwargs
+            )
+
+            return chat_completion.choices[0].message.content
+
+        elif self.api_selection == "responses":
+            response = await self._client.responses.create(
+                input=chat_history, model=self.model, **kwargs
+            )
+            return response.output[0].content[0].text
 
     async def get_tools_response(
         self,
@@ -127,9 +137,10 @@ class OpenAIProvider(LLMProvider):
     def __init__(
         self,
         model: str,
+        api_selection: str | None = None,
         **connection_config,
     ):
-        super().__init__(model, **connection_config)
+        super().__init__(model, api_selection=api_selection, **connection_config)
         self._client = None
         self.configure_openai_client()
 
@@ -145,7 +156,7 @@ class OpenAIProvider(LLMProvider):
         if not self._client:
             self._client = OpenAI(**self.connection_config)
 
-    def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:
+    def get_response(self, chat_history: list[dict[str, str]], **kwargs) -> str:  # ty: ignore
         """
         Get the response from an LLM model from OpenAI.
 
@@ -158,11 +169,19 @@ class OpenAIProvider(LLMProvider):
         """
         if not self._client:
             raise NotInitializedLLMProviderError(self)
-        chat_completion = self._client.chat.completions.create(
-            messages=chat_history, model=self.model, **kwargs
-        )
 
-        return chat_completion.choices[0].message.content
+        if self.api_selection == "chat" or self.api_selection is None:
+            chat_completion = self._client.chat.completions.create(
+                messages=chat_history, model=self.model, **kwargs
+            )
+
+            return chat_completion.choices[0].message.content
+        elif self.api_selection == "responses":
+            response = self._client.responses.create(
+                input=chat_history, model=self.model, **kwargs
+            )
+
+            return response.output[0].content[0].text
 
     def get_tools_response(
         self,

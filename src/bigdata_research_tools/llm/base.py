@@ -18,6 +18,7 @@ class LLMConfig(BaseModel):
 
     model: str
     response_format: dict = {"type": "json_object"}
+    text: dict = {"format": {"type": "json_object"}}
     temperature: float | None = None
     reasoning_effort: str | None = None
     top_p: float | None = 1
@@ -31,6 +32,11 @@ class LLMConfig(BaseModel):
     connection_config: dict = Field(
         default_factory=dict,
         description="A pair of key-value connection configurations for the LLM provider, the contents will be passed as kwargs to the provider client.",
+    )
+
+    api_selection: str | None = Field(
+        default="chat",
+        description="API selection for the OpenAI based LLM provider, e.g., 'chat' or 'responses'.",
     )
 
     @model_validator(mode="after")
@@ -93,13 +99,30 @@ class LLMConfig(BaseModel):
             config_dict.pop("connection_config", None)
         if remove_timeout:
             config_dict.pop("timeout", None)
+        if self.api_selection is None or self.api_selection == "chat":
+            config_dict.pop("text", None)
+        if self.api_selection == "responses":
+            config_dict.pop("response_format", None)
+            config_dict.pop("frequency_penalty", None)
+            config_dict.pop("presence_penalty", None)
+            config_dict.pop("seed", None)
         # Remove None values and model key
-        return {k: v for k, v in config_dict.items() if v is not None and k != "model"}
+        return {
+            k: v
+            for k, v in config_dict.items()
+            if v is not None and k != "model" and k != "api_selection"
+        }
 
 
 class AsyncLLMProvider(ABC):
-    def __init__(self, model: str | None = None, **connection_config):
+    def __init__(
+        self,
+        model: str | None = None,
+        api_selection: str | None = None,
+        **connection_config,
+    ):
         self.model = model
+        self.api_selection = api_selection
         self.connection_config = connection_config
 
     @abstractmethod
@@ -147,7 +170,12 @@ class AsyncLLMProvider(ABC):
 
 
 class AsyncLLMEngine:
-    def __init__(self, model: str | None = None, **connection_config):
+    def __init__(
+        self,
+        model: str | None = None,
+        api_selection: str | None = None,
+        **connection_config,
+    ):
         if model is None:
             model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM", "openai::gpt-4o-mini")
             source = "Environment"
@@ -166,6 +194,8 @@ class AsyncLLMEngine:
                 "Invalid model format. It should be `<provider>::<model>`."
             )
 
+        self.api_selection = api_selection
+
         self.provider = self.load_provider(
             provider_name=self.provider_name, **connection_config
         )
@@ -177,16 +207,22 @@ class AsyncLLMEngine:
         if provider == "openai":
             from bigdata_research_tools.llm.openai import AsyncOpenAIProvider
 
-            return AsyncOpenAIProvider(model=self.model, **connection_config)
+            return AsyncOpenAIProvider(
+                model=self.model, api_selection=self.api_selection, **connection_config
+            )
 
         elif provider == "bedrock":
             from bigdata_research_tools.llm.bedrock import AsyncBedrockProvider
 
-            return AsyncBedrockProvider(model=self.model, **connection_config)
+            return AsyncBedrockProvider(
+                model=self.model, api_selection=self.api_selection, **connection_config
+            )
         elif provider == "azure":
             from bigdata_research_tools.llm.azure import AsyncAzureProvider
 
-            return AsyncAzureProvider(model=self.model, **connection_config)
+            return AsyncAzureProvider(
+                model=self.model, api_selection=self.api_selection, **connection_config
+            )
         else:
             logger.error(f"Invalid provider: `{self.provider}`")
 
@@ -230,8 +266,14 @@ class AsyncLLMEngine:
 
 
 class LLMProvider(ABC):
-    def __init__(self, model: str | None = None, **connection_config):
+    def __init__(
+        self,
+        model: str | None = None,
+        api_selection: str | None = None,
+        **connection_config,
+    ):
         self.model = model
+        self.api_selection = api_selection
         self.connection_config = connection_config
 
     @abstractmethod
@@ -278,12 +320,18 @@ class LLMProvider(ABC):
 
 
 class LLMEngine:
-    def __init__(self, model: str | None = None, **connection_config):
+    def __init__(
+        self,
+        model: str | None = None,
+        api_selection: str | None = None,
+        **connection_config,
+    ):
         if model is None:
             model = os.getenv("BIGDATA_RESEARCH_DEFAULT_LLM", "openai::gpt-4o-mini")
             source = "Environment"
         else:
             source = "Argument"
+        self.api_selection = api_selection
 
         try:
             self.provider_name, self.model = model.split("::")
@@ -306,15 +354,21 @@ class LLMEngine:
         if provider == "openai":
             from bigdata_research_tools.llm.openai import OpenAIProvider
 
-            return OpenAIProvider(model=self.model, **connection_config)
+            return OpenAIProvider(
+                model=self.model, api_selection=self.api_selection, **connection_config
+            )
         elif provider == "bedrock":
             from bigdata_research_tools.llm.bedrock import BedrockProvider
 
-            return BedrockProvider(model=self.model, **connection_config)
+            return BedrockProvider(
+                model=self.model, api_selection=self.api_selection, **connection_config
+            )
         elif provider == "azure":
             from bigdata_research_tools.llm.azure import AzureProvider
 
-            return AzureProvider(model=self.model, **connection_config)
+            return AzureProvider(
+                model=self.model, api_selection=self.api_selection, **connection_config
+            )
         else:
             logger.error(f"Invalid provider: `{self.provider}`")
 

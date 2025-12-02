@@ -33,9 +33,10 @@ class AsyncAzureProvider(AsyncLLMProvider):
     def __init__(
         self,
         model: str,
+        api_selection: str | None = None,
         **connection_config,
     ):
-        super().__init__(model, **connection_config)
+        super().__init__(model, api_selection=api_selection, **connection_config)
         self._client = None
         self.configure_azure_client()
 
@@ -80,11 +81,18 @@ class AsyncAzureProvider(AsyncLLMProvider):
         last_exception = None
         for attempt in range(max_retries):
             try:
-                chat_completion = await self._client.chat.completions.create(
-                    messages=chat_history, model=self.model, **kwargs
-                )
+                if self.api_selection == "chat" or self.api_selection is None:
+                    chat_completion = await self._client.chat.completions.create(
+                        messages=chat_history, model=self.model, **kwargs
+                    )
 
-                return chat_completion.choices[0].message.content
+                    return chat_completion.choices[0].message.content
+                elif self.api_selection == "responses":
+                    response = await self._client.responses.create(
+                        messages=chat_history, model=self.model, **kwargs
+                    )  # ty: ignore
+
+                    return response.output[0].content[0].text
             except Exception as e:
                 await asyncio.sleep(delay)
                 delay = 2 * delay + random.random()  # exponential backoff
@@ -170,9 +178,10 @@ class AzureProvider(LLMProvider):
     def __init__(
         self,
         model: str,
+        api_selection: str | None = None,
         **connection_config,
     ):
-        super().__init__(model, **connection_config)
+        super().__init__(model, api_selection=api_selection, **connection_config)
         self._client = None
         self.configure_azure_client()
 
@@ -217,11 +226,19 @@ class AzureProvider(LLMProvider):
         last_exception = None
         for attempt in range(max_retries):
             try:
-                chat_completion = self._client.chat.completions.create(
-                    messages=chat_history, model=self.model, **kwargs
-                )
+                if self.api_selection == "chat" or self.api_selection is None:
+                    chat_completion = self._client.chat.completions.create(
+                        messages=chat_history, model=self.model, **kwargs
+                    )
 
-                return chat_completion.choices[0].message.content
+                    return chat_completion.choices[0].message.content
+                elif self.api_selection == "responses":
+                    response = self._client.responses.create(
+                        messages=chat_history, model=self.model, **kwargs
+                    )  # ty: ignore
+
+                    return response.output[0].content[0].text
+
             except Exception as e:
                 time.sleep(delay)
                 delay = 2 * delay + random.random()  # exponential backoff
