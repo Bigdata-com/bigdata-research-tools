@@ -18,8 +18,10 @@ from bigdata_research_tools.llm.base import (
 class AsyncBedrockProvider(AsyncLLMProvider):
     # Asynchronous boto3 is tricky, for now use the synchronous client, this will not
     # provide the benefits from async, but will at least let our workflows run for now
-    def __init__(self, model: str, **connection_config):
-        super().__init__(model, **connection_config)
+    def __init__(
+        self, model: str, api_selection: str | None = None, **connection_config
+    ):
+        super().__init__(model, api_selection=api_selection, **connection_config)
         self._client: Session | None = None
         self.configure_bedrock_client()
 
@@ -179,8 +181,10 @@ class AsyncBedrockProvider(AsyncLLMProvider):
 
 
 class BedrockProvider(LLMProvider):
-    def __init__(self, model: str, **connection_config):
-        super().__init__(model, **connection_config)
+    def __init__(
+        self, model: str, api_selection: str | None = None, **connection_config
+    ):
+        super().__init__(model, api_selection=api_selection, **connection_config)
         self._client: Session | None = None
         self.configure_bedrock_client()
 

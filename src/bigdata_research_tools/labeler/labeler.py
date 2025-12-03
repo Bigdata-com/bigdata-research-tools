@@ -169,6 +169,7 @@ class Labeler:
         if provider == "bedrock":
             llm = LLMEngine(
                 model=self.llm_model_config.model,
+                api_selection=self.llm_model_config.api_selection,
                 **self.llm_model_config.connection_config,
             )
             return run_parallel_prompts(
@@ -177,6 +178,7 @@ class Labeler:
         else:
             llm = AsyncLLMEngine(
                 model=self.llm_model_config.model,
+                api_selection=self.llm_model_config.api_selection,
                 **self.llm_model_config.connection_config,
             )
             return run_concurrent_prompts(
