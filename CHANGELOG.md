@@ -7,6 +7,11 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-03
+
+## Added
+- Added parameter `api_selection` to the LLMConfig that allows for using either chat or responses api on Azure and OpenAI.
+
 ## [1.0.0] - 2025-11-21
 Preparation for a first stable release.
 
