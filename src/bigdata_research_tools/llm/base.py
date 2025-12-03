@@ -57,6 +57,20 @@ class LLMConfig(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def check_api_endpoint(self):
+        ## Only one of temperature or reasoning_effort should be set.
+        if self.api_selection is not None:
+            if self.api_selection not in ["chat", "responses"]:
+                raise ValueError(
+                    "Only chat or responses are supported as api_endpoint."
+                )
+            if self.model.split("::")[0] not in ["openai", "azure"]:
+                raise ValueError(
+                    "api_selection is only supported for OpenAI and Azure providers."
+                )
+        return self
+
+    @model_validator(mode="after")
     def validate_reasoning_config(self):
         if any(rm in self.model for rm in REASONING_MODELS):
             self.top_p = None
