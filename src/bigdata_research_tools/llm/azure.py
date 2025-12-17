@@ -89,7 +89,7 @@ class AsyncAzureProvider(AsyncLLMProvider):
                     return chat_completion.choices[0].message.content
                 elif self.api_selection == "responses":
                     response = await self._client.responses.create(
-                        messages=chat_history, model=self.model, **kwargs
+                        input=chat_history, model=self.model, **kwargs
                     )  # ty: ignore
 
                     return response.output[0].content[0].text
@@ -234,7 +234,7 @@ class AzureProvider(LLMProvider):
                     return chat_completion.choices[0].message.content
                 elif self.api_selection == "responses":
                     response = self._client.responses.create(
-                        messages=chat_history, model=self.model, **kwargs
+                        input=chat_history, model=self.model, **kwargs
                     )  # ty: ignore
 
                     return response.output[0].content[0].text
