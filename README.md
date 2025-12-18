@@ -80,20 +80,17 @@ pip install bigdata-research-tools
 Install additional packages for specific features:
 
 ```bash
-# For Excel export functionality
-pip install bigdata-research-tools[excel]
-
-# For visualization features
-pip install bigdata-research-tools[plotly]
-
-# For OpenAI integration, also via Azure
+# For OpenAI integration
 pip install bigdata-research-tools[openai]
+
+# For Azure OpenAI integration
+pip install bigdata-research-tools[azure]
 
 # For AWS Bedrock integration
 pip install bigdata-research-tools[bedrock]
 
 # For all optional features
-pip install bigdata-research-tools[excel,plotly,openai]
+pip install bigdata-research-tools[azure,bedrock,openai]
 ```
 
 ---
@@ -105,6 +102,8 @@ pip install bigdata-research-tools[excel,plotly,openai]
 Set up your credentials using environment variables:
 
 ```bash
+export BIGDATA_API_KEY="your_api_key"
+# or
 export BIGDATA_USERNAME="your_username"
 export BIGDATA_PASSWORD="your_password"
 ```
@@ -114,6 +113,8 @@ export BIGDATA_PASSWORD="your_password"
 Create a `.env` file in your project directory:
 
 ```bash
+BIGDATA_API_KEY="your_api_key"
+# or
 BIGDATA_USERNAME="your_username"
 BIGDATA_PASSWORD="your_password"
 ```
