@@ -7,6 +7,7 @@ from time import sleep
 from bigdata_client.connection import RequestMaxLimitExceeds
 from bigdata_client.document import Document
 from bigdata_client.models.document import DocumentChunk
+from bigdata_client.models.entities import QueryComponentMixin
 from bigdata_client.query_type import QueryType
 from pydantic import ValidationError
 
@@ -53,7 +54,9 @@ def _look_up_entities_binary_search(
     entities = []
     non_entities = []
 
-    def convert_sdk_entities(batch_lookup: list[object]) -> list[BigdataEntity]:
+    def convert_sdk_entities(
+        batch_lookup: list[QueryComponentMixin | None],
+    ) -> list[BigdataEntity]:
         converted_entities = []
         for sdk_entity in batch_lookup:
             if sdk_entity is None:
