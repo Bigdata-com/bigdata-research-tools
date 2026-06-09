@@ -7,6 +7,12 @@ file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-06-09
+
+## Fixed
+- Skip malformed Knowledge Graph entity lookup results during search post-processing instead
+  of retrying the same batch indefinitely.
+
 ## [1.1.1] - 2025-12-17
 
 ## Fixed

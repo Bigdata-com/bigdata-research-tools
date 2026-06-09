@@ -53,6 +53,20 @@ def _look_up_entities_binary_search(
     entities = []
     non_entities = []
 
+    def convert_sdk_entities(batch_lookup: list[object]) -> list[BigdataEntity]:
+        converted_entities = []
+        for sdk_entity in batch_lookup:
+            if sdk_entity is None:
+                continue
+            try:
+                converted_entities.append(BigdataEntity.from_sdk(sdk_entity))
+            except AssertionError as e:
+                logger.warning(
+                    "Skipping malformed entity returned by Knowledge Graph lookup: %s",
+                    e,
+                )
+        return converted_entities
+
     def depth_first_search(batch: list[str]) -> None:
         """
         Recursively lookup entities in a depth-first search manner.
@@ -68,9 +82,7 @@ def _look_up_entities_binary_search(
 
         try:
             batch_lookup = bigdata.knowledge_graph.get_entities(batch)
-            entities.extend(
-                [BigdataEntity.from_sdk(ent) for ent in batch_lookup if ent is not None]
-            )
+            entities.extend(convert_sdk_entities(batch_lookup))
         except ValidationError as e:
             non_entities_found = findall(non_entity_key_pattern, str(e))
             non_entities.extend(non_entities_found)
