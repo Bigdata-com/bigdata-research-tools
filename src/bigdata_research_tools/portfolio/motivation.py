@@ -80,12 +80,13 @@ class Motivation:
         ]
 
         if missing_columns:
-            available_columns = list(filtered_df.columns)
-            raise ValueError(
-                f"Missing required columns: {missing_columns}. "
-                f"Available columns are: {available_columns}"
-            )
-
+            required_columns = ["Entity", "Quote", "Theme"]
+            missing_columns = [col for col in required_columns if col not in filtered_df.columns]
+            if missing_columns:
+                raise ValueError(
+                    f"Missing required columns: {missing_columns}. "
+                    f"Available columns are: {list(filtered_df.columns)}"
+                )
         # Check if DataFrame is empty
         if filtered_df.empty:
             logger.warning("Warning: DataFrame is empty. Returning empty dictionary.")
@@ -95,7 +96,7 @@ class Motivation:
 
         # Use .get() with default values as additional safety
         for _, row in filtered_df.iterrows():
-            company = row.get("Company", "Unknown Company")
+            company = row.get("Company", "Entity")
             quote = row.get("Quote", "")
             theme = row.get("Theme", "Unknown Theme")
 
@@ -152,6 +153,7 @@ class Motivation:
         theme_name: str,
         word_range: tuple[int, int],
         use_case: MotivationType = MotivationType.THEMATIC_SCREENER,
+        entity_type: str = "COMP",
     ) -> pd.DataFrame:
         """
         Generates motivation statement with specified verbosity for companies in a thematic watchlist.
@@ -183,6 +185,7 @@ class Motivation:
                 word_range[0],
                 word_range[1],
                 use_case=use_case,
+                entity_type=entity_type,
             )
 
             # Generate motivation with this word range

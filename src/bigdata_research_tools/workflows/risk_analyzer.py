@@ -1,13 +1,15 @@
 from datetime import datetime
 from logging import Logger, getLogger
 
-from bigdata_client.models.entities import Company
+#from bigdata_client.models.entities import Company
+from bigdata_client.models.entities import QueryComponentMixin
 from bigdata_client.models.search import DocumentType
 from pandas import DataFrame, merge
 
 from bigdata_research_tools.client import init_bigdata_client
 from bigdata_research_tools.excel import check_excel_dependencies, save_to_excel
 from bigdata_research_tools.labeler.risk_labeler import RiskLabeler, map_risk_category
+from bigdata_research_tools.labeler.entity_labeler import EntityRiskLabeler
 from bigdata_research_tools.llm.base import LLMConfig
 from bigdata_research_tools.mindmap.mindmap import (
     MindMap,
@@ -15,7 +17,9 @@ from bigdata_research_tools.mindmap.mindmap import (
 from bigdata_research_tools.mindmap.mindmap_generator import MindMapGenerator
 from bigdata_research_tools.portfolio.motivation import Motivation
 from bigdata_research_tools.prompts.motivation import MotivationType
+from bigdata_research_tools.search.models import BigdataEntity
 from bigdata_research_tools.search.screener_search import search_by_companies
+from bigdata_research_tools.search.entities_search import entity_type_checker, search_by_entities
 from bigdata_research_tools.tracing import (
     WorkflowStatus,
     WorkflowTraceEvent,
@@ -34,7 +38,7 @@ class RiskAnalyzer(Workflow):
         self,
         llm_model_config: str | LLMConfig | dict,
         main_theme: str,
-        companies: list[Company],
+        entities: list[QueryComponentMixin],
         start_date: str,
         end_date: str,
         document_type: DocumentType,
@@ -70,7 +74,6 @@ class RiskAnalyzer(Workflow):
         """
         super().__init__()
         self.main_theme = main_theme
-        self.companies = companies
         self.start_date = start_date
         self.end_date = end_date
         self.fiscal_year = fiscal_year
@@ -89,6 +92,12 @@ class RiskAnalyzer(Workflow):
         elif isinstance(llm_model_config, LLMConfig):
             self.llm_model_config = llm_model_config
 
+        ## entity casting
+        self.entities = [BigdataEntity.from_sdk(entity) for entity in entities]
+        
+        # Extract entities for search querying
+        self.entity_type = entity_type_checker(self.entities)
+
     def create_taxonomy(self):
         """Create a risk taxonomy based on the main theme and focus.
         Returns:
@@ -106,13 +115,15 @@ class RiskAnalyzer(Workflow):
         mindmap_generator = MindMapGenerator(
             llm_model_config_base=self.llm_model_config
         )
+        map_type = "risk" if self.entity_type == "COMP" else "risk_entity"
+        logger.info(f"Generating {map_type} mindmap")
         risk_tree, _ = mindmap_generator.generate_one_shot(
             main_theme=self.main_theme,
             focus=self.focus,
             allow_grounding=self.ground_mindmap,
             instructions=None,
             date_range=None,
-            map_type="risk",
+            map_type=map_type,
         )
 
         risk_summaries = risk_tree.get_terminal_summaries()
@@ -143,22 +154,44 @@ class RiskAnalyzer(Workflow):
         """
 
         ## To Do: import the search class and make search_by_companies a class method
-        df_sentences = search_by_companies(
-            companies=self.companies,
-            sentences=sentences,
-            start_date=self.start_date,
-            end_date=self.end_date,
-            scope=self.document_type,
-            keywords=self.keywords,
-            control_entities=self.control_entities,
-            fiscal_year=self.fiscal_year,
-            sources=self.sources,
-            rerank_threshold=self.rerank_threshold,
-            frequency=frequency,
-            document_limit=document_limit,
-            batch_size=batch_size,
-            workflow_name=RiskAnalyzer.name,
-        )
+        if self.entity_type == "COMP":
+            logger.info("Searching by companies")
+            df_sentences = search_by_companies(
+                companies=self.entities,
+                sentences=sentences,
+                start_date=self.start_date,
+                end_date=self.end_date,
+                scope=self.document_type,
+                keywords=self.keywords,
+                control_entities=self.control_entities,
+                fiscal_year=self.fiscal_year,
+                sources=self.sources,
+                rerank_threshold=self.rerank_threshold,
+                frequency=frequency,
+                document_limit=document_limit,
+                batch_size=batch_size,
+                workflow_name=RiskAnalyzer.name,
+            )
+        else:
+            logger.info("Searching by entities")
+            df_sentences = search_by_entities(
+                entities=self.entities,
+                sentences=sentences,
+                start_date=self.start_date,
+                end_date=self.end_date,
+                scope=self.document_type,
+                keywords=self.keywords,
+                control_entities=self.control_entities,
+                fiscal_year=self.fiscal_year,
+                sources=self.sources,
+                rerank_threshold=self.rerank_threshold,
+                frequency=frequency,
+                document_limit=document_limit,
+                batch_size=batch_size,
+                workflow_name=RiskAnalyzer.name,
+            )
+
+            logger.info(f"Search by entities returned {(df_sentences[['entity_type','masked_text']].head(5))} results")
 
         return df_sentences
 
@@ -204,11 +237,18 @@ class RiskAnalyzer(Workflow):
             DataFrame: The port-processed DataFrame with labeled search results.
         """
 
-        prompt_fields = self._add_prompt_fields(df_sentences, additional_prompt_fields)
+        
         # Label the search results with our theme labels
         ## To Do: generalize the labeler or pass it as an argument
         # to allow for different labelers to be used.
-        labeler = RiskLabeler(llm_model_config=self.llm_model_config)
+        if self.entity_type == "COMP":
+            logger.info("Using RiskLabeler for labeling")
+            labeler = RiskLabeler(llm_model_config=self.llm_model_config)
+            prompt_fields = self._add_prompt_fields(df_sentences, additional_prompt_fields)
+        else:
+            logger.info("Using EntityRiskLabeler for labeling")
+            labeler = EntityRiskLabeler(llm_model_config=self.llm_model_config)
+            prompt_fields = None
         df_labels = labeler.get_labels(
             main_theme=self.main_theme,
             labels=terminal_labels,
@@ -262,14 +302,22 @@ class RiskAnalyzer(Workflow):
         if df_labeled.empty:
             logger.warning("Empty dataframe: no relevant content")
             return df_company, df_industry
+        
+        columns_needed = ["Company", "Ticker", "Sector", "Industry"] if self.entity_type == "COMP" else ["Entity", "Entity Type"]
 
         df_company = get_scored_df(
             df_labeled,
-            index_columns=["Company", "Ticker", "Sector", "Industry"],
+            index_columns=columns_needed,
             pivot_column="Sub-Scenario",
         )
-        df_industry = get_scored_df(
+
+        if self.entity_type == "COMP":
+            df_industry = get_scored_df(
             df_labeled, index_columns=["Industry"], pivot_column="Sub-Scenario"
+        )
+        else:
+            df_industry = get_scored_df(
+            df_labeled, index_columns=["Entity Type"], pivot_column="Sub-Scenario"
         )
 
         motivation_generator = Motivation(llm_model_config=self.llm_model_config)
@@ -278,8 +326,8 @@ class RiskAnalyzer(Workflow):
             theme_name=self.main_theme,
             word_range=word_range,
             use_case=MotivationType.RISK_ANALYZER,
+            entity_type=self.entity_type,
         )
-        print(motivation_df)
 
         return df_company, df_industry, motivation_df
 
@@ -301,13 +349,14 @@ class RiskAnalyzer(Workflow):
             df_industry (DataFrame): The DataFrame with the output by industry.
             export_path (str): The path to export the results to.
         """
+        keys = ('By Company', 'By Industry') if self.entity_type == "COMP" else ('By Entity', 'By Entity Type')
         if export_path:
             save_to_excel(
                 file_path=export_path,
                 tables={
                     "Semantic Labels": (df_labeled, (0, 0)),
-                    "By Company": (df_company, (2, 4)),
-                    "By Industry": (df_industry, (2, 2)),
+                    keys[0]: (df_company, (2, 4)),
+                    keys[1]: (df_industry, (2, 2)),
                     "Motivations": (motivation_df, (0, 0)),
                 },
             )
@@ -377,7 +426,7 @@ class RiskAnalyzer(Workflow):
                 batch_size=batch_size,
             )
             self.notify_observers(
-                f"Search completed. {len(df_sentences)} chunks found for {len(self.companies)} companies."
+                f"Search completed. {len(df_sentences)} chunks found for {len(self.entities)} entities."
             )
             self.notify_observers(
                 df_sentences[
@@ -444,10 +493,11 @@ class RiskAnalyzer(Workflow):
                     status=workflow_status,
                 ),
             )
+        keys = ('df_company', 'df_industry') if self.entity_type == "COMP" else ('df_entity', 'df_entity_type')
         return {
             "df_labeled": df_labeled,
-            "df_company": df_company,
-            "df_industry": df_industry,
+            keys[0]: df_company,
+            keys[1]: df_industry,
             "df_motivation": df_motivation,
             "risk_tree": risk_tree,
         }

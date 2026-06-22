@@ -68,6 +68,16 @@ def search_narratives(
                 - document_id: str
                 - sentence_id: str
                 - headline: str
+                - text: str
+                - sentiment: float (if available)
+                - entity: str
+                - country_code: str
+                - entity_type: str
+                - entity_id: str
+                - entity_ticker: str
+                - source_name: str (if applicable)
+                - source_rank: int (if applicable)
+                - url: str (if applicable)
     """
 
     # If control_entities are provided, create a control EntityConfig
@@ -137,9 +147,15 @@ def _process_narrative_search(
             - sentence_id: str
             - headline: str
             - text: str
+            - sentiment: float (if available)
             - entity: str
             - country_code: str
             - entity_type: str
+            - entity_id: str
+            - entity_ticker: str
+            - source_name: str (if applicable)
+            - source_rank: int (if applicable)
+            - url: str (if applicable)
     """
     rows = []
     for result in tqdm(results, desc="Processing screening results..."):
@@ -158,6 +174,7 @@ def _process_narrative_search(
                     "sentence_id": f"{result.id}-{chunk.chunk}",
                     "headline": result.headline,
                     "text": chunk.text,
+                    "sentiment": chunk.sentiment if chunk.sentiment else None,
                     "entity": [entity["name"] for entity in chunk_entities],
                     "country_code": [entity["country"] for entity in chunk_entities],
                     "entity_type": [entity["entity_type"] for entity in chunk_entities],

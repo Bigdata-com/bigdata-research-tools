@@ -1,12 +1,15 @@
-from os import environ
+def get_other_entity_placeholder(entity_type:str) -> str:
+    if entity_type == 'COMP':
+        return "Other Company"
+    else:
+        return "Other Entity"
 
 
-def get_other_entity_placeholder() -> str:
-    return environ.get("BIGDATA_OTHER_ENTITY_PLACEHOLDER", "Other Company")
-
-
-def get_target_entity_placeholder() -> str:
-    return environ.get("BIGDATA_TARGET_ENTITY_PLACEHOLDER", "Target Company")
+def get_target_entity_placeholder(entity_type:str) -> str:
+    if entity_type == 'COMP':
+        return "Target Company"
+    else:
+        return "Target Entity"
 
 
 narrative_system_prompt_template: str = """
@@ -314,3 +317,225 @@ def get_risk_system_prompt(main_theme: str, label_summaries: list[str]) -> str:
     return risk_system_prompt_template.format(
         main_theme=main_theme, label_summaries=label_summaries
     )
+
+def get_entity_risk_system_prompt(main_theme: str, label_summaries: list) -> str:
+    """
+    Generate the risk entity labeler prompt with the provided parameters.
+    
+    Args:
+        main_theme (str): The main risk theme being analyzed
+        label_summaries (list): List of risk sub-scenario summaries
+        
+    Returns:
+        str: The formatted prompt string
+    """
+    return entity_risk_system_prompt_template.format(
+        main_theme=main_theme, label_summaries=label_summaries
+        )
+
+entity_risk_system_prompt_template: str = """Forget all previous prompts.
+
+You are assisting a professional analyst in evaluating both the exposure and risk classification for "Target Entity" regarding the Risk Scenario "{main_theme}".
+This involves a two-step process: confirming exposure of "Target Entity" and classifying specific risks if exposure is confirmed. Use the headline for contextual understanding.
+
+<input_details>
+You will receive the following information::
+- ID: [text ID]
+- Headline: [The Headline of the News Article containing Text]
+- Text: [Paragraph requiring analysis]
+- Risk Scenario: "{main_theme}"
+</input_details>
+
+Follow these guidelines:
+
+<exposure_assessment>
+- Examine whether the text explicitly mentions the Risk Scenario "{main_theme}" or any of its core components.
+- Ensure that "Target Entity" is the main focus of the text and that it is clearly stated that "Target Entity" is facing or will face consequences caused by the Risk Scenario "{main_theme}".
+- Assess if there are DIRECT consequences on "Target Entity’s" internal and external activities, operations, future performance, stability, sustainability, and long term growth.
+- Designate the exposure as unclear if the text lacks an explicit DIRECT link between "Target Entity" and the Risk Scenario
+- Designate the exposure as unclear if the text relies on generic information.
+</exposure_assessment>
+
+<risk_classification>
+If direct exposure of Target Entity is confirmed:
+
+- Identify and classify the specific risk using this list of Risk Sub-Scenarios:
+    "{label_summaries}".
+
+- Follow a detailed classification process:
+    - Examine the text to confirm how the Risk Scenario "{main_theme}" directly impacts "Target Entity" through one of the Risk Sub-Scenarios.
+    - Write a concise motivation that explains the direct link between "Target Entity" and the Risk Sub-Scenario as stated in the text.
+    - The motivation should always start with "Target Entity".
+    - Identify an appropriate Risk Sub-Scenario label from the list that describes explicitly the impact on Target Entity's internal and external activities, operations, stability, sustainability, and long term growth or performance.
+    - Be specific in the risk classification, ensure that the risk sub-scenario represents well your motivation statement.
+    - Ensure that the Risk Sub-Scenario label can be directly extracted from the text that it describes with high granularity how "Target Entity" is affected.
+    - Avoid deriving conclusions based on unstated or inferred information. Focus only on the explicit content of the text or headline.
+</risk_classification>
+
+<verbatim_quotes_extraction>
+- Extract verbatim quotes from the text that support the classification and illustrate Target Entity's exposure to the specific Risk Sub-Scenario.
+- Ensure quotes directly relate to the impact described and justify the risk label.
+- Extract full sentences or phrases that clearly indicate, as standalone statements, how "Target Entity" is affected by the Risk Scenario "{main_theme}" and the Sub-Scenario label assigned.
+</verbatim_quotes_extraction>
+
+<response_format>
+Structure your response as a JSON object with the sentence ID as the key containing:
+"motivation": A concise explanation describing the link between "Target Entity" and the Risk Sub-Scenario.
+"label": State the specific risk Sub-Scenario label or 'unclear'.
+"quotes": Present verbatim quotes that justify exposure and risk label assignment.
+
+Format: {{"<sentence_id>": 
+{{"motivation": "<motivation>", "label": "<risk_classification_label>",
+ "quotes": "<verbatim_quotes>"}}
+}}.
+</response_format>
+
+<examples>
+ID: 3
+Headline: "Tariffs to Strain Supply Chains Globally"
+Text: "New tariffs against China will significantly impact Target Entity's operations due to its reliance on raw materials from Chinese suppliers."
+Scenario: "New Tariffs against China"
+Output:
+
+{{3:{{
+  "motivation": "Target Entity's supply operations are directly impacted by new tariffs due to their reliance on raw materials sourced from China.",
+  "label": "Supply Chain Disruption",
+    "quotes": ["New tariffs against China will significantly impact Target Entity's operations", "reliance on raw materials from Chinese suppliers"]
+}}
+}}
+
+ID: 5
+Headline: "Interest Rate Fluctuations to Affect Markets"
+Text: "Target Entity's analysts are forecasting higher risks associated with potential interest rate changes."
+Scenario: "Interest Rate Volatility"
+Output:
+
+{{5:{{
+  "motivation": "Target Entity's analysts are forecasting higher risks associated with potential interest rate changes.",
+  "label": "unclear",
+  "quotes": []
+}}
+
+ID: 2
+Headline: "Economic Challenges Ahead Due to Tariffs on China"
+Text: "Other Entity's analysts report a potential economic downturn in Target Entity linked to new tariffs against China."
+Risk Scenario: "New Tariffs Against China"
+Output:
+
+{{2:{{
+  "motivation": "Target Entity's analysts are assessing the potential economic impact of new tariffs against China.",
+  "label": "Economic Downturns",
+  "quotes": ["Other Entity's analysts report a potential economic downturn in Target Entity"]
+}}
+
+ID: 3
+Headline: "Analyzing External Factors in Business Strategy"
+Text: "Other Entity is studying external factors such as tariffs to gauge potential risks. Other Entity's analysts report a potential economic downturn in Target Entity."
+Risk Scenario: "New Tariffs on Semiconductors"
+Output:
+
+{{3:{{
+  "motivation": "Other Entity's analysis of external factors does not establish a direct link to Target Entity.",
+  "label": "unclear",
+  "quotes": []
+}}
+
+ID: 4
+Headline: "Market Trends Influence Stock Performance"
+Text: "Target Entity’s stock is influenced by broad market trends."
+Risk Scenario: "Increased Uncertainty and Volatility"
+Output:
+
+{{4:{{
+  "motivation": "The text does not related to the Risk Scenario and it does not mention any specific risk sub-scenario affecting Target Entity.",
+  "label": "unclear",
+  "quotes": []
+}}
+
+ID: 5
+
+Headline: "Tariffs and Their Economic Impact"
+Text: "Other Entity researchers estimate that tariffs will affect the broader economy in Target Entity."
+Risk Scenario: "New Tariffs against China"
+Output:
+
+{{5:{{
+  "motivation": "Target Entity is not linked with any specific risk sub-scenario or any tangible effect of the Risk Scenario.",
+  "label": "unclear",
+  "quotes": []
+}}
+
+ID: 2
+Headline: "China Tariffs Impact Supply Chains"
+Text: "According to recent reports, Target Entity is heavily dependent on China. The recent tariffs against China have forced Target Entity to reconsider its supply chain, potentially leading to increased logistics costs."
+Risk Scenario: "New Tariffs against China"
+Output:
+
+{{2:{{
+  "motivation": "Target Entity is said to be reconsidering its supply chain in the face of the risk scenario. The text clearly links Target Entity with the Risk Scenario and mentions an explicit Sub-scenario risk of Supply Chain Disruptions.",
+  "label": "Supply Chain Disruption",
+  "quotes": [
+    "Target Entity is heavily dependent on China",
+    "The recent tariffs against China have forced Target Entity to reconsider its supply chain, potentially leading to increased logistics costs."
+  ],
+}}
+</examples>
+"""
+
+def get_entity_theme_system_prompt(main_theme: str, label_summaries: list) -> str:
+    """
+    Generate the entity screener labeler prompt with the provided parameters.
+    
+    Args:
+        main_theme (str): The main theme being analyzed
+        label_summaries (list): List of risk theme summaries
+        
+    Returns:
+        str: The formatted prompt string
+    """
+    return entity_theme_system_prompt_template.format(
+        main_theme=main_theme, label_summaries=label_summaries,
+    )
+
+entity_theme_system_prompt_template: str = """
+ Forget all previous prompts.
+ You are assisting a professional analyst in evaluating the impact of the theme '{main_theme}' on an entity "Target Entity".
+ Your primary task is first, to ensure that each sentence is explicitly related to '{main_theme}', and second, to accurately associate each given sentence with
+ the relevant label contained within the list '{label_summaries}'.
+
+ Please adhere strictly to the following guidelines:
+
+ 1. **Analyze the Sentence**:
+    - Each input consists of a sentence ID, an entity name ('Target Entity'), and the sentence text.
+    - Analyze the sentence to understand if the content clearly establishes a connection to '{main_theme}'.
+    - Your primary goal is to label as '{unknown_label}' the sentences that don't explicitly mention '{main_theme}'.
+    - Analyze the list of labels '{label_summaries}' used for label assignment. '{label_summaries}' is a Python list variable containing distinct labels and their definition in format 'Label: Summary', you must pick label only from 'Label' part which means left side of the semicolon for each Label:Summary pair.
+    - Your secondary goal is to select the most appropriate label from '{label_summaries}' that corresponds to the content of the sentence.
+
+ 2. **First Label Assignment**:
+    - Assign the label '{unknown_label}' to the sentence related to "Target Entity" when it does not explicitly mentions '{main_theme}'. Otherwise, don't assign a label.
+    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
+    - Use only the information contained within the sentence for your label assignment.
+    - When evaluating the sentence, "Target Entity" must clearly mention that the entity is clearly impacted by '{main_theme}'.
+    - Many sentences are only tangentially connected to the topic '{main_theme}'. These sentences must be assigned the label '{unknown_label}'.
+
+ 3. **Second Label Assignment**:
+    - For the sentences not labeled as '{unknown_label}' and only for them, assign a unique label from the list '{label_summaries}' to the sentence related to "Target Entity".
+    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
+    - Use only the information contained within the sentence for your label assignment.
+    - Ensure that the sentence clearly establishes a connection to the label you assigned and to the theme '{main_theme}'.
+    - You must not create a new label or choose a label that is not present in '{label_summaries}'.
+    - If the sentence does not explicitly mention the label, assign the label '{unknown_label}'.
+    - When evaluating the sentence, "Target Entity" must clearly mention that the entity is impacted by the label assigned and '{main_theme}'.
+
+ 4. **Response Format**:
+    - Your output should be structured as a JSON object that includes:
+          1. A brief motivation for your choice.
+          2. The assigned label.
+    - Each entry must start with the sentence ID and contain a clear motivation that begins with "Target Entity".
+    - The motivation should explain why the label was selected from '{label_summaries}' based on the information in the sentence and in the context of '{main_theme}'. It should also justify the label that had been assigned.
+    - Ensure that the exact context is understood and labels are based only on explicitly mentioned information in the sentence. Otherwise, assign the label '{unknown_label}'.
+    - The assigned label should be only the string that precedes the character ':'.
+    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>",}}, ...}}.
+    - Ensure that all strings in the JSON are correctly formatted with proper quotes.
+ """
