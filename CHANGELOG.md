@@ -31,6 +31,7 @@ Preparation for a first stable release.
   accepts a `fiscal_year` parameter. The parameter can now be a single integer or a list
   of integers. When a list is provided, the workflow or function will search for the union
   of all values provided.
+- Added a LexiconGenerator class to generate a list of keywords or sentences using an LLM. 
 
 ### Changed
 - Refactor the `themes` submodule to `tree`, allowing for a more generic tree structure
